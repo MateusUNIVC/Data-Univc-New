@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="/static/img/univc-logo.png">
+  <title>Reitoria | Data UNIVC</title>
+  <link rel="stylesheet" href="/static/css/data-univc-foundation.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/reitoria.css?v={{ app_version }}">
+</head>
+<body>
+  <div class="reitoria-shell">
+    <aside class="reitoria-sidebar">
+      <a class="reitoria-brand" href="/reitoria" aria-label="Data UNIVC — Reitoria">
+        <img src="/static/img/univc-logo.png" alt="UNIVC">
+        <span><strong>Data UNIVC</strong><small>Área da Reitoria</small></span>
+      </a>
+
+      <nav class="reitoria-nav" aria-label="Navegação da Reitoria">
+        <span class="nav-caption">Administração</span>
+        <a href="#visao" class="reitoria-nav-item active" data-admin-nav="visao">Visão geral</a>
+        <a href="#usuarios" class="reitoria-nav-item" data-admin-nav="usuarios">Usuários e acessos</a>
+        <a href="#auditoria" class="reitoria-nav-item" data-admin-nav="auditoria">Auditoria</a>
+        <span class="nav-caption">Diretorias</span>
+        <div id="sidebarDirectorates" class="sidebar-directorates"></div>
+      </nav>
+
+      <div class="reitoria-user-card">
+        <div class="reitoria-avatar" id="reitoriaAvatar">R</div>
+        <div class="reitoria-user-copy"><strong id="reitoriaUserName">Reitoria</strong><small id="reitoriaUserEmail">Carregando…</small></div>
+        <button id="reitoriaLogout" type="button" class="logout-button" title="Encerrar sessão" aria-label="Encerrar sessão">Sair</button>
+      </div>
+    </aside>
+
+    <main class="reitoria-main">
+      <header class="reitoria-topbar">
+        <div>
+          <span class="eyebrow">DATA UNIVC · ADMINISTRAÇÃO INSTITUCIONAL</span>
+          <h1>Área da Reitoria</h1>
+          <p>Gerencie identidades, permissões e acessos institucionais em um único lugar.</p>
+        </div>
+        <button id="newUserButton" class="button primary" type="button">+ Novo usuário</button>
+      </header>
+
+      <section id="visao" class="reitoria-section">
+        <div class="section-heading"><div><span class="eyebrow">VISÃO GERAL</span><h2>Controle institucional</h2><p>Resumo dos usuários ativos e das diretorias atualmente publicadas no Data UNIVC.</p></div></div>
+        <div class="summary-grid" aria-label="Resumo de acessos">
+          <article class="summary-card"><span>Usuários</span><strong id="summaryUsers">—</strong><small>cadastrados</small></article>
+          <article class="summary-card"><span>Ativos</span><strong id="summaryActive">—</strong><small>com acesso liberado</small></article>
+          <article class="summary-card"><span>Com edição</span><strong id="summaryEdit">—</strong><small>em alguma diretoria</small></article>
+          <article class="summary-card"><span>Sessões</span><strong id="summarySessions">—</strong><small>famílias ativas</small></article>
+        </div>
+        <div class="directorate-panel">
+          <div class="panel-head"><div><h3>Diretorias disponíveis</h3><p>A Reitoria possui acesso de edição às áreas atualmente publicadas.</p></div></div>
+          <div id="directorateCards" class="directorate-grid"></div>
+        </div>
+      </section>
+
+      <section id="usuarios" class="reitoria-section admin-panel">
+        <div class="panel-head">
+          <div><span class="eyebrow">IDENTIDADE & ACESSO</span><h2>Usuários e acessos</h2><p>Crie a identidade, defina e-mail, senha e permissões e altere usuários já existentes.</p></div>
+          <label class="search-field"><span>Buscar</span><input id="userSearch" type="search" placeholder="Nome ou e-mail" autocomplete="off"></label>
+        </div>
+        <div id="usersStatus" class="status-line">Carregando usuários…</div>
+        <div class="table-wrap">
+          <table class="users-table">
+            <thead><tr><th>Usuário</th><th>Tipo</th><th>Diretorias</th><th>Status</th><th>Último acesso</th><th>Sessões</th><th></th></tr></thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="auditoria" class="reitoria-section admin-panel audit-panel">
+        <div class="panel-head">
+          <div><span class="eyebrow">SEGURANÇA</span><h2>Auditoria</h2><p>Histórico recente de autenticação, alterações de perfil, permissões e sessões.</p></div>
+          <button id="refreshAuditButton" class="button secondary" type="button">Atualizar</button>
+        </div>
+        <div id="auditList" class="audit-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="userDialog" class="access-dialog">
+    <form id="userForm" method="dialog">
+      <div class="dialog-head">
+        <div><span class="eyebrow">CADASTRO INSTITUCIONAL</span><h2 id="dialogTitle">Editar usuário</h2></div>
+        <button class="dialog-close" value="cancel" aria-label="Fechar" type="submit">×</button>
+      </div>
+      <input id="editingUserId" type="hidden">
+
+      <div class="profile-editor">
+        <div class="avatar-editor">
+          <div id="editAvatarPreview" class="avatar-preview">U</div>
+          <label class="button secondary compact avatar-upload">Escolher foto<input id="editAvatar" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+          <button id="removeAvatarButton" class="text-button hidden" type="button">Remover foto</button>
+          <small>JPEG, PNG ou WEBP · até 2 MB.</small>
+        </div>
+        <div class="profile-fields">
+          <label class="form-field"><span>Nome completo</span><input id="editName" maxlength="120" required autocomplete="name"></label>
+          <label class="form-field"><span>E-mail</span><input id="editEmail" type="email" maxlength="255" required autocomplete="email"></label>
+        </div>
+      </div>
+
+      <div class="form-grid two password-grid">
+        <label class="form-field"><span id="passwordLabel">Senha inicial</span><input id="editPassword" type="password" minlength="8" maxlength="200" autocomplete="new-password" placeholder="Mínimo de 8 caracteres"></label>
+        <label class="form-field"><span>Confirmar senha</span><input id="editPasswordConfirm" type="password" minlength="8" maxlength="200" autocomplete="new-password"></label>
+      </div>
+      <p id="passwordHelp" class="field-help">Para um novo usuário, defina a senha inicial. O Data UNIVC não armazena nem exibe essa senha.</p>
+
+      <div class="form-grid two">
+        <label class="form-field"><span>Tipo de usuário</span><select id="editRole"><option value="DIRECTORATE">Usuário de diretoria</option><option value="REITORIA">Reitoria</option></select></label>
+        <label class="toggle-field"><input id="editActive" type="checkbox" checked><span><strong>Acesso ativo</strong><small>Desative para bloquear o usuário.</small></span></label>
+      </div>
+
+      <fieldset id="directorateFieldset" class="directorate-fieldset">
+        <legend>Diretorias e permissões</legend>
+        <p>Defina o nível de acesso em cada diretoria. Uma das áreas concedidas será a principal.</p>
+        <p id="hiddenGrantNotice" class="field-help hidden"></p>
+        <div id="directorateEditor" class="directorate-editor"></div>
+      </fieldset>
+
+      <div id="dialogMessage" class="dialog-message hidden"></div>
+      <div class="dialog-actions">
+        <button class="button secondary" value="cancel" type="submit">Cancelar</button>
+        <button id="saveUserButton" class="button primary" value="default" type="submit">Salvar usuário</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="sessionDialog" class="access-dialog sessions-dialog">
+    <div class="dialog-head"><div><span class="eyebrow">SESSÕES</span><h2 id="sessionDialogTitle">Sessões ativas</h2></div><button id="closeSessionDialog" class="dialog-close" type="button">×</button></div>
+    <div id="sessionList" class="session-list"></div>
+    <div class="dialog-actions"><button id="revokeAllSessionsButton" class="button danger" type="button">Revogar todas</button><button id="closeSessionDialogFooter" class="button secondary" type="button">Fechar</button></div>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/static/js/data-univc-auth.js?v={{ app_version }}"></script>
+  <script src="/static/js/data-univc-ui.js?v={{ app_version }}"></script>
+  <script src="/static/js/data-univc-identity.js?v={{ app_version }}"></script>
+  <script src="/static/js/admin_users.js?v={{ app_version }}"></script>
+</body>
+</html>

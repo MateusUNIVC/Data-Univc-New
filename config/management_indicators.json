@@ -1,0 +1,821 @@
+{
+  "version": "0.7.8",
+  "directorates": {
+    "DADM": {
+      "name": "Diretoria Administrativa",
+      "periodicity": "monthly",
+      "period_label": "Mês",
+      "comparison_policy": "previous_period",
+      "indicators": [
+        {
+          "code": "DADM-01",
+          "name": "Tempo de Resposta nos Canais de Atendimento",
+          "short_name": "Cumprimento do prazo",
+          "objective": "Medir quanto tempo o aluno, o candidato ou o colaborador espera até a primeira resposta e até a resolução, canal a canal.",
+          "periodicity": "monthly",
+          "primary_metric": "sla_compliance_pct",
+          "primary_unit": "%",
+          "source": "Registros dos canais oficiais: mensageria, caixa institucional, protocolo presencial, ouvidoria e sistema de chamados.",
+          "responsible": "Coordenação de atendimento; validação do diretor administrativo.",
+          "formula_text": "% no prazo = solicitações atendidas no prazo ÷ solicitações recebidas × 100; taxa de reabertura = reabertas ÷ concluídas × 100; saldo em aberto = saldo anterior + recebidas − concluídas.",
+          "dimensions": [
+            "channel",
+            "request_type",
+            "week"
+          ],
+          "fields": [
+            {
+              "key": "requests_received",
+              "label": "Solicitações recebidas",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "requests_within_sla",
+              "label": "Solicitações no prazo",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "concluded",
+              "label": "Solicitações concluídas",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "reopened",
+              "label": "Solicitações reabertas",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "open_balance",
+              "label": "Saldo em aberto",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "avg_first_response_hours",
+              "label": "Tempo médio da 1ª resposta (h úteis)",
+              "type": "decimal",
+              "required": false
+            },
+            {
+              "key": "avg_resolution_hours",
+              "label": "Tempo médio da resolução (h úteis)",
+              "type": "decimal",
+              "required": false
+            }
+          ],
+          "metrics": [
+            {
+              "key": "sla_compliance_pct",
+              "label": "% no prazo",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "ratio",
+              "numerator": "requests_within_sla",
+              "denominator": "requests_received",
+              "scale": 100,
+              "target": 90,
+              "attention": 85
+            },
+            {
+              "key": "reopen_rate_pct",
+              "label": "Taxa de reabertura",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "ratio",
+              "numerator": "reopened",
+              "denominator": "concluded",
+              "scale": 100,
+              "target": 5,
+              "attention": 8
+            },
+            {
+              "key": "open_balance",
+              "label": "Saldo em aberto",
+              "unit": "solicitações",
+              "direction": "lower",
+              "aggregation": "sum",
+              "field": "open_balance",
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "avg_first_response_hours",
+              "label": "Tempo médio da 1ª resposta",
+              "unit": "h úteis",
+              "direction": "lower",
+              "aggregation": "weighted_average",
+              "field": "avg_first_response_hours",
+              "weight": "requests_received",
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "avg_resolution_hours",
+              "label": "Tempo médio da resolução",
+              "unit": "h úteis",
+              "direction": "lower",
+              "aggregation": "weighted_average",
+              "field": "avg_resolution_hours",
+              "weight": "concluded",
+              "target": null,
+              "attention": null
+            }
+          ],
+          "notes": "O status deve ser lido por canal. Prazos iniciais: mensageria 4 h úteis; e-mail 1 dia útil; ouvidoria 2 dias úteis; chamado crítico 2 h úteis. O saldo não deve crescer por dois meses consecutivos."
+        },
+        {
+          "code": "DADM-02",
+          "name": "Satisfação com o Atendimento",
+          "short_name": "Satisfação",
+          "objective": "Medir a proporção de pessoas atendidas que se declaram satisfeitas logo após o atendimento.",
+          "periodicity": "monthly",
+          "primary_metric": "satisfaction_pct",
+          "primary_unit": "%",
+          "source": "Pesquisa pós-atendimento com instrumento e escala idênticos em todos os canais.",
+          "responsible": "Coordenação de atendimento; validação do diretor administrativo.",
+          "formula_text": "Satisfação = respostas 4 e 5 ÷ respondentes × 100; insatisfação = respostas 1 e 2 ÷ respondentes × 100; taxa de resposta = respondentes ÷ atendimentos elegíveis × 100.",
+          "dimensions": [
+            "channel",
+            "request_type",
+            "resolution_band"
+          ],
+          "fields": [
+            {
+              "key": "eligible_interactions",
+              "label": "Atendimentos elegíveis",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "respondents",
+              "label": "Respondentes",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "satisfied",
+              "label": "Respostas 4 e 5",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "dissatisfied",
+              "label": "Respostas 1 e 2",
+              "type": "integer",
+              "required": true
+            }
+          ],
+          "metrics": [
+            {
+              "key": "satisfaction_pct",
+              "label": "Satisfação",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "ratio",
+              "numerator": "satisfied",
+              "denominator": "respondents",
+              "scale": 100,
+              "target": 80,
+              "attention": 70
+            },
+            {
+              "key": "dissatisfaction_pct",
+              "label": "Índice de insatisfação",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "ratio",
+              "numerator": "dissatisfied",
+              "denominator": "respondents",
+              "scale": 100,
+              "target": 8,
+              "attention": 12
+            },
+            {
+              "key": "response_rate_pct",
+              "label": "Taxa de resposta",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "ratio",
+              "numerator": "respondents",
+              "denominator": "eligible_interactions",
+              "scale": 100,
+              "target": 25,
+              "attention": 15
+            }
+          ],
+          "notes": "Abaixo de 25% de taxa de resposta, o resultado de satisfação é indicativo e não conclusivo. A meta por canal é 75%; a meta consolidada é 80%."
+        }
+      ]
+    },
+    "DPE": {
+      "name": "Diretoria de Planejamento Econômico e Oferta",
+      "periodicity": "monthly",
+      "period_label": "Competência",
+      "comparison_policy": "previous_period_and_year_over_year",
+      "indicators": [
+        {
+          "code": "DPE-01",
+          "name": "Margem Líquida por Curso",
+          "short_name": "Margem líquida",
+          "objective": "Mostrar quanto sobra da receita atribuída a cada curso após o custo gerencial reconciliado.",
+          "periodicity": "monthly",
+          "primary_metric": "net_margin_pct",
+          "primary_unit": "%",
+          "source": "Base financeira única da DPE: receita institucional, distribuição opcional de receita por curso, despesas reais e rateios.",
+          "responsible": "Financeiro; validação do diretor da DPE.",
+          "formula_text": "Margem = (receita atribuída ao curso − custo efetivo do curso) ÷ receita atribuída ao curso × 100. A receita por curso é opcional; o custo efetivo usa o total informado para reconciliação ou, na ausência dele, as despesas reais rateadas.",
+          "dimensions": [
+            "course",
+            "academic_directorate"
+          ],
+          "fields": [
+            {
+              "key": "net_revenue",
+              "label": "Receita líquida",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "faculty_cost",
+              "label": "Custo docente",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "coordination_cost",
+              "label": "Custo de coordenação",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "other_direct_cost",
+              "label": "Outros custos diretos",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "indirect_cost",
+              "label": "Rateio indireto",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "weekly_teaching_hours",
+              "label": "Horas-aula semanais",
+              "type": "decimal",
+              "required": true
+            },
+            {
+              "key": "teacher_count",
+              "label": "Nº de docentes",
+              "type": "integer",
+              "required": true
+            }
+          ],
+          "metrics": [
+            {
+              "key": "net_margin_pct",
+              "label": "Margem líquida",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "derived_margin",
+              "target": 15,
+              "attention": 0
+            },
+            {
+              "key": "net_margin_12m_pct",
+              "label": "Margem líquida acumulada em 12 meses",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "rolling_margin_12m",
+              "target": 15,
+              "attention": 0
+            },
+            {
+              "key": "total_cost",
+              "label": "Custo total",
+              "unit": "R$",
+              "direction": "lower",
+              "aggregation": "derived_total_cost",
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "avg_hours_per_teacher",
+              "label": "CH média por docente",
+              "unit": "h/semana",
+              "direction": "range",
+              "aggregation": "ratio",
+              "numerator": "weekly_teaching_hours",
+              "denominator": "teacher_count",
+              "scale": 1,
+              "target_min": 12,
+              "target_max": 20,
+              "attention_min": null,
+              "attention_max": null
+            }
+          ],
+          "notes": "A receita por curso é opcional porque a receita institucional também inclui EAD, semipresencial, cursos técnicos, mestrado e outras origens. Carga horária não integra a etapa operacional v0.7.7."
+        },
+        {
+          "code": "DPE-02",
+          "name": "Índice de Cobertura entre Receita e Despesa",
+          "short_name": "Índice de cobertura",
+          "objective": "Mostrar quantos reais de receita a instituição gera para cada real de despesa.",
+          "periodicity": "monthly",
+          "primary_metric": "coverage_index",
+          "primary_unit": "índice",
+          "source": "Demonstrativo gerencial mensal do Financeiro, por natureza de despesa e centro de custo, reconhecido por competência.",
+          "responsible": "Financeiro; validação do diretor da DPE.",
+          "formula_text": "Índice = receita líquida ÷ despesa total; margem operacional equivalente = (1 − 1 ÷ índice) × 100; despesa total = pessoal + operacional + administrativa + financeira. Imobilizado é registrado à parte.",
+          "dimensions": [
+            "cost_center",
+            "expense_nature"
+          ],
+          "fields": [
+            {
+              "key": "net_revenue",
+              "label": "Receita líquida",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "personnel_expense",
+              "label": "Despesa de pessoal",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "operational_expense",
+              "label": "Despesa operacional",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "administrative_expense",
+              "label": "Despesa administrativa",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "financial_expense",
+              "label": "Despesa financeira",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "capex",
+              "label": "Investimento em imobilizado",
+              "type": "currency",
+              "required": false
+            }
+          ],
+          "metrics": [
+            {
+              "key": "coverage_index",
+              "label": "Índice de cobertura",
+              "unit": "x",
+              "direction": "higher",
+              "aggregation": "derived_coverage",
+              "target": 1.11,
+              "attention": 1.05
+            },
+            {
+              "key": "coverage_index_12m",
+              "label": "Índice de cobertura acumulado em 12 meses",
+              "unit": "x",
+              "direction": "higher",
+              "aggregation": "rolling_coverage_12m",
+              "target": 1.11,
+              "attention": 1.05
+            },
+            {
+              "key": "operating_margin_pct",
+              "label": "Margem operacional equivalente",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "derived_operating_margin",
+              "target": 10,
+              "attention": null
+            },
+            {
+              "key": "operating_margin_12m_pct",
+              "label": "Margem operacional acumulada em 12 meses",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "rolling_operating_margin_12m",
+              "target": 10,
+              "attention": null
+            },
+            {
+              "key": "total_expense",
+              "label": "Despesa total",
+              "unit": "R$",
+              "direction": "lower",
+              "aggregation": "derived_total_expense",
+              "target": null,
+              "attention": null
+            }
+          ],
+          "notes": "O painel deve exibir o mês, o acumulado móvel de doze meses e a comparação com o mesmo mês do ano anterior. No máximo dois meses consecutivos abaixo de 1,00."
+        },
+        {
+          "code": "DPE-03",
+          "name": "Folha de Pagamento sobre a Receita",
+          "short_name": "Folha sobre receita",
+          "objective": "Medir quanto da receita é consumido pela folha completa, com encargos e provisões.",
+          "periodicity": "monthly",
+          "primary_metric": "payroll_on_revenue_pct",
+          "primary_unit": "%",
+          "source": "Folha consolidada do RH, com encargos e provisões separados por categoria, e receita líquida do Financeiro.",
+          "responsible": "RH; validação do diretor da DPE.",
+          "formula_text": "% folha = folha total ÷ receita líquida do mês × 100; leitura adicional sobre a receita média dos últimos três meses; apuração separada da folha docente e administrativa.",
+          "dimensions": [
+            "category",
+            "nature"
+          ],
+          "fields": [
+            {
+              "key": "faculty_payroll",
+              "label": "Folha docente completa",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "administrative_payroll",
+              "label": "Folha administrativa completa",
+              "type": "currency",
+              "required": true
+            },
+            {
+              "key": "gross_salaries",
+              "label": "Salários brutos",
+              "type": "currency",
+              "required": false
+            },
+            {
+              "key": "charges",
+              "label": "Encargos",
+              "type": "currency",
+              "required": false
+            },
+            {
+              "key": "provisions",
+              "label": "Provisões",
+              "type": "currency",
+              "required": false
+            },
+            {
+              "key": "net_revenue",
+              "label": "Receita líquida do mês",
+              "type": "currency",
+              "required": true
+            }
+          ],
+          "metrics": [
+            {
+              "key": "payroll_on_revenue_pct",
+              "label": "Folha total sobre receita",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "derived_payroll_ratio",
+              "target": 55,
+              "attention": 58
+            },
+            {
+              "key": "faculty_payroll_pct",
+              "label": "Folha docente sobre receita",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "ratio",
+              "numerator": "faculty_payroll",
+              "denominator": "net_revenue",
+              "scale": 100,
+              "target": 38,
+              "attention": null
+            },
+            {
+              "key": "administrative_payroll_pct",
+              "label": "Folha administrativa sobre receita",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "ratio",
+              "numerator": "administrative_payroll",
+              "denominator": "net_revenue",
+              "scale": 100,
+              "target": 17,
+              "attention": null
+            },
+            {
+              "key": "payroll_on_revenue_3m_pct",
+              "label": "Folha sobre receita média de 3 meses",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "rolling_payroll_ratio_3m",
+              "target": 55,
+              "attention": 58
+            },
+            {
+              "key": "payroll_monthly_change_pct",
+              "label": "Variação mensal da folha",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "month_over_month_payroll_change",
+              "target": 2,
+              "attention": null
+            }
+          ],
+          "notes": "Provisões de décimo terceiro e férias devem ser apropriadas mensalmente, nunca apenas no caixa."
+        }
+      ]
+    },
+    "DM": {
+      "name": "Diretoria de Mestrado",
+      "periodicity": "semester",
+      "period_label": "Semestre",
+      "comparison_policy": "same_semester_previous_year",
+      "indicators": [
+        {
+          "code": "DM-01",
+          "name": "Evolução do Número de Alunos do Programa",
+          "short_name": "Membros por turma",
+          "objective": "Acompanhar a evolução do número absoluto de membros em cada turma do programa.",
+          "periodicity": "semester",
+          "primary_metric": "cohort_members",
+          "primary_unit": "alunos",
+          "source": "Secretaria do programa, processo seletivo e registro de defesas.",
+          "responsible": "Secretaria; validação do diretor de Mestrado.",
+          "formula_text": "Ativos no fim = ativos no início + ingressantes − titulados − desligados; variação líquida = (ativos no fim − ativos no início) ÷ ativos no início × 100; evasão = desligados ÷ ativos no início × 100; ocupação = matrículas efetivadas ÷ vagas autorizadas × 100.",
+          "dimensions": [
+            "cohort",
+            "research_line",
+            "exit_reason"
+          ],
+          "fields": [
+            {
+              "key": "active_start",
+              "label": "Ativos no início",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "entrants",
+              "label": "Ingressantes",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "graduates",
+              "label": "Titulados",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "dropped",
+              "label": "Desligados",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "locked",
+              "label": "Trancados",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "vacancies_authorized",
+              "label": "Vagas autorizadas",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "enrollments_effective",
+              "label": "Matrículas efetivadas",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "active_over_regulatory",
+              "label": "Ativos acima do prazo regimental",
+              "type": "integer",
+              "required": true
+            }
+          ],
+          "metrics": [
+            {
+              "key": "cohort_members",
+              "label": "Membros por turma",
+              "unit": "alunos",
+              "direction": "higher",
+              "aggregation": "sum",
+              "field": "enrollments_effective",
+              "target": null,
+              "attention": null,
+              "target_enabled": true
+            },
+            {
+              "key": "active_end",
+              "label": "Ativos no fim",
+              "unit": "alunos",
+              "direction": "context",
+              "aggregation": "derived_active_end",
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "net_change_pct",
+              "label": "Variação líquida",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "derived_net_change",
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "dropout_rate_pct",
+              "label": "Taxa de evasão",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "ratio",
+              "numerator": "dropped",
+              "denominator": "active_start",
+              "scale": 100,
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "occupancy_pct",
+              "label": "Ocupação das vagas",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "ratio",
+              "numerator": "enrollments_effective",
+              "denominator": "vacancies_authorized",
+              "scale": 100,
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "active_over_regulatory",
+              "label": "Ativos acima do prazo regimental",
+              "unit": "alunos",
+              "direction": "lower",
+              "aggregation": "sum",
+              "field": "active_over_regulatory",
+              "target": null,
+              "attention": null
+            }
+          ],
+          "notes": "A meta institucional da DM-01 é exclusivamente o número absoluto de membros por turma. Evasão, ocupação e demais medidas permanecem apenas como informações analíticas."
+        },
+        {
+          "code": "DM-02",
+          "name": "Tempo Médio até a Defesa",
+          "short_name": "Tempo até a defesa",
+          "objective": "Medir o tempo entre ingresso e defesa, a titulação no prazo e os alunos em risco de prazo.",
+          "periodicity": "semester",
+          "primary_metric": "average_months_to_defense",
+          "primary_unit": "meses",
+          "source": "Registro de defesas e base de coortes de ingresso da secretaria do programa.",
+          "responsible": "Secretaria; validação do diretor de Mestrado e da coordenação.",
+          "formula_text": "Tempo médio = soma dos meses entre ingresso e defesa ÷ defesas; titulação no prazo = titulados em até 24 meses ÷ ingressantes da coorte × 100; risco = ativos com mais de 18 meses sem qualificação ou mais de 24 meses sem defesa marcada.",
+          "dimensions": [
+            "cohort",
+            "advisor",
+            "research_line"
+          ],
+          "fields": [
+            {
+              "key": "defenses_count",
+              "label": "Defesas no período",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "average_months",
+              "label": "Tempo médio até a defesa",
+              "type": "decimal",
+              "required": true
+            },
+            {
+              "key": "median_months",
+              "label": "Tempo mediano até a defesa",
+              "type": "decimal",
+              "required": true
+            },
+            {
+              "key": "cohort_entrants",
+              "label": "Ingressantes da coorte",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "graduated_within_24",
+              "label": "Titulados em até 24 meses",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "active_over_30_no_defense",
+              "label": "Ativos >30 meses sem defesa",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "active_over_18_no_qualification",
+              "label": "Ativos >18 meses sem qualificação",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "permanent_faculty",
+              "label": "Docentes permanentes",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "key": "active_advisees",
+              "label": "Orientandos ativos",
+              "type": "integer",
+              "required": true
+            }
+          ],
+          "metrics": [
+            {
+              "key": "average_months_to_defense",
+              "label": "Tempo médio até a defesa",
+              "unit": "meses",
+              "direction": "lower",
+              "aggregation": "weighted_average",
+              "field": "average_months",
+              "weight": "defenses_count",
+              "target": 24,
+              "attention": null,
+              "target_enabled": true
+            },
+            {
+              "key": "median_months_to_defense",
+              "label": "Tempo mediano até a defesa",
+              "unit": "meses",
+              "direction": "lower",
+              "aggregation": "weighted_average",
+              "field": "median_months",
+              "weight": "defenses_count",
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "on_time_graduation_pct",
+              "label": "Titulação em até 24 meses",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "ratio",
+              "numerator": "graduated_within_24",
+              "denominator": "cohort_entrants",
+              "scale": 100,
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "active_over_30_no_defense",
+              "label": "Ativos >30 meses sem defesa",
+              "unit": "alunos",
+              "direction": "lower",
+              "aggregation": "sum",
+              "field": "active_over_30_no_defense",
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "active_over_18_no_qualification",
+              "label": "Ativos >18 meses sem qualificação",
+              "unit": "alunos",
+              "direction": "lower",
+              "aggregation": "sum",
+              "field": "active_over_18_no_qualification",
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "advisees_per_faculty",
+              "label": "Orientandos por docente permanente",
+              "unit": "orientandos/docente",
+              "direction": "lower",
+              "aggregation": "ratio",
+              "numerator": "active_advisees",
+              "denominator": "permanent_faculty",
+              "scale": 1,
+              "target": null,
+              "attention": null
+            }
+          ],
+          "notes": "A única meta institucional da DM-02 é o tempo médio até a defesa. Mediana, titulação no prazo e riscos permanecem apenas como informações analíticas."
+        }
+      ]
+    }
+  }
+}

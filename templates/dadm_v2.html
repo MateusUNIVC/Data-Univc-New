@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="/static/img/univc-logo.png">
+  <title>Data UNIVC | DADM</title>
+  <link rel="stylesheet" href="/static/css/app.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/data-univc-foundation.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/dadm_v2.css?v={{ app_version }}">
+</head>
+<body class="dadm-v2">
+  <div class="v2-shell" id="v2App">
+    <aside class="v2-sidebar" id="v2Sidebar" aria-label="Navegação DADM">
+      <a href="/" class="v2-brand" aria-label="Data UNIVC">
+        <img src="/static/img/univc-logo.png" alt="UNIVC">
+        <div><strong>Data UNIVC</strong><span>DADM · Analytics</span></div>
+      </a>
+      <button type="button" class="v2-sidebar-collapse" id="v2SidebarCollapse" aria-label="Recolher menu lateral" title="Recolher menu lateral">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+
+      <nav class="v2-nav" aria-label="Áreas da DADM">
+        <button type="button" class="v2-nav-item active" data-view="overview">
+          <span class="v2-nav-icon" data-du-icon="dashboard"></span>
+          <span>Visão geral</span>
+        </button>
+        <button type="button" class="v2-nav-item" data-view="people">
+          <span class="v2-nav-icon" data-du-icon="users"></span>
+          <span>Pessoas &amp; setores</span>
+        </button>
+        <button type="button" class="v2-nav-item" data-view="experience">
+          <span class="v2-nav-icon" data-du-icon="experience"></span>
+          <span>Experiência</span>
+        </button>
+        <button type="button" class="v2-nav-item" data-view="comparison">
+          <span class="v2-nav-icon" data-du-icon="compare"></span>
+          <span>Análise comparativa</span>
+        </button>
+        <div class="v2-nav-label">Gestão</div>
+        <button type="button" class="v2-nav-item" data-view="management">
+          <span class="v2-nav-icon" data-du-icon="target"></span>
+          <span>Metas &amp; planos</span>
+        </button>
+        <div class="v2-nav-label">Dados</div>
+        <button type="button" class="v2-nav-item" data-view="integration">
+          <span class="v2-nav-icon" data-du-icon="database"></span>
+          <span>Dados &amp; integração</span>
+        </button>
+      </nav>
+
+      <div class="v2-sidebar-bottom">
+        <div class="v2-sidebar-user" id="v2User">
+          <div class="v2-sidebar-avatar-wrap"><div class="v2-sidebar-avatar" id="v2UserAvatar">D</div><span class="v2-sidebar-presence" aria-hidden="true"></span></div>
+          <div class="v2-sidebar-user-copy"><strong id="v2UserName">Carregando…</strong><small id="v2UserRole">DADM</small></div>
+          <button type="button" class="v2-sidebar-logout" id="v2Logout" title="Encerrar sessão" aria-label="Encerrar sessão"><span data-du-icon="logout"></span></button>
+        </div>
+        <div class="v2-sidebar-links"><a href="/dadm/legacy?diretoria=DADM" class="v2-legacy-link">Ferramentas legadas</a><a href="/" class="v2-home-link">← Data UNIVC</a></div>
+      </div>
+    </aside>
+
+    <main class="v2-main">
+      <header class="v2-topbar">
+        <button type="button" class="v2-mobile-menu" id="v2MobileMenu" aria-label="Abrir menu">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div class="v2-topbar-title"><span>DADM · Diretoria Administrativa</span><h1 id="v2PageTitle">Visão geral</h1></div>
+        <div class="v2-topbar-actions">
+          <div class="v2-directorate-control">
+            <span class="v2-directorate-label">Diretoria em visualização</span>
+            <div class="v2-directorate-row">
+              <select id="v2DirectorateSelect" aria-label="Diretoria em visualização"></select>
+              <span class="v2-access-badge" id="v2AccessBadge">Carregando</span>
+            </div>
+          </div>
+          <button type="button" class="v2-data-state" id="v2DataState" data-view-jump="integration"><span class="v2-dot"></span><span id="v2DataStateText">Verificando dados…</span></button>
+          <button type="button" class="v2-btn v2-btn-secondary v2-report-button" id="v2ReportButton" aria-haspopup="dialog" aria-controls="v2ReportModal" disabled>
+            <span data-du-icon="download"></span><span class="v2-report-button-label">Gerar relatório</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="v2-context" aria-label="Contexto de análise">
+        <div class="v2-context-main">
+          <button type="button" class="v2-context-control period" id="v2PeriodButton">
+            <span>Período</span><strong id="v2PeriodLabel">Carregando…</strong>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <label class="v2-context-control select"><span>Departamento</span><select id="v2Department"><option value="">Todos os setores</option></select></label>
+          <label class="v2-context-control select"><span>Operador</span><select id="v2Employee"><option value="">Todos os operadores</option></select></label>
+          <div class="v2-more-wrap">
+            <button type="button" class="v2-more-button" id="v2MoreFilters">+ Filtros <span id="v2ExtraCount" class="hidden">0</span></button>
+            <div class="v2-filter-popover hidden" id="v2FilterPopover">
+              <div class="v2-popover-head"><strong>Mais filtros</strong><button type="button" id="v2CloseFilters" aria-label="Fechar">×</button></div>
+              <label><span>Canal</span><select id="v2Channel"><option value="">Todos os canais</option></select></label>
+              <label><span>Status</span><select id="v2Status"><option value="">Todos os status</option></select></label>
+              <label><span>Tabulação</span><select id="v2Tabulation"><option value="">Todas as tabulações</option></select></label>
+              <button type="button" class="v2-btn v2-btn-primary" id="v2ApplyExtra">Aplicar filtros</button>
+            </div>
+          </div>
+          <button type="button" class="v2-clear-context hidden" id="v2ClearFilters">Limpar</button>
+        </div>
+        <div class="v2-filter-chips" id="v2FilterChips"></div>
+      </section>
+
+      <div class="v2-readonly hidden" id="v2ReadOnlyNotice" role="status">
+        <span data-du-icon="eye"></span>
+        <div><strong>Modo somente leitura</strong><small>Você pode analisar e comparar os dados da DADM, mas alterações permanecem restritas à diretoria responsável.</small></div>
+      </div>
+
+      <div class="v2-loading hidden" id="v2Loading"><span></span></div>
+      <div class="v2-alert hidden" id="v2Alert" role="status"></div>
+
+      <div class="v2-content">
+        <section class="v2-view active" id="view-overview" data-view-section="overview">
+          <div class="v2-page-lead"><div><span class="v2-kicker">Resumo executivo</span><h2>Como estamos atendendo?</h2><p id="v2OverviewSubtitle">Volume, eficiência e experiência no período selecionado.</p></div></div>
+
+          <div class="v2-kpi-strip" id="v2OperationKpis"></div>
+          <div class="v2-secondary-stats" id="v2OperationSecondary"></div>
+
+          <article class="v2-panel v2-panel-large">
+            <div class="v2-panel-head"><div><span class="v2-kicker">Operação</span><h3>Volume ao longo do período</h3></div><span class="v2-unit">atendimentos por mês</span></div>
+            <div class="v2-chart" id="v2VolumeChart"></div>
+          </article>
+
+          <article class="v2-section-card efficiency">
+            <div class="v2-section-card-head"><div><span class="v2-kicker">DADM-01</span><h3>Eficiência do atendimento</h3><p>Quanto tempo as pessoas aguardam e quanto tempo os atendimentos permanecem em andamento.</p></div></div>
+            <div class="v2-metric-pair" id="v2EfficiencyKpis"></div>
+            <div class="v2-definition-row">
+              <p><strong>Tempo Médio de Espera (TME)</strong><span>Quanto tempo a pessoa aguardou até o atendimento começar. Campo TALLOS ainda em validação.</span></p>
+              <p><strong>Tempo Médio de Atendimento (TMA)</strong><span>Duração média do atendimento depois que ele começou.</span></p>
+            </div>
+            <div class="v2-chart" id="v2EfficiencyChart"></div>
+          </article>
+
+          <article class="v2-section-card experience">
+            <div class="v2-section-card-head"><div><span class="v2-kicker">DADM-02</span><h3>Experiência do atendimento</h3><p>Avaliações válidas de 1 a 10. Atendimentos sem avaliação não entram na média.</p></div></div>
+            <div class="v2-experience-layout"><div><div class="v2-rating-hero" id="v2RatingHero"></div><div class="v2-rating-bars" id="v2RatingDistribution"></div></div><div class="v2-chart" id="v2RatingTimeline"></div></div>
+          </article>
+        </section>
+
+        <section class="v2-view" id="view-people" data-view-section="people">
+          <div class="v2-page-lead"><div><span class="v2-kicker">Explorer</span><h2>Pessoas &amp; setores</h2><p>Use a mesma experiência para investigar um operador ou um departamento, individualmente ou em contexto.</p></div></div>
+          <div id="v2EntityExplorer">
+            <div class="v2-segmented" role="tablist"><button type="button" class="active" data-entity-kind="employee">Operadores</button><button type="button" data-entity-kind="department">Departamentos</button></div>
+            <div class="v2-explorer-toolbar">
+              <div class="v2-metric-tabs" id="v2EntityMetricTabs"><button type="button" class="active" data-entity-metric="attendances">Volume</button><button type="button" data-entity-metric="tme_avg_seconds">Espera</button><button type="button" data-entity-metric="tma_avg_seconds">Atendimento</button><button type="button" data-entity-metric="rating_avg">Avaliação</button></div>
+              <div class="v2-explorer-actions"><label class="v2-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input id="v2EntitySearch" type="search" placeholder="Buscar operador…"></label><select id="v2EntitySort"><option value="attendances-desc">Maior volume</option><option value="rating-desc">Maior avaliação</option><option value="tme-asc">Menor espera</option><option value="tma-asc">Menor atendimento</option><option value="name-asc">Nome A–Z</option></select></div>
+            </div>
+            <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker" id="v2EntityChartKicker">Operadores</span><h3 id="v2EntityChartTitle">Atendimentos por operador</h3></div></div><div class="v2-bars-large" id="v2EntityChart"></div></article>
+            <article class="v2-panel"><div class="v2-table-wrap"><table class="v2-table"><thead id="v2EntityTableHead"></thead><tbody id="v2EntityTableBody"></tbody></table></div></article>
+          </div>
+          <div id="v2EntityProfile" class="hidden"></div>
+        </section>
+
+        <section class="v2-view" id="view-experience" data-view-section="experience">
+          <div class="v2-page-lead"><div><span class="v2-kicker">DADM-02</span><h2>Experiência do atendimento</h2><p>Entenda a nota, a quantidade de respostas, a cobertura e onde a experiência muda.</p></div></div>
+          <div class="v2-experience-summary" id="v2ExperienceSummary"></div>
+          <div class="v2-grid-2">
+            <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Distribuição</span><h3>Avaliações de 1 a 10</h3></div></div><div class="v2-rating-bars" id="v2ExperienceDistribution"></div></article>
+            <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Evolução</span><h3>Média mensal e amostra</h3></div></div><div class="v2-chart" id="v2ExperienceTimeline"></div></article>
+          </div>
+          <article class="v2-panel">
+            <div class="v2-panel-head responsive"><div><span class="v2-kicker">Onde muda?</span><h3>Analisar experiência por dimensão</h3></div><div class="v2-segmented compact" id="v2ExperienceDimension"><button type="button" class="active" data-dimension="employee">Operador</button><button type="button" data-dimension="department">Departamento</button><button type="button" data-dimension="channel">Canal</button><button type="button" data-dimension="tabulation">Tabulação</button></div></div>
+            <div class="v2-table-wrap"><table class="v2-table"><thead><tr><th>Dimensão</th><th>Atendimentos</th><th>Avaliação média</th><th>Respostas</th><th>Cobertura</th><th>Tempo médio de espera</th><th>Tempo médio de atendimento</th></tr></thead><tbody id="v2ExperienceBreakdown"></tbody></table></div>
+          </article>
+        </section>
+
+        <section class="v2-view" id="view-comparison" data-view-section="comparison">
+          <div class="v2-page-lead"><div><span class="v2-kicker">Análise</span><h2>Comparação</h2><p>Comece com uma entidade para acompanhar sua evolução; adicione outras apenas quando quiser comparar.</p></div></div>
+          <div class="v2-segmented" id="v2CompareMode"><button type="button" class="active" data-compare-mode="employee">Operadores</button><button type="button" data-compare-mode="department">Departamentos</button><button type="button" data-compare-mode="period">Períodos</button></div>
+          <div id="v2EntityCompareBox">
+            <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Seleção</span><h3 id="v2CompareEntityTitle">Operadores</h3><p>Uma única seleção já mostra a evolução individual. Adicione outras somente quando quiser comparar.</p></div></div><div class="v2-compare-picker"><select id="v2CompareEntitySelect"></select><button type="button" class="v2-btn v2-btn-primary" id="v2CompareAdd">Adicionar</button></div><div class="v2-selected-entities" id="v2CompareChips"></div></article>
+            <div id="v2CompareResults"></div>
+          </div>
+          <div id="v2PeriodCompareBox" class="hidden">
+            <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Períodos</span><h3>Escolha dois intervalos</h3></div></div><div class="v2-period-compare-controls"><button type="button" class="v2-range-card" data-compare-range="A"><span>Período A</span><strong id="v2CompareRangeALabel">—</strong></button><span class="v2-vs">vs</span><button type="button" class="v2-range-card" data-compare-range="B"><span>Período B</span><strong id="v2CompareRangeBLabel">—</strong></button><button type="button" class="v2-btn v2-btn-primary" id="v2ComparePeriods">Comparar</button></div></article>
+            <div id="v2PeriodCompareResults"></div>
+          </div>
+        </section>
+
+
+        <section class="v2-view" id="view-management" data-view-section="management">
+          <div class="v2-page-lead responsive"><div><span class="v2-kicker">Gestão de desempenho</span><h2>Metas &amp; planos de ação</h2><p>Metas TALLOS versionadas por vigência e planos vinculados diretamente aos indicadores DADM-01 e DADM-02.</p></div><div class="v2-page-actions"><button type="button" class="v2-btn v2-btn-secondary" id="v2NewTarget" data-write-action>Nova meta</button><button type="button" class="v2-btn v2-btn-primary" id="v2NewAction" data-write-action>Novo plano</button></div></div>
+          <div class="v2-management-summary" id="v2ManagementSummary"></div>
+          <article class="v2-panel">
+            <div class="v2-panel-head responsive"><div><span class="v2-kicker">Vigência</span><h3>Metas dos indicadores</h3><p>Metas institucionais, por departamento ou por canal. O histórico anterior não é sobrescrito.</p></div></div>
+            <div class="v2-table-wrap"><table class="v2-table"><thead><tr><th>Indicador</th><th>Métrica</th><th>Recorte</th><th>Vigência</th><th>Meta</th><th>Atenção</th><th></th></tr></thead><tbody id="v2TargetsTable"></tbody></table></div>
+          </article>
+          <article class="v2-panel">
+            <div class="v2-panel-head responsive"><div><span class="v2-kicker">Tratamento</span><h3>Planos de ação</h3><p>Problema, causa, ação corretiva, responsável, prazo, status e evidência em um único fluxo.</p></div></div>
+            <div class="v2-table-wrap"><table class="v2-table"><thead><tr><th>Indicador</th><th>Período</th><th>Recorte</th><th>Problema</th><th>Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th><th></th></tr></thead><tbody id="v2ActionsTable"></tbody></table></div>
+          </article>
+        </section>
+
+        <section class="v2-view" id="view-integration" data-view-section="integration">
+          <div class="v2-page-lead"><div><span class="v2-kicker">Dados</span><h2>Dados &amp; integração</h2><p>Conexão, sincronização e qualidade dos dados ficam fora do fluxo gerencial.</p></div></div>
+          <div class="v2-grid-2">
+            <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">TALLOS</span><h3>Conexão</h3></div><span id="v2ConnectionBadge" class="v2-badge">Verificando</span></div><div id="v2ConnectionBody" class="v2-info-stack"></div><button type="button" class="v2-btn v2-btn-secondary" id="v2TestConnection" data-write-action>Testar conexão</button></article>
+            <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Qualidade</span><h3>Saúde da base</h3></div></div><div id="v2QualityList" class="v2-quality-list"></div></article>
+          </div>
+          <article class="v2-panel">
+            <div class="v2-panel-head"><div><span class="v2-kicker">Atualização</span><h3>Sincronizar TALLOS</h3><p>Selecione datas pelo calendário. O intervalo de análise do dashboard continua sendo mensal.</p></div></div>
+            <div class="v2-sync-form"><label><span>Data inicial</span><input type="date" id="v2SyncStart"></label><label><span>Data final</span><input type="date" id="v2SyncEnd"></label><button type="button" class="v2-btn v2-btn-primary" id="v2StartSync" data-write-action>Iniciar sincronização</button></div>
+            <div id="v2SyncProgress" class="du-operation-progress hidden" aria-live="polite" aria-busy="true"></div>
+          </article>
+          <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Histórico</span><h3>Últimas sincronizações</h3></div></div><div class="v2-table-wrap"><table class="v2-table"><thead><tr><th>Período</th><th>Status</th><th>Recebidos</th><th>Novos</th><th>Atualizados</th><th>Sem alteração</th><th>Conclusão</th></tr></thead><tbody id="v2SyncRuns"></tbody></table></div></article>
+          <article class="v2-panel"><div class="v2-panel-head responsive"><div><span class="v2-kicker">Governança</span><h3>Mapeamento de departamentos TALLOS</h3><p>O identificador original é preservado; aqui você controla apenas o nome apresentado no Data UNIVC.</p></div></div><div class="v2-table-wrap"><table class="v2-table"><thead><tr><th>Identificador TALLOS</th><th>Nome exibido</th><th>Ativo</th><th>Observação</th><th></th></tr></thead><tbody id="v2DepartmentMapTable"></tbody></table></div></article>
+          <article class="v2-panel v2-legacy-panel"><div><span class="v2-kicker">Compatibilidade</span><h3>Ferramentas do DADM anterior</h3><p>Importações manuais e rotinas históricas permanecem acessíveis durante a transição. Elas não são a fonte analítica principal do TALLOS V2.</p></div><a class="v2-btn v2-btn-secondary" href="/dadm/legacy?diretoria=DADM">Abrir ferramentas legadas</a></article>
+        </section>
+      </div>
+    </main>
+  </div>
+
+
+  <div class="v2-modal-backdrop hidden" id="v2ManagementModal" role="dialog" aria-modal="true" aria-labelledby="v2ManagementModalTitle">
+    <div class="v2-management-dialog">
+      <div class="v2-modal-head"><div><span class="v2-kicker" id="v2ManagementModalKicker">Gestão</span><h2 id="v2ManagementModalTitle">Novo registro</h2></div><button type="button" class="v2-modal-close" id="v2CloseManagementModal" aria-label="Fechar">×</button></div>
+      <div id="v2ManagementModalBody"></div>
+    </div>
+  </div>
+
+  <div class="v2-modal-backdrop hidden" id="v2ReportModal" role="dialog" aria-modal="true" aria-labelledby="v2ReportModalTitle" aria-describedby="v2ReportModalDescription">
+    <div class="v2-report-dialog">
+      <div class="v2-modal-head"><div><span class="v2-kicker">Relatório TALLOS V2</span><h2 id="v2ReportModalTitle">Gerar relatório Excel</h2></div><button type="button" class="v2-modal-close" id="v2CloseReportModal" aria-label="Fechar">×</button></div>
+      <p class="v2-report-intro" id="v2ReportModalDescription">O arquivo usará exatamente o contexto de análise selecionado na DADM.</p>
+      <div class="v2-report-summary" id="v2ReportSummary"></div>
+      <div class="v2-report-note"><span data-du-icon="file"></span><div><strong>Relatório agregado</strong><span>O Excel inclui totais, evolução, departamentos e operadores. Nenhum atendimento individual ou dado pessoal de cliente será exportado.</span></div></div>
+      <div class="v2-modal-actions"><button type="button" class="v2-btn v2-btn-secondary" id="v2CancelReport">Cancelar</button><button type="button" class="v2-btn v2-btn-primary v2-generate-report" id="v2GenerateReport"><span data-du-icon="download"></span><span id="v2GenerateReportLabel">Gerar Excel</span></button></div>
+    </div>
+  </div>
+
+  <div class="v2-modal-backdrop hidden" id="v2PeriodModal" role="dialog" aria-modal="true" aria-labelledby="v2PeriodModalTitle">
+    <div class="v2-month-dialog">
+      <div class="v2-modal-head"><div><span class="v2-kicker">Contexto de análise</span><h2 id="v2PeriodModalTitle">Escolha o período</h2></div><button type="button" class="v2-modal-close" id="v2ClosePeriod" aria-label="Fechar">×</button></div>
+      <div class="v2-year-nav"><button type="button" id="v2YearPrev" aria-label="Ano anterior">‹</button><strong id="v2PickerYear">2026</strong><button type="button" id="v2YearNext" aria-label="Próximo ano">›</button></div>
+      <div class="v2-month-grid" id="v2MonthGrid"></div>
+      <div class="v2-range-summary"><div><span>Início</span><strong id="v2PendingStart">—</strong></div><div><span>Fim</span><strong id="v2PendingEnd">—</strong></div></div>
+      <div class="v2-shortcuts"><button type="button" data-period-shortcut="current">Este mês</button><button type="button" data-period-shortcut="previous">Mês anterior</button><button type="button" data-period-shortcut="3">Últimos 3 meses</button><button type="button" data-period-shortcut="6">Últimos 6 meses</button><button type="button" data-period-shortcut="year">Este ano</button></div>
+      <div class="v2-modal-actions"><button type="button" class="v2-btn v2-btn-secondary" id="v2CancelPeriod">Cancelar</button><button type="button" class="v2-btn v2-btn-primary" id="v2ApplyPeriod">Aplicar período</button></div>
+    </div>
+  </div>
+
+  <div class="v2-sidebar-backdrop hidden" id="v2SidebarBackdrop"></div>
+
+  <script src="/static/js/data-univc-auth.js?v={{ app_version }}"></script>
+  <script src="/static/js/data-univc-identity.js?v={{ app_version }}"></script>
+  <script src="/static/js/data-univc-ui.js?v={{ app_version }}"></script>
+  <script src="/static/js/dadm_v2_state.js?v={{ app_version }}"></script>
+  <script src="/static/js/dadm_v2_api.js?v={{ app_version }}"></script>
+  <script src="/static/js/dadm_v2_charts.js?v={{ app_version }}"></script>
+  <script src="/static/js/dadm_v2.js?v={{ app_version }}"></script>
+</body>
+</html>

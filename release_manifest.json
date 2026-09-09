@@ -1,0 +1,1045 @@
+{
+  "artifact_profile": "production",
+  "created_at_utc": "2026-09-09T19:01:02.556422+00:00",
+  "app_version": "0.9.6.9",
+  "build_fingerprint": "7df207b56b10",
+  "schema_expected": 33,
+  "file_count": 207,
+  "files": [
+    {
+      "path": ".dockerignore",
+      "bytes": 173,
+      "sha256": "1f9d6825a8dd1889b93531bc971415e75e9369b3ea5567912de0cac008357998"
+    },
+    {
+      "path": ".env.example",
+      "bytes": 3110,
+      "sha256": "e92bc0f6029d59e9d2b66d79a40768828bf5550853dc591c976c464a3f1e1fd2"
+    },
+    {
+      "path": "BUILD_INFO.txt",
+      "bytes": 101,
+      "sha256": "067a47f2409c938793b8c22c41599a0cd140b8f6065d5d142cc800cf5d219453"
+    },
+    {
+      "path": "Dockerfile",
+      "bytes": 610,
+      "sha256": "844053d1b53bf48184432c93992f6da795e14d91a3a62cb3e29ff089f489aa99"
+    },
+    {
+      "path": "README.md",
+      "bytes": 43492,
+      "sha256": "f08ecde9fda199aec7a8265324bed31bc82eadba34cc9d4f86ade47e8a699ddb"
+    },
+    {
+      "path": "academic_analytics.py",
+      "bytes": 46982,
+      "sha256": "f47ed5f4f6fa7e9b64bc3a2c2b6c1e787b1b90ca0addfef9610434104a54f1fb"
+    },
+    {
+      "path": "academic_catalog.py",
+      "bytes": 6150,
+      "sha256": "9ac175721425a3aede2705dbdcef2a8bc672dc4aa8385632a5e1c99d299a8f8b"
+    },
+    {
+      "path": "academic_excel_builder.py",
+      "bytes": 113029,
+      "sha256": "92275faddc8653a31c5f742bc0a32c60ae302a0f205e5260fa9e7a5dda0be731"
+    },
+    {
+      "path": "academic_excel_parser.py",
+      "bytes": 16149,
+      "sha256": "99c5d6c66fda95efbca9c1593e319a9862d0759ec41153c99a470ec42f51b8f2"
+    },
+    {
+      "path": "academic_excel_v2_builder.py",
+      "bytes": 56104,
+      "sha256": "2c059d67b064b663d3446d2df5093fd879f24c93903a7d1655f184421d66402b"
+    },
+    {
+      "path": "academic_excel_v3_builder.py",
+      "bytes": 55450,
+      "sha256": "eeda7a30d9311fbd9a03e52b95b89cc99a95c22c913615eb79175c078f054090"
+    },
+    {
+      "path": "admin_router.py",
+      "bytes": 25594,
+      "sha256": "8fed81feec9ed099696dc81dff7d01b8c3853b1950ba929de4ded20b03b05b5d"
+    },
+    {
+      "path": "analytics.py",
+      "bytes": 28964,
+      "sha256": "a0450c7c6c45deea74c1da95a2300e013abd48a27903e1d4dd20d07d9359d61c"
+    },
+    {
+      "path": "app.py",
+      "bytes": 50384,
+      "sha256": "989aad84c5d923b91c7d9cfd3c0eba4671f72f455d98475dbacd38e820a404ba"
+    },
+    {
+      "path": "assets/modelos/Modelo_Avaliacao_Docente.xlsx",
+      "bytes": 11515,
+      "sha256": "c2543bb0816c4fe14db94a6222df1f45d2fd5d27dab7a39ab16388c8a302476b"
+    },
+    {
+      "path": "assets/modelos/Modelo_DPE_01_Resultado_Operacional.xlsx",
+      "bytes": 11544,
+      "sha256": "1e723d591c158f7bacf17909bc8d00ddf2013c16a2634bcb8de876f76e72012a"
+    },
+    {
+      "path": "assets/modelos/Modelo_DPE_04_Execucao_Orcamentaria.xlsx",
+      "bytes": 11548,
+      "sha256": "217e42b30dc72e47b2eac6553585092d163ebc33d468558d5324154bf54adea3"
+    },
+    {
+      "path": "assets/modelos/Modelo_DPE_05_Saldo_Operacional_Caixa.xlsx",
+      "bytes": 11445,
+      "sha256": "b869dda4108f9e85da233a7eae48b35771a8c128343026bd3609170235c9a4aa"
+    },
+    {
+      "path": "assets/modelos/Modelo_Disciplinas.xlsx",
+      "bytes": 9001,
+      "sha256": "c325b6525915d4369192ef9719bd23e1538ae043caee563bc9e5290b85d1b667"
+    },
+    {
+      "path": "assets/modelos/Modelo_Frequencia_Media.xlsx",
+      "bytes": 9442,
+      "sha256": "b6f28afc4a685ca4536e70bc3e35a6e61df3f3cf624e0e6ba33d026c7bedcc8f"
+    },
+    {
+      "path": "assets/modelos/Modelo_Matriculas_Ativas.xlsx",
+      "bytes": 8789,
+      "sha256": "8ce7c7ed087abf2604af941313ac77380cc3a704198b64d85e7419fa955ef7d8"
+    },
+    {
+      "path": "assets/modelos/Modelo_Resultados_Academicos.xlsx",
+      "bytes": 13776,
+      "sha256": "859bb6aa613d21a93a0a4081a7302c4c831adb4a7fac4edf77d5a919524f760a"
+    },
+    {
+      "path": "assets/paineis/Painel_DADM_template.xlsx",
+      "bytes": 211889,
+      "sha256": "8475d4c4d5f521cbffb1a4b5bdb80f6a75a2a37d397ec30acb4e309358f6f3a4"
+    },
+    {
+      "path": "assets/paineis/Painel_DCS_template.xlsx",
+      "bytes": 417761,
+      "sha256": "77b3200d5b66255a052e28ee14533158889ff3991f19b710f7108e60161d277e"
+    },
+    {
+      "path": "assets/paineis/Painel_DPE_template.xlsx",
+      "bytes": 271700,
+      "sha256": "dde7ce954b90b42bbc71deb372b5294563808c199f29a6c55359937a1da10297"
+    },
+    {
+      "path": "assets/paineis/Painel_DTNH_template.xlsx",
+      "bytes": 421072,
+      "sha256": "7ba5988c15c8042e3c6808eb1d75c79d73c91c61adf09c4c6d344072ec009557"
+    },
+    {
+      "path": "assets/referencias/Painel_DTNH_padrao_v4.xlsx",
+      "bytes": 340881,
+      "sha256": "4e7388ee3f3a04e040c02ceb95ffbd5005e0f238446f83a596a080df3e509fba"
+    },
+    {
+      "path": "auth/__init__.py",
+      "bytes": 690,
+      "sha256": "4fe2ec4c1a5379a32e55b226b6afa538accad8836e9187ade5a7f40719e71518"
+    },
+    {
+      "path": "auth/access.py",
+      "bytes": 3975,
+      "sha256": "b19d77595a102bc699472f3e28f5e848749dc85da8170973883117a1b82809e3"
+    },
+    {
+      "path": "auth/audit.py",
+      "bytes": 4158,
+      "sha256": "8068e4190a340e2e6a1e1dd6239b2e5273d2379ca8eabaa603bfd301bb63d374"
+    },
+    {
+      "path": "auth/data_scopes.py",
+      "bytes": 3336,
+      "sha256": "e15d943a9964e0cb1172e0cda036a17e52495dc428eca7019b9a576e9571c2b0"
+    },
+    {
+      "path": "auth/identity_admin.py",
+      "bytes": 7351,
+      "sha256": "cb9b7211537828b881e742e24f5930b40e42930b38d1007e0b0cce115a7cd90f"
+    },
+    {
+      "path": "auth/identity_provider.py",
+      "bytes": 2742,
+      "sha256": "a034096fc9ef17ecdd06703cd17420ff1ce445d3f80d81f2dab545a3e77df53d"
+    },
+    {
+      "path": "auth/objects.py",
+      "bytes": 8188,
+      "sha256": "35ab66b1b31591b53ac34d8d87cf4f10b9255635310860f606c48304d7c8920d"
+    },
+    {
+      "path": "auth/sessions.py",
+      "bytes": 8771,
+      "sha256": "87ef5fa221c54b842d401942debf373c7820e3c50944ba1dadf50afdf96b3fb3"
+    },
+    {
+      "path": "auth/test_accounts.py",
+      "bytes": 2366,
+      "sha256": "9dc05afdb90449c37500c4e075857665a74580c9fb6dbfa89b5335abb78d3d69"
+    },
+    {
+      "path": "auth/tokens.py",
+      "bytes": 6715,
+      "sha256": "28ccf0e9087f947648923910a62e1c82ce200aec697178ee56869df6af88b1b3"
+    },
+    {
+      "path": "config/management_indicators.json",
+      "bytes": 29864,
+      "sha256": "357178fd2426569a835779e6bef4f41d3b82bf87a4271c1cc25c48db0fc62f61"
+    },
+    {
+      "path": "dadm_analytics.py",
+      "bytes": 35241,
+      "sha256": "8c646d8a74a811bea6c2cdde45f1000ec5bf01f97687db2011be8985825eb653"
+    },
+    {
+      "path": "dadm_excel_builder.py",
+      "bytes": 4028,
+      "sha256": "287e381077e6751d0082561d05be5ba0e37d838efcf8a6bedec0eb305867821b"
+    },
+    {
+      "path": "dadm_excel_parser.py",
+      "bytes": 10283,
+      "sha256": "7ac95d7b477965b000145806adb4c2fee042e609efa6a18bf06153a5c86bad9e"
+    },
+    {
+      "path": "dadm_router.py",
+      "bytes": 15769,
+      "sha256": "b691a2c7816a5f9fb8ceb36783dd90e9d24c8d7c0c7b6dfe46b0592376bd3cb6"
+    },
+    {
+      "path": "dadm_tallos_analytics.py",
+      "bytes": 32554,
+      "sha256": "496f36312485ec594b11622b590b4f27e5d1c7df88b8a5c44802c68c310ababb"
+    },
+    {
+      "path": "dadm_tallos_client.py",
+      "bytes": 7595,
+      "sha256": "6fb8a7283ceceb61e34aa3683eceda2d7572503ed13759efe41fb296b72d7c82"
+    },
+    {
+      "path": "dadm_tallos_local_config.py",
+      "bytes": 3801,
+      "sha256": "3f1a554710c78ab3e683f05a1754d0734f3e1dbbd6e81f6b9bd994f63ece01e9"
+    },
+    {
+      "path": "dadm_tallos_normalization.py",
+      "bytes": 12256,
+      "sha256": "13ee0f0125485566ebd32d939def5a1d969978b8b72fb2113f70f1873b5ef045"
+    },
+    {
+      "path": "dadm_tallos_repository.py",
+      "bytes": 13071,
+      "sha256": "3d14ba8a5f2d1dfc84af005f1008e1cb6113bcab6c4d465da7f920c4e8dc5a63"
+    },
+    {
+      "path": "dadm_tallos_router.py",
+      "bytes": 17134,
+      "sha256": "307a7406b9336d3c474b44848c16cea01f6b70fe40e06565590986056e6c9dfd"
+    },
+    {
+      "path": "dadm_tallos_service.py",
+      "bytes": 4615,
+      "sha256": "31964fa54a3f1b9dd0f4114dc46c4bb94b62e164d57f458be6591894af1888c5"
+    },
+    {
+      "path": "dadm_v2_analytics.py",
+      "bytes": 17930,
+      "sha256": "eb00f75db9b6e12ce4f14bc34c77e21483dfed28e1ee58541ae9859317e33b86"
+    },
+    {
+      "path": "dadm_v2_management.py",
+      "bytes": 18667,
+      "sha256": "9e0c0ab0232b647bf34f5e7a06505abc116cf00326ea040b84160a5bdc1698a1"
+    },
+    {
+      "path": "dadm_v2_report.py",
+      "bytes": 36557,
+      "sha256": "12d78945051ac4ed58d498bacd056be26dd0677fbb968fa0e62f9a37ff5c05eb"
+    },
+    {
+      "path": "dadm_v2_router.py",
+      "bytes": 11389,
+      "sha256": "7c57772b323c5602c001c8325d5103b03ddde1ae192a12777be1fe60b90d288a"
+    },
+    {
+      "path": "database/001_init.sql",
+      "bytes": 7020,
+      "sha256": "4239c2282af84f41e683fcdcada43afe7697a8e429e8abaab4faa994e189ed17"
+    },
+    {
+      "path": "database/002_seed_indicators.sql",
+      "bytes": 4558,
+      "sha256": "5e8f8bd44485be1be42bb2548b8d0a9be75d1cbf4671f1d4c6603889565cf10b"
+    },
+    {
+      "path": "database/004_frequency_monthly.sql",
+      "bytes": 445,
+      "sha256": "e82f0fbb5e4382524a91bc9f80fe022265a3483b25c589189d450bc75fd4ae3e"
+    },
+    {
+      "path": "database/005_dadm_operacional.sql",
+      "bytes": 4206,
+      "sha256": "41c5884c05d2b1f17e9a709dc23892a4d5e156a543ccd4e4717dd59b6d442e18"
+    },
+    {
+      "path": "database/007_academic_population_and_course_modality.sql",
+      "bytes": 2165,
+      "sha256": "f52b6b66092c060a11cbe467916add5c3b8b8dedcea72004d757528a93948ced"
+    },
+    {
+      "path": "database/009_v0_3_dcs.sql",
+      "bytes": 2373,
+      "sha256": "2d4efba68a49537de321e0082816af6e6aeb192ca2633bce0c4077b1ed2cc6b3"
+    },
+    {
+      "path": "database/010_v0_4_dpe.sql",
+      "bytes": 3638,
+      "sha256": "dcb23bbefc898f0718e8f3a71805fc9eb77dcfe5269ef6143c2449957dad42ae"
+    },
+    {
+      "path": "database/011_v0_5_academico_resultados.sql",
+      "bytes": 5667,
+      "sha256": "cf9c1370e1b1ec7d8b470759265ae599fe36d35fc8e18736f9ea5dcd7600edc1"
+    },
+    {
+      "path": "database/012_v0_5_1_catalogo_cursos.sql",
+      "bytes": 2028,
+      "sha256": "4e321f8c6c0253995d7ade94eabbd800af01b08782f6f190d827d59f47fac6b5"
+    },
+    {
+      "path": "database/013_v0_5_2_resultados_filtros.sql",
+      "bytes": 1067,
+      "sha256": "f9a12970e2dbffc308ccc956b46dcd6693e684f59398a5495727803d3c33ffeb"
+    },
+    {
+      "path": "database/014_v0_5_3_academic_aggregation.sql",
+      "bytes": 471,
+      "sha256": "72c3651e80127a43084b4e87e9ca2d9a492ef7f1fb8f1ec5d0bebf03b6c7b457"
+    },
+    {
+      "path": "database/015_management_directorates_v070.sql",
+      "bytes": 6957,
+      "sha256": "30187cd6e9e9e528ba7afb6987e65598ed255c5c3195f3727aa001dd77d55b1c"
+    },
+    {
+      "path": "database/016_dm_turmas_alunos_v073.sql",
+      "bytes": 3723,
+      "sha256": "fcd8ee4f77ff7ae6ddee22a45788bf5681b729b27a64c6d67b2dbcd4f023f0ff"
+    },
+    {
+      "path": "database/017_dm_sei_integral_v074.sql",
+      "bytes": 2214,
+      "sha256": "51dcb7c2b7469fc7d5c0b416904274d4348b95f1c3e4bbd2211d2663afcd074a"
+    },
+    {
+      "path": "database/018_dpe_financial_foundation_v077.sql",
+      "bytes": 4605,
+      "sha256": "9f880bcfb529f45b0e2965e80d0da10c7f5004ee2bcfd8e4e8547dabd7f31a86"
+    },
+    {
+      "path": "database/019_dadm_standardization_v078.sql",
+      "bytes": 2117,
+      "sha256": "d8e33c73762822eb9113d25b5a684ce01b31c866a1764ab993a54d9b4dff1c55"
+    },
+    {
+      "path": "database/020_dm_sei_student_dates_v079.sql",
+      "bytes": 1067,
+      "sha256": "663bb6ba9d7c1fa10b96d37779d0ea20a0dec82e0d5f1b2a4bccd5193100f286"
+    },
+    {
+      "path": "database/021_dm_sei_cohort_centric_v080.sql",
+      "bytes": 1881,
+      "sha256": "eed692b5e9135eb32fe89d05422a17e749e9c4d5be315f7c0f0b1b29f98e3ae2"
+    },
+    {
+      "path": "database/022_academic_surveys_sei_v085.sql",
+      "bytes": 8209,
+      "sha256": "f0e4815d74f011dae7861bc365a24e03f6e6822b91a6c7e44fdf471f2654c179"
+    },
+    {
+      "path": "database/023_dual_nps_v086.sql",
+      "bytes": 1720,
+      "sha256": "a11de7ecebb634e06e2eddf805ebc4b7a0908b6f74722428a2ff70230546d0cd"
+    },
+    {
+      "path": "database/024_dcs_educacao_fisica_habilitacoes_v088.sql",
+      "bytes": 2557,
+      "sha256": "e0b6a52a8b6c58409bca6615ae71d904cfb058b86b7b1141c105add97bdb342d"
+    },
+    {
+      "path": "database/025_dm_graduation_digital_diploma_v08130.sql",
+      "bytes": 1754,
+      "sha256": "785294e2877288908c62abd8cbc6998281e60a910d9bfdd712224e29c21a666e"
+    },
+    {
+      "path": "database/026_schema_version_baseline_v08160.sql",
+      "bytes": 656,
+      "sha256": "ae6389ef9c342a36a61a00fc271a0fad527895467422c67b967c54ca642c842d"
+    },
+    {
+      "path": "database/027_dadm_tallos_analytics_v08190.sql",
+      "bytes": 5228,
+      "sha256": "21d4ff73c855564978d70c4a34e2d2617f4a911ee4a1a5b704309a075c663b3a"
+    },
+    {
+      "path": "database/028_dadm_tallos_rating_scale_v08201.sql",
+      "bytes": 1398,
+      "sha256": "d7f5a4b4f6bdd65d6f5d705076916eb9244fce52524799b8f65aae5f5ee117d6"
+    },
+    {
+      "path": "database/029_dadm_tallos_rating_1_10_v08203.sql",
+      "bytes": 1755,
+      "sha256": "c0a85ff4a65abcf242b6ddbac4a4879bf2c6725427994b465812f982f742ea76"
+    },
+    {
+      "path": "database/030_academic_nps_kpi_split_v08240.sql",
+      "bytes": 4253,
+      "sha256": "67e98c1189afb5335d7e1eb1518c02b182163719ea4eb62ed73e9c23db7367dc"
+    },
+    {
+      "path": "database/031_academic_faculty_nps_v08250.sql",
+      "bytes": 4826,
+      "sha256": "7fe28306a9cfbca82bddd5b349a3ddcf9ded408af61ad76f3a2f38bc44f81638"
+    },
+    {
+      "path": "database/032_dm_domain_simplification_v08290.sql",
+      "bytes": 2793,
+      "sha256": "483164fa048e69eb47a6809e6cfab42f21c54558e41b3c6d83fc9ccfc490c441"
+    },
+    {
+      "path": "database/033_identity_access_security_rebase.sql",
+      "bytes": 8450,
+      "sha256": "cda3f84e1832fffb40b7138aa03bddcb622b5e5b266e6d18ffa34be19997a8f7"
+    },
+    {
+      "path": "database.py",
+      "bytes": 920,
+      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
+    },
+    {
+      "path": "demo_data.py",
+      "bytes": 16057,
+      "sha256": "fe612af12751832f9c7d8aa50c64cc8af019c1e5b33d13a02983642a1ac5715c"
+    },
+    {
+      "path": "demo_seed.py",
+      "bytes": 11665,
+      "sha256": "042ea0fc2a0ee7e1e595109132d606f7dd630e1f9a491921562ead6962e96897"
+    },
+    {
+      "path": "dm_analytics.py",
+      "bytes": 14085,
+      "sha256": "c5ea0962d52e74be1f55e0ce70c35351ad3fc0ffdd889e6ee02fa11eea060127"
+    },
+    {
+      "path": "dm_catalog.py",
+      "bytes": 11868,
+      "sha256": "ec22bcfdc4e9d05cb6dc1c3fc6489f285236d7a0b6c3596a97b6a32169ef6e53"
+    },
+    {
+      "path": "dm_demo.py",
+      "bytes": 6457,
+      "sha256": "dc7b340f9b1d6e5316745cf9664fd353eb3c086c77e2fefe10679b138b22c4df"
+    },
+    {
+      "path": "dm_excel_builder.py",
+      "bytes": 53741,
+      "sha256": "da1ddda53c7dc2246f15af4d2bbfe5fd8d7ae7e9a55cb2a9179aca6ac3b2a3ee"
+    },
+    {
+      "path": "dm_excel_parser.py",
+      "bytes": 8280,
+      "sha256": "2cadde99501aad314ef8ed53343d32afacb32124d95b864ec1feff7b725b8c9a"
+    },
+    {
+      "path": "dm_excel_v2_builder.py",
+      "bytes": 46620,
+      "sha256": "7c251310efd24781a7f9bf61cff0af79de2bfefd27049f80cfc346188b6d34d8"
+    },
+    {
+      "path": "dm_excel_v3_builder.py",
+      "bytes": 62986,
+      "sha256": "2aeb821d198515903cd6386080f6bc698d253ffcda22d323af3b95369df17423"
+    },
+    {
+      "path": "dm_repository.py",
+      "bytes": 74431,
+      "sha256": "7c9296b78c3cdfbf79403873ff867c04971953f12cda6ca40a0722f187d75922"
+    },
+    {
+      "path": "dm_router.py",
+      "bytes": 30001,
+      "sha256": "e59840911030ccb4c76a55116a2e175cc1a4eab6bb7e2d317377744ec12c78c6"
+    },
+    {
+      "path": "dm_sei_parser.py",
+      "bytes": 22226,
+      "sha256": "2a5deaa4b36070c29466ac106d44d61471e5dba629bd219f2a5dd76b4fa1c600"
+    },
+    {
+      "path": "docs/ACADEMIC_EXCEL_V2_v08280.md",
+      "bytes": 2707,
+      "sha256": "ab5a27082e84ca8c3f1f185e187d51c187e7677b45750dc35815f669e6e199bc"
+    },
+    {
+      "path": "docs/ACADEMIC_EXECUTIVE_FACULTY_NPS_v08281.md",
+      "bytes": 1243,
+      "sha256": "c943fde3de0402b3672cdad9843015edc45accba23c12fd839163da74063d5c5"
+    },
+    {
+      "path": "docs/ACADEMIC_FACULTY_NPS_v08250.md",
+      "bytes": 2983,
+      "sha256": "754722aed828288b2a93ed0f4812f680014c952501fc7b634e2f4ce1e5d9dc71"
+    },
+    {
+      "path": "docs/ACADEMIC_INTERACTIVE_EXCEL_V3_DCS_v0967.md",
+      "bytes": 1356,
+      "sha256": "0837e3699a995283865cc58cc721e618f9f103e9d1883f363fae2b9506a57c1e"
+    },
+    {
+      "path": "docs/ACADEMIC_INTERACTIVE_EXCEL_V3_v0966.md",
+      "bytes": 1884,
+      "sha256": "9a3fe5dffadc255547715a84f2e74f7714724d2a7898b90e7f05efd52524f1df"
+    },
+    {
+      "path": "docs/ACADEMIC_NPS_BENCHMARK_v0962.md",
+      "bytes": 1536,
+      "sha256": "866e1175a891cd927e238246430d9684b08fdf41f01ac02b7404311e9c1c124e"
+    },
+    {
+      "path": "docs/ACADEMIC_NPS_CORE_v08240.md",
+      "bytes": 2379,
+      "sha256": "df7657718ffde5c6b009ac40e475beea7182f3771011a1dbb7ac60a1fa215f15"
+    },
+    {
+      "path": "docs/ACADEMIC_NPS_VISUALIZATION_v08260.md",
+      "bytes": 1666,
+      "sha256": "a4ab0ec78700a188b72914be4270af1d24830348e068008e6d5e07d0223c5ebd"
+    },
+    {
+      "path": "docs/ACADEMIC_UI_FOUNDATION_v08270.md",
+      "bytes": 1655,
+      "sha256": "af2256be2fa4c63355325ab8c44e39eedb2bd8d3bf7d3c0c0ee3bffff69f47ad"
+    },
+    {
+      "path": "docs/ACADEMIC_VISUAL_POLISH_v08282.md",
+      "bytes": 748,
+      "sha256": "924e1bd54a19f9cf09c48bc08bdb2120612413292c3e57cab11894a60682767f"
+    },
+    {
+      "path": "docs/ARCHITECTURE_FOUNDATION_v08160.md",
+      "bytes": 1867,
+      "sha256": "26e2c00106461d8ba6f9272a396f060ea5b7d702a275f36a7044bc88ba29dab0"
+    },
+    {
+      "path": "docs/CHANGELOG.md",
+      "bytes": 41679,
+      "sha256": "a34f629c00e9e25489e608d8d1448ebca20228ea2c20515e365ac988af08aced"
+    },
+    {
+      "path": "docs/DADM_SHARED_INGESTION_SCOPED_VISIBILITY_v0964.md",
+      "bytes": 1951,
+      "sha256": "2ac283c894f46d340b48e8b969687960fcee7d41bbd226dcc1b3f689bbadb9fb"
+    },
+    {
+      "path": "docs/DADM_TALLOS_ANALYTICS_CENTER.md",
+      "bytes": 13354,
+      "sha256": "c8fd9036f775d9ecc48984d5c3e016af1bc8c8eba6edcf1f30f8051f8abdf5f1"
+    },
+    {
+      "path": "docs/DADM_TALLOS_IDENTIFIER_ALIGNMENT_v0965.md",
+      "bytes": 1563,
+      "sha256": "a836c18fbbac1f6174c2834976cd6ba427c0db2964ad2487a78778679c5b3a8d"
+    },
+    {
+      "path": "docs/DADM_TALLOS_RATING_RECONCILIATION_v08203.md",
+      "bytes": 1601,
+      "sha256": "a8833f218b4cafb1bf54a047a2d3784bef14b823cc971cbe158d4b6a97f74628"
+    },
+    {
+      "path": "docs/DADM_V2_BLUEPRINT_v08210.md",
+      "bytes": 3141,
+      "sha256": "26ce0ec87a9e621f779e54e827b856b408b4d64efdbaec39f9c48aee1e57e0f1"
+    },
+    {
+      "path": "docs/DADM_V2_MOTION_UX_v08233.md",
+      "bytes": 2679,
+      "sha256": "8e34bee80f95fc5e0db90e901461f13c1b7596a122a7451823d8d4868e458f86"
+    },
+    {
+      "path": "docs/DADM_V2_PRIMARY_CONVERGENCE_v08230.md",
+      "bytes": 2571,
+      "sha256": "6422a4fd5fd9b1a6ca31a23f8095b3452d7089ef676039f8321439bc2cfa1601"
+    },
+    {
+      "path": "docs/DADM_V2_REPORTING_ENGINE_v08231.md",
+      "bytes": 2653,
+      "sha256": "755b6c7b8da4a696030fb8600bf9c1725be8008f119cfc7783769cf3ba94f546"
+    },
+    {
+      "path": "docs/DADM_V2_REPORTING_UI_v08232.md",
+      "bytes": 2211,
+      "sha256": "b0f5f2cc0a3bde567fe8b29cd6e3ec94a52079eaba2891c31b8ddacc3dfd9a2e"
+    },
+    {
+      "path": "docs/DATA_UNIVC_UI_FOUNDATION_v08220.md",
+      "bytes": 3971,
+      "sha256": "6bc08b205d2bebb77f387a86a14ed3a913ad26f2457eeb0fd5ec170a82f8bf6b"
+    },
+    {
+      "path": "docs/DEPLOY.md",
+      "bytes": 20614,
+      "sha256": "32c0d505d832c073835f6c86493375e054dc5bfe20618353b72bc8fde89fe2b3"
+    },
+    {
+      "path": "docs/DM_DOMAIN_SIMPLIFICATION_v08290.md",
+      "bytes": 1957,
+      "sha256": "81ae224a417daa51ea4925753c5966f8ecd29384ef900364a5725c031a781ec6"
+    },
+    {
+      "path": "docs/DM_EXCEL_V2_v08330.md",
+      "bytes": 3252,
+      "sha256": "0469e82555d1d920b8a244c48589739ee68479a4e9baac38c0b09fd72faaec31"
+    },
+    {
+      "path": "docs/DM_INTERACTIVE_EXCEL_V3_v0968.md",
+      "bytes": 1825,
+      "sha256": "7924a93200de30e24c77be8cf0014a6735780d73f3cb485c73d1170a30ecba50"
+    },
+    {
+      "path": "docs/DM_SEI_UX_SHARED_ICONS_v08310.md",
+      "bytes": 969,
+      "sha256": "b08edefe0f9fe034ba61c44bfb3e8f7d023d4c74c44b6ffb36251572377041e1"
+    },
+    {
+      "path": "docs/DM_SEI_WORKFLOW_REFINEMENT_v0963.md",
+      "bytes": 1596,
+      "sha256": "b3d3652c6a44c35d582f82967ec9bcd91c5e9804f933c1aa30760c6fe6bcf4e8"
+    },
+    {
+      "path": "docs/DM_STUDENTS_DEFENSES_v08300.md",
+      "bytes": 1499,
+      "sha256": "5cf8a17224e9dd589ace4d7da739c2827e8cbbc2ec4cdc20dbae5aeb1a1eca7f"
+    },
+    {
+      "path": "docs/DM_UI_IDENTITY_v08320.md",
+      "bytes": 1039,
+      "sha256": "9a8aa7e41e68962f1701a5eaafc4be560572553919618b466586e34045eb2309"
+    },
+    {
+      "path": "docs/FRONTEND_IDENTITY_ADMIN_LOCAL_v0961.md",
+      "bytes": 2999,
+      "sha256": "e98f46c12316eec5e1bac49cb74ee179804c511047c55a49c8c0601193f4a3da"
+    },
+    {
+      "path": "docs/IDENTITY_AUTHORIZATION_REBASE_v0960.md",
+      "bytes": 2503,
+      "sha256": "01da2e7d1eccf3be864c988099fd8f05d0fa5a0fd50ef9c4cad56666ffd5be90"
+    },
+    {
+      "path": "docs/PERFORMANCE_v08170.md",
+      "bytes": 2870,
+      "sha256": "2048940ee8e711261f41456291eae36472dba65ccee3bcfdca975c977f302992"
+    },
+    {
+      "path": "docs/PERFORMANCE_v08180.md",
+      "bytes": 3250,
+      "sha256": "7d586830f40e91130ecae40cd026551a7a1f56c19792a4922cc8895d7c08e68f"
+    },
+    {
+      "path": "docs/REITORIA_ADMIN_VISIBILITY_v0969.md",
+      "bytes": 4907,
+      "sha256": "5a415c4d07851af6dd3f13a63601d29303b3e236712447c056aecd8b4f87f4fb"
+    },
+    {
+      "path": "dpe_analytics.py",
+      "bytes": 17975,
+      "sha256": "d4dd659b0aacf8dcf82b047024754582b278ba5304f7d200d8dec29d8c6c1e13"
+    },
+    {
+      "path": "dpe_excel_builder.py",
+      "bytes": 84231,
+      "sha256": "7339aafcedb4a17dbf9647d1c2660b5f9d3222c12b1670d459d5907c7d886b3b"
+    },
+    {
+      "path": "dpe_excel_parser.py",
+      "bytes": 10614,
+      "sha256": "997d675421c8ad8bbe80663ea9b269e87a4254d57334622d82925e0c694131a8"
+    },
+    {
+      "path": "dpe_finance_analytics.py",
+      "bytes": 20844,
+      "sha256": "9bac201dd58a5a7cf837b70fdb69f0d846c19cc96a365d3ab51dd6770037e5ac"
+    },
+    {
+      "path": "dpe_finance_repository.py",
+      "bytes": 29691,
+      "sha256": "e626e677d5c584a8c0e84fa3778331283be012143d0d96b6dc73da3f3bcb6f65"
+    },
+    {
+      "path": "dpe_router.py",
+      "bytes": 18885,
+      "sha256": "6573f60d29e5eee390f30fa60534ef2f3d12b5aef212bd2553e2878b8a9c2294"
+    },
+    {
+      "path": "excel_errors.py",
+      "bytes": 297,
+      "sha256": "600406696f830af3285b6629a40c8e249f2fc25ff38a367b9fac869feb8da7f6"
+    },
+    {
+      "path": "excel_service.py",
+      "bytes": 56013,
+      "sha256": "d9d07b7893ecd6616284f12420421650536033dbe63455064e414e7326c8e6bb"
+    },
+    {
+      "path": "management_catalog.py",
+      "bytes": 7947,
+      "sha256": "794e698e826e99016fc1491217da59666dec89c1aad89a00a129d7b04d603cfe"
+    },
+    {
+      "path": "management_excel_builder.py",
+      "bytes": 57462,
+      "sha256": "0082aac6249e549db55fd72ee2cf61e10a1091ab2a6a37384d70cc55984a9055"
+    },
+    {
+      "path": "management_repository.py",
+      "bytes": 23652,
+      "sha256": "a34884c3889b41ac29ef6371f4ac4b12c2eb1d04d1bf61df78f11146fd200f40"
+    },
+    {
+      "path": "management_router.py",
+      "bytes": 10019,
+      "sha256": "3239910c34f284f00df2b3ffde3e1958eea1c4a9d57569631a1e16376adc1458"
+    },
+    {
+      "path": "management_service.py",
+      "bytes": 33663,
+      "sha256": "21998006cd3c0fb3ce6776a9377c7e2f667596f34560f0ade810b55c1eef86bd"
+    },
+    {
+      "path": "models.py",
+      "bytes": 69555,
+      "sha256": "fff3a4d5bb9009b2c229759d48cc12afaee3bebd723c7e403ce28fff5ed23467"
+    },
+    {
+      "path": "observability.py",
+      "bytes": 1766,
+      "sha256": "c0839ab6ce67844af29e75b549d8330f0406b4bdf8d62a1f02cb5bd3751e8bb3"
+    },
+    {
+      "path": "release_info.py",
+      "bytes": 222,
+      "sha256": "7722beb7886f94a6012d787b17cd7a034c4f1121418bb22b3d8a02535c245741"
+    },
+    {
+      "path": "render.yaml",
+      "bytes": 1451,
+      "sha256": "8c05dd1ee3f1b3607ccf2c2e8e5243f6a8b6fb51514c4043fafcd617b604ca61"
+    },
+    {
+      "path": "repository.py",
+      "bytes": 154614,
+      "sha256": "290382d292907468e82889ed9ac896ad14c0bc69712153c14cbb86bb46c0e690"
+    },
+    {
+      "path": "requirements-local.txt",
+      "bytes": 194,
+      "sha256": "3e4d2c2cec5b966e5cef8c27113e5b3b54bbfe0af93883cbe252e6ab922bc579"
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 218,
+      "sha256": "d7b7dc0d5913a93a9773cbabaa75e95d2cad46974d39bfc7bc5d26786048feda"
+    },
+    {
+      "path": "schedule_service.py",
+      "bytes": 1587,
+      "sha256": "8644e9f1b6b9fa08c44013790ee0af651e2a37b5def71460de2e0381d7e63d9c"
+    },
+    {
+      "path": "schema_version.py",
+      "bytes": 3213,
+      "sha256": "5d322d8e28822f3321ae100811c569a6f2b8eef157e8fb04f2d74ba115faf851"
+    },
+    {
+      "path": "schemas.py",
+      "bytes": 20317,
+      "sha256": "3b89c3ce81335507eca1df5874db737ae59a312833876f53dd6477f9c478c2eb"
+    },
+    {
+      "path": "security.py",
+      "bytes": 27819,
+      "sha256": "96e84bf3f970ed9457293e2512eeb48c9a049a2e2933685370a02dd62618c28f"
+    },
+    {
+      "path": "sei_academic.py",
+      "bytes": 60394,
+      "sha256": "cc2829a23fa8654260a6e69505c494d805a17b84b24f78c0de1be01b8070347d"
+    },
+    {
+      "path": "sei_stricto.py",
+      "bytes": 28837,
+      "sha256": "e10f5bd79291449b24dc4b31113322b4e71a55ee2ad4819f8ee5d1658e3ab408"
+    },
+    {
+      "path": "sei_student_dates.py",
+      "bytes": 23652,
+      "sha256": "72305616a371b45723a42aaecd59df729edb062d31f4e2e9c2e373f85b223a00"
+    },
+    {
+      "path": "static/css/app.css",
+      "bytes": 71146,
+      "sha256": "fa2f2439924fbd67de395f5d655b23ef7406164d466b2f76ed61effe9bc224b3"
+    },
+    {
+      "path": "static/css/dadm.css",
+      "bytes": 7476,
+      "sha256": "3d882d1c889b8f000dab27d9c4b52f191f82c0a8540e331bed0a62fd272687ae"
+    },
+    {
+      "path": "static/css/dadm_tallos.css",
+      "bytes": 17213,
+      "sha256": "f541093156e158787364471fc12b0d3ab49ed745e757fd34c9ebdc24856f16fb"
+    },
+    {
+      "path": "static/css/dadm_v2.css",
+      "bytes": 49528,
+      "sha256": "ae9c680fde9fee8e14280c51401752314ae669d0f823d0b5244d1e3062bb368c"
+    },
+    {
+      "path": "static/css/data-univc-foundation.css",
+      "bytes": 5632,
+      "sha256": "40cb40527f5769644bf60a219426e9e406605204554a3e011c76967f7e2ec088"
+    },
+    {
+      "path": "static/css/dm.css",
+      "bytes": 24541,
+      "sha256": "99608ee4e5eda884ff542457d16e282cefa0cd6d4fe82ba2c933ccb1497c7565"
+    },
+    {
+      "path": "static/css/dpe.css",
+      "bytes": 22256,
+      "sha256": "bbf26eeff9e1e908a236ef28a4d85023c73b9ceb6d3cee39010adf454de69adc"
+    },
+    {
+      "path": "static/css/management.css",
+      "bytes": 22357,
+      "sha256": "d4ce38a9a298529565a85286705fcefd44ad2350a70eeb511bc0e05b0f50356c"
+    },
+    {
+      "path": "static/css/reitoria.css",
+      "bytes": 11373,
+      "sha256": "0ae1a2140a95e19c13096f021728a4a5bca4e524ecd0538029e3433b4aca4912"
+    },
+    {
+      "path": "static/css/ui-v2.css",
+      "bytes": 40964,
+      "sha256": "42d50cae276fa25550616eaa7ef335991a8cfacd0de34776adee131f22826a49"
+    },
+    {
+      "path": "static/img/univc-logo.png",
+      "bytes": 16690,
+      "sha256": "b58af6efe84affd8febc07bb3256352b7ba3fe27a5d8f34f09a8bf56355f3a97"
+    },
+    {
+      "path": "static/js/admin_users.js",
+      "bytes": 20933,
+      "sha256": "5497aab89674c01d984640ee023ff73171c323457c794fd8689a6c7a078f27cd"
+    },
+    {
+      "path": "static/js/app.js",
+      "bytes": 211398,
+      "sha256": "befc380c9df05be35def2ca8ec055d07f4f9903266228d8ac19ea0b22aa5f861"
+    },
+    {
+      "path": "static/js/dadm.js",
+      "bytes": 41639,
+      "sha256": "57381052c4b931da6d7ea5be7307852c4f13b593749e4943cab7a7ae3c608cf4"
+    },
+    {
+      "path": "static/js/dadm_tallos.js",
+      "bytes": 52833,
+      "sha256": "b825e1f07cb1887482411aaca78e2682546394706d6f3fcd5a6baa2edd8ac908"
+    },
+    {
+      "path": "static/js/dadm_v2.js",
+      "bytes": 87234,
+      "sha256": "5c21d8dded165a7b2558f42d124e7f54ede9db49451b09ebac9fb98c033d39d3"
+    },
+    {
+      "path": "static/js/dadm_v2_api.js",
+      "bytes": 1622,
+      "sha256": "a4aa7884849236c25d4aea9ebd1feba6455b1b4a334e2fa0c07112c233de1795"
+    },
+    {
+      "path": "static/js/dadm_v2_charts.js",
+      "bytes": 15503,
+      "sha256": "1f6458d6eec2abf6b11d3df03dddb470eb46111e8b28de0e7ca2c9c20500b4e9"
+    },
+    {
+      "path": "static/js/dadm_v2_state.js",
+      "bytes": 4074,
+      "sha256": "b55a7204cb6909114b54ac3c5c136aabd16f1f82c04586c0c86c3357625c483f"
+    },
+    {
+      "path": "static/js/data-univc-auth.js",
+      "bytes": 5238,
+      "sha256": "10d137cbc6ff08d89203000105aee0154e6c854ed5943aa04035c7bcdde5a1b3"
+    },
+    {
+      "path": "static/js/data-univc-identity.js",
+      "bytes": 6620,
+      "sha256": "087b81d55e45871bb1d9055355f372568ae6ed4bdb2a688e02c0ac25fc1d2b68"
+    },
+    {
+      "path": "static/js/data-univc-ui.js",
+      "bytes": 7283,
+      "sha256": "0e6c2a47790620aaa6527dfad451a0953d619906b61e962d43bb2608cdd33c47"
+    },
+    {
+      "path": "static/js/dm.js",
+      "bytes": 78482,
+      "sha256": "0b0fe01603a17f22a571c38cdd6f8604f04803c484cf8bb336ce9f758129194b"
+    },
+    {
+      "path": "static/js/dpe.js",
+      "bytes": 64799,
+      "sha256": "0cedca5b9f4cb5a183d98ca6e934646a74ef622fb11af0696b9de8f45ceb7241"
+    },
+    {
+      "path": "static/js/dpe_finance.js",
+      "bytes": 46049,
+      "sha256": "9822b4e522326de784a6035c223f2da4851b225ecb2e3518332e07a6ff0cf215"
+    },
+    {
+      "path": "static/js/management.js",
+      "bytes": 36550,
+      "sha256": "ac6518e22f1215ff3f23084d82523e773d8b03e3c492b0d997e733e47b3c850c"
+    },
+    {
+      "path": "static/js/ui-v2.js",
+      "bytes": 7991,
+      "sha256": "5b901eb81aa0dcd5ebab395ce453f4628ba20d4782bb6b7c0706192cebd2698c"
+    },
+    {
+      "path": "survey_archive.py",
+      "bytes": 6507,
+      "sha256": "bfd151ecf028f97a176156338b415f1d6a3b3b0ef09999b1e8ccebe5a15ddfb4"
+    },
+    {
+      "path": "survey_faculty_adapter.py",
+      "bytes": 478,
+      "sha256": "49cfd3ac8ef6cdfa187fdd783d97d373090e005de2cdec2235bc3d3f25335b2f"
+    },
+    {
+      "path": "survey_faculty_institution_archive.py",
+      "bytes": 4191,
+      "sha256": "e4d412f40296226a841fdb5147dc4837d192bd7b907a96a3e7b02337b7bd2bb3"
+    },
+    {
+      "path": "survey_faculty_institution_models.py",
+      "bytes": 1611,
+      "sha256": "14e2cdde10003fc250026350a6230abc0cc37a6a81a72b46e3ed40bc56212789"
+    },
+    {
+      "path": "survey_faculty_institution_parser.py",
+      "bytes": 7254,
+      "sha256": "4492ddb6294df824aaf155891e29851701d90487cc440228c7dd35bb7a3be38c"
+    },
+    {
+      "path": "survey_faculty_models.py",
+      "bytes": 1184,
+      "sha256": "f58b73bb0d8e774bd6a38559c65a36261adda76599367cde922782f97a63d300"
+    },
+    {
+      "path": "survey_metrics.py",
+      "bytes": 2829,
+      "sha256": "32b4e30527be6720f2587be93742e293052addd4c5cfcd5b6a4e758429b3a835"
+    },
+    {
+      "path": "survey_models.py",
+      "bytes": 2211,
+      "sha256": "5199680b65ad1b29b98730d5c7f15b7eeac035a70625270f301ebbf52b5676f9"
+    },
+    {
+      "path": "survey_parser.py",
+      "bytes": 13302,
+      "sha256": "ea8b34df2a5e72feb82615d7016bc75e87dbaa30184aca99f7b305b9af7269f7"
+    },
+    {
+      "path": "survey_repository.py",
+      "bytes": 77735,
+      "sha256": "4ca2cc8daae2321096f3e390ecf47e4d6c5a4c01e97b3eb63aaf1abaa8fa76ec"
+    },
+    {
+      "path": "survey_router.py",
+      "bytes": 18773,
+      "sha256": "4d6c6a9829bbb333d4fe52f3a4a5a02b939950e7508694208922fbacdb901173"
+    },
+    {
+      "path": "survey_sei.py",
+      "bytes": 43338,
+      "sha256": "12be50376ddbde6790acd42cc080339aa32d3d82cfa04963b25ab503b5848633"
+    },
+    {
+      "path": "survey_sessions.py",
+      "bytes": 2608,
+      "sha256": "b460e87b262a43506dcce916eed3cb34a9f8c298f89d8fb3ec6a8c9bc1cba85c"
+    },
+    {
+      "path": "templates/admin_users.html",
+      "bytes": 133,
+      "sha256": "8ab54b2340ca1e8a56d68637db6110f099907cbe3fc91eafc6ed08486c5dc259"
+    },
+    {
+      "path": "templates/dadm.html",
+      "bytes": 38249,
+      "sha256": "e24c953a53acd91b16e27c31cbcafe45c3a26c2a03cf2c9df4d3e76a1bd934a3"
+    },
+    {
+      "path": "templates/dadm_v2.html",
+      "bytes": 24083,
+      "sha256": "ab9281661ae721b517f0ec0cb779975fc386b921f6a8d27be7dc7ccb67fd62ab"
+    },
+    {
+      "path": "templates/dm.html",
+      "bytes": 39586,
+      "sha256": "a44efc24ad7b45921cbe9143dd01f150ae283cd86d488382d92d4dc95c0a08f2"
+    },
+    {
+      "path": "templates/dpe.html",
+      "bytes": 33106,
+      "sha256": "56e938c07d6a16068c275ba4afd2e98ac5a32928747fbd542ae818235c68ab92"
+    },
+    {
+      "path": "templates/index.html",
+      "bytes": 44242,
+      "sha256": "0b63d3b437c8cd25af14df6430e1b4a024436f1ef6078b02028a834c6325cb61"
+    },
+    {
+      "path": "templates/management.html",
+      "bytes": 8615,
+      "sha256": "85fd35c12760900fbf4fe0d7bc87e8bd0b012c6ef60094d5a157a945790dc2a2"
+    },
+    {
+      "path": "templates/reitoria.html",
+      "bytes": 8709,
+      "sha256": "89db250190e2cd87c73b72dc8b580c0eba2ed36bd6a51900c4ebc0b887068f19"
+    },
+    {
+      "path": "upload_utils.py",
+      "bytes": 2733,
+      "sha256": "85a512299d9b0fdabb9ccc32649770769c48f895f8f6953c33d95ffe197e9a37"
+    }
+  ]
+}

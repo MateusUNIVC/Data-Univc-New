@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="/static/img/univc-logo.png">
+  <title>Data UNIVC | DM</title>
+  <link rel="stylesheet" href="/static/css/app.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/data-univc-foundation.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/dm.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/ui-v2.css?v={{ app_version }}">
+</head>
+<body class="ui-v2 ui-v2-dm">
+  <div id="dmApp" class="app-shell dm-shell">
+    <aside class="sidebar" aria-label="Navegação da Diretoria de Mestrado">
+      <a class="brand brand-link" href="/" aria-label="Data UNIVC — página inicial">
+        <img class="brand-logo-image" src="/static/img/univc-logo.png" alt="UNIVC">
+        <div>
+          <strong>Data UNIVC</strong>
+          <span>Gestão por indicadores</span>
+        </div>
+      </a>
+      <nav class="nav-list">
+        <button class="nav-item active" data-section="dashboard"><span class="nav-icon"></span><span>Painel executivo</span></button>
+        <div class="nav-caption">Indicadores da DM</div>
+        <button class="nav-item" data-section="dm01"><span class="nav-icon"></span><span>Evolução por turma</span></button>
+        <button class="nav-item" data-section="dm02"><span class="nav-icon"></span><span>Ingresso até a defesa</span></button>
+        <div class="nav-caption">Base acadêmica</div>
+        <button class="nav-item" data-section="turmas"><span class="nav-icon"></span><span>Turmas</span></button>
+        <button class="nav-item" data-section="alunos"><span class="nav-icon"></span><span>Alunos e defesas</span></button>
+        <button class="nav-item" data-section="sei"><span class="nav-icon"></span><span>Integração SEI</span></button>
+        <div class="nav-caption">Gestão</div>
+        <button class="nav-item" data-section="metas"><span class="nav-icon"></span><span>Metas dos KPIs</span></button>
+        <div class="nav-caption">Sistema</div>
+        <button class="nav-item" data-section="arquivos"><span class="nav-icon"></span><span>Planilhas</span></button>
+        <button class="nav-item" data-section="governanca"><span class="nav-icon"></span><span>Governança</span></button>
+        <a class="nav-item nav-link" href="/"><span class="nav-icon"></span><span>Voltar ao Data UNIVC</span></a>
+      </nav>
+      <div class="sidebar-footer dm-sidebar-footer">
+        <div class="user-mini" id="dmUserMini">
+          <div class="user-avatar-wrap">
+            <div class="user-avatar" id="dmUserAvatar">D</div>
+            <span class="user-presence" aria-hidden="true"></span>
+          </div>
+          <div class="user-mini-copy">
+            <strong id="dmUserName">Carregando…</strong>
+            <small id="dmUserMeta">Perfil institucional</small>
+            <span class="user-mini-directorate" id="dmUserDirectorate">Data UNIVC</span>
+          </div>
+          <button class="user-logout" id="dmLogout" type="button" title="Encerrar sessão" aria-label="Encerrar sessão"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6.75A1.75 1.75 0 0 0 5 6.75v10.5C5 18.216 5.784 19 6.75 19H10M14.5 8.5 18 12l-3.5 3.5M18 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="connection-note"><span class="status-dot"></span><span>Sessão ativa</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow" id="dmDirectorLabel">DM</span>
+          <h1 id="dmPageTitle">Painel executivo</h1>
+        </div>
+        <div class="topbar-actions">
+          <div class="directorate-switcher">
+            <label for="dmDirectorateSelect">Diretoria em visualização</label>
+            <div class="directorate-switcher-row"><select id="dmDirectorateSelect" aria-label="Diretoria em visualização"></select><span id="dmDirectorateAccessBadge" class="access-badge"></span></div>
+          </div>
+          <span class="save-state" id="dmSaveState"><span class="status-dot"></span> Banco sincronizado</span>
+          <button class="button secondary" data-go="sei" id="dmTopSei" title="Abrir integração com o SEI">SEI</button>
+          <a href="/api/dm/excel?diretoria=DM" class="button secondary download-link" data-dm-excel-export download>Exportar</a>
+          <a href="/api/dm/excel-interativo?diretoria=DM" class="button secondary download-link" data-dm-interactive-excel-export download>Excel Interativo</a>
+          <button class="button primary" id="dmQuickAdd" data-write-action>+ Turma</button>
+        </div>
+      </header>
+      <div id="dmLoading" class="loading-bar hidden"><span></span></div>
+      <div id="dmReadOnly" class="readonly-banner hidden">
+        <span class="readonly-icon">⌁</span>
+        <div><strong>Visualização somente leitura</strong><span>Somente usuários vinculados à DM podem cadastrar turmas, alunos ou importar arquivos.</span></div>
+      </div>
+      <div id="dmAlert" class="dm-alert hidden"></div>
+
+      <section id="section-dashboard" class="page-section active">
+        <div class="page-lead compact-lead">
+          <div><span class="eyebrow">DM · Diretoria de Mestrado</span><h2>Acompanhamento por turma</h2><p>Turmas, trajetória acadêmica, titulação e riscos em uma leitura única, mantendo as duas áreas independentes.</p></div>
+          <div class="indicator-actions"><button class="button secondary" data-go="sei">Integração SEI</button><a class="button secondary" href="/api/dm/excel-interativo?diretoria=DM" data-dm-interactive-excel-export download>Excel Interativo (beta)</a><a class="button primary" href="/api/dm/excel?diretoria=DM" data-dm-excel-export download>Exportar Excel</a></div>
+        </div>
+
+        <div class="analysis-bar dm-dashboard-filter">
+          <label><span>Área</span><select id="dashboardArea"><option value="">As duas áreas</option><option value="CTE">Ciência, Tecnologia e Educação</option><option value="SDS">Saúde e Desigualdade Social</option></select></label>
+          <label><span>Turma</span><select id="dashboardCohort"><option value="">Todas as turmas</option></select></label>
+          <label><span>Data de corte</span><input type="date" id="dashboardAsOf"></label>
+          <span id="dmAnalysisContext" class="analysis-context">Atualização automática</span>
+        </div>
+
+        <div id="dashboardCards" class="metric-grid executive dm-card-grid"></div>
+        <div class="dashboard-grid two-columns executive-grid dm-executive-charts">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">DM-01</span><h3>Evolução das turmas</h3></div><span class="chart-unit">alunos por turma</span></div><div id="chartDashboardDM01" class="dm-chart large"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">DM-02</span><h3>Tempo até a defesa</h3></div><span class="chart-unit">meses</span></div><div id="chartDashboardDM02" class="dm-chart large"></div></article>
+        </div>
+        <div id="areaPanels" class="area-panel-grid"></div>
+      </section>
+
+      <section id="section-dm01" class="page-section indicator-page">
+        <div class="page-lead dm-indicator-lead compact-lead">
+          <div><span class="eyebrow">DM-01</span><h2>Evolução do número de alunos por turma</h2><p>Ingressos, ativos, titulados, desligados, trancados, ocupação e evasão, sempre separados por área.</p></div>
+          <div class="indicator-actions"><button class="button secondary" data-go="turmas">Gerenciar turmas</button><button class="button primary" id="newCohortDM01" data-write-action>+ Turma</button></div>
+        </div>
+        <div class="indicator-definition"><strong>Unidade oficial</strong><span>Turma + área. A data de abertura é metadado opcional e a Turma 21 de uma área não implica a existência da Turma 21 na outra.</span></div>
+        <div class="area-compare-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Ciência, Tecnologia e Educação</span><h3>Evolução por turma</h3></div></div><div id="chartDM01CTE" class="dm-chart large"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Saúde e Desigualdade Social</span><h3>Evolução por turma</h3></div></div><div id="chartDM01SDS" class="dm-chart large"></div></article>
+        </div>
+        <article class="panel dm-records-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Comparação</span><h3>Matriz das turmas</h3></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Área</th><th>Turma</th><th>Abertura</th><th>Vagas</th><th>Total</th><th>Ativos</th><th>Titulados</th><th>Desligados</th><th>Ocupação</th><th>Evasão</th><th>Status</th></tr></thead><tbody id="dm01Table"></tbody></table></div></article>
+      </section>
+
+      <section id="section-dm02" class="page-section indicator-page">
+        <div class="page-lead dm-indicator-lead compact-lead">
+          <div><span class="eyebrow">DM-02</span><h2>Trajetória do ingresso até a defesa</h2><p>Tempo médio e mediano, titulação em até 24 meses e alunos em risco, consolidados por turma.</p></div>
+          <div class="indicator-actions"><button class="button secondary" data-go="alunos">Ver alunos</button><button class="button primary" id="newStudentDM02" data-write-action>+ Novo aluno</button></div>
+        </div>
+        <div class="indicator-definition"><strong>Cálculo</strong><span>O tempo é calculado entre o ingresso individual do aluno e a data da defesa. O SEI pode confirmar ambos; alunos sem ingresso confirmado não recebem prazo fictício.</span></div>
+        <div class="area-compare-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Ciência, Tecnologia e Educação</span><h3>Tempo e titulação por turma</h3></div></div><div id="chartDM02CTE" class="dm-chart large"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Saúde e Desigualdade Social</span><h3>Tempo e titulação por turma</h3></div></div><div id="chartDM02SDS" class="dm-chart large"></div></article>
+        </div>
+        <article class="panel dm-records-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Risco acadêmico</span><h3>Leitura por turma</h3></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Área</th><th>Turma</th><th>Defesas</th><th>Tempo médio</th><th>Mediana</th><th>Até 24m</th><th>&gt;18m sem qualificação</th><th>&gt;24m sem defesa marcada</th><th>&gt;30m sem defesa</th><th>Status</th></tr></thead><tbody id="dm02Table"></tbody></table></div></article>
+      </section>
+
+      <section id="section-turmas" class="page-section">
+        <div class="page-lead compact-lead"><div><span class="eyebrow">Cadastro estrutural</span><h2>Turmas do Mestrado</h2><p>A turma pertence a uma área específica. A abertura pode ficar em branco quando a trajetória individual será confirmada pelo SEI.</p></div><div class="indicator-actions"><button class="button secondary" id="refreshAllCohorts" data-write-action>Atualizar turmas</button><button class="button primary" id="newCohort" data-write-action>+ Turma</button></div></div>
+        <div class="analysis-bar dm-list-filter"><label><span>Área</span><select id="cohortAreaFilter"><option value="">Todas</option><option value="CTE">Ciência, Tecnologia e Educação</option><option value="SDS">Saúde e Desigualdade Social</option></select></label><label><span>Status</span><select id="cohortStatusFilter"><option value="">Todos</option><option>Planejada</option><option>Aberta</option><option>Em andamento</option><option>Encerrada</option></select></label><span class="analysis-context">Atualização automática</span></div>
+        <article class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>Área</th><th>Turma</th><th>Data de abertura</th><th>Vagas</th><th>Alunos</th><th>Status</th><th></th></tr></thead><tbody id="cohortsTable"></tbody></table></div></article>
+      </section>
+
+      <section id="section-alunos" class="page-section">
+        <div class="page-lead compact-lead"><div><span class="eyebrow">Trajetória individual</span><h2>Alunos e defesas</h2><p>Gerencie a trajetória acadêmica dos alunos. Quando a data de defesa é registrada, o status Titulado é confirmado automaticamente.</p></div><div class="indicator-actions"><button class="button secondary" id="refreshCohortStudents" data-write-action disabled title="Atualizar os alunos da turma pelo SEI">Atualizar SEI</button><button class="button primary" id="newStudent" data-write-action>+ Aluno</button></div></div>
+        <div class="analysis-bar dm-student-filter"><label class="student-search-filter"><span>Aluno ou matrícula</span><input id="studentSearch" placeholder="Buscar por nome ou matrícula"></label><label><span>Área</span><select id="studentAreaFilter"><option value="">Todas</option><option value="CTE">Ciência, Tecnologia e Educação</option><option value="SDS">Saúde e Desigualdade Social</option></select></label><label><span>Turma</span><select id="studentCohortFilter"><option value="">Todas</option></select></label><label><span>Status</span><select id="studentStatusFilter"><option value="">Todos</option><option>Ativo</option><option>Titulado</option><option>Desligado</option></select></label><label><span>Dados acadêmicos</span><select id="studentDocumentFilter"><option value="">Todos</option><option value="entry_missing">Ingresso pendente</option><option value="defense_missing">Titulado sem data de defesa</option><option value="defense_present">Defesa registrada</option><option value="defense_scheduled">Defesa marcada</option></select></label><span class="analysis-context">Use a seleção para ações em lote</span></div>
+        <div id="studentSelectionBar" class="dm-selection-bar hidden" data-write-action><div><strong id="studentSelectionCount">0 alunos selecionados</strong><span id="studentSelectionScope">Selecione alunos para registrar defesa, confirmar titulação ou atualizar pelo SEI.</span></div><div class="dm-selection-actions"><button class="button primary compact" id="graduateSelectedStudents" disabled>Registrar defesa</button><button class="button secondary compact" id="refreshSelectedStudents" disabled>Atualizar SEI</button><button class="button secondary compact" id="clearStudentSelection">Limpar</button></div></div>
+        <div id="studentSelectFilteredBanner" class="dm-select-filtered hidden"><span id="studentSelectFilteredText"></span><button class="button secondary compact" id="selectAllFilteredStudents">Todos do filtro</button></div>
+        <article class="panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Base individual</span><h3>Registros</h3></div><span id="studentsCount" class="chart-unit"></span></div><div class="table-wrap"><table class="data-table"><thead><tr><th><input type="checkbox" id="studentsSelectAll" aria-label="Selecionar alunos desta página"></th><th>Área</th><th>Turma</th><th>Matrícula</th><th>Aluno</th><th>Ingresso</th><th>Defesa</th><th>Status</th><th></th></tr></thead><tbody id="studentsTable"></tbody></table></div><div class="pagination dm-student-pagination"><button class="button secondary compact" id="studentsFirst" aria-label="Primeira página" title="Primeira página">«</button><button class="button secondary compact" id="studentsPrev" aria-label="Página anterior" title="Página anterior">‹</button><span id="studentsPage">Página 1</span><button class="button secondary compact" id="studentsNext" aria-label="Próxima página" title="Próxima página">›</button><button class="button secondary compact" id="studentsLast" aria-label="Última página" title="Última página">»</button></div></article>
+      </section>
+
+      <section id="section-sei" class="page-section">
+        <div class="page-lead dm-indicator-lead compact-lead">
+          <div>
+            <span class="eyebrow">SEI · STRICTO SENSU</span>
+            <h2>Sincronização integral das turmas e dos alunos</h2>
+            <p>Busca as duas áreas do Mestrado no relatório Alunos por Unidade, Curso e Turma, identifica cada turma e atualiza a base sem apagar a trajetória acadêmica já confirmada.</p>
+          </div>
+          <div class="indicator-actions">
+            <button class="button secondary" id="seiUploadButton" data-write-action>Analisar XLSX do SEI</button>
+            <button class="button primary" id="seiDirectButton" data-write-action>Buscar direto no SEI</button>
+          </div>
+        </div>
+
+        <div class="sei-policy-grid">
+          <article class="sei-policy-card"><span class="sei-policy-icon">1</span><div><strong>Relatório integral</strong><p>Seleciona STRICTO SENSU, periodicidade INTEGRAL e as áreas Ciência, Tecnologia e Educação e Saúde e Desigualdade Social.</p></div></article>
+          <article class="sei-policy-card"><span class="sei-policy-icon">2</span><div><strong>Prévia antes de gravar</strong><p>Nenhum registro é alterado até que você escolha explicitamente quais turmas deseja sincronizar. A data de abertura não é exigida pelo fluxo do SEI.</p></div></article>
+          <article class="sei-policy-card"><span class="sei-policy-icon">3</span><div><strong>Sem perda histórica</strong><p>O sistema não exclui alunos ausentes do relatório e não substitui datas de qualificação, defesa ou saída já confirmadas.</p></div></article>
+        </div>
+
+        <div id="seiQualityCards" class="metric-grid executive dm-card-grid sei-quality-grid"></div>
+        <article class="panel dm-records-panel">
+          <div class="panel-heading responsive-heading"><div><span class="eyebrow">Auditoria operacional</span><h3>Últimas sincronizações</h3></div><button class="button secondary compact" id="refreshSeiHistory">Atualizar</button></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Concluída em</th><th>Origem</th><th>Turmas</th><th>Alunos</th><th>Novos</th><th>Atualizados</th><th>Não localizados</th><th>Status</th></tr></thead><tbody id="seiHistoryTable"></tbody></table></div>
+        </article>
+      </section>
+
+
+      <section id="section-metas" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">Gestão de desempenho</span><h2>Metas da Diretoria de Mestrado</h2><p>A DM trabalha com somente duas metas institucionais: número absoluto de membros por turma e tempo médio até a defesa.</p></div><button class="button primary" id="newDmTarget" data-write-action>+ Meta</button></div>
+        <div class="dashboard-grid two-columns">
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">DM-01</span><h3>Membros por turma</h3></div></div><p class="panel-copy">Define o número mínimo esperado de membros em cada turma. A evolução continua sendo apresentada em valores absolutos, turma a turma.</p></article>
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">DM-02</span><h3>Tempo até a defesa</h3></div></div><p class="panel-copy">Define o tempo médio máximo esperado, em meses, entre o ingresso individual confirmado e a data de defesa.</p></article>
+        </div>
+        <div class="indicator-definition"><strong>Regra de vigência</strong><span>Uma nova meta não reescreve períodos anteriores. O painel aplica automaticamente a vigência correspondente à data de corte. Os demais números da DM continuam disponíveis para análise, mas não são tratados como metas.</span></div>
+        <article class="panel dm-records-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">2 metas institucionais</span><h3>Metas cadastradas</h3></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Indicador</th><th>Meta</th><th>Vigência</th><th>Valor</th><th>Origem</th><th>Ações</th></tr></thead><tbody id="dmTargetsTable"></tbody></table></div></article>
+      </section>
+
+      <section id="section-arquivos" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">Planilhas</span><h2>Importação e exportação</h2><p>Modelos simples com uma única aba de dados. Importe turmas antes de importar alunos.</p></div></div>
+        <div class="file-card-grid">
+          <article class="dm-file-card featured"><span class="eyebrow">Painel completo</span><h3>Excel da Diretoria de Mestrado</h3><p>Resumo executivo, DM-01, DM-02, turmas, alunos e defesas, metas, integração SEI e parâmetros do recorte atual.</p><div class="dm-file-actions"><a class="button secondary" href="/api/dm/excel?diretoria=DM" data-dm-excel-export download>Baixar relatório</a></div></article>
+          <article class="dm-file-card featured"><span class="eyebrow">Nova interface &middot; beta</span><h3>Excel Interativo da DM</h3><p>Leva todo o hist&oacute;rico autorizado da DM e permite trocar &aacute;rea, turma, compara&ccedil;&atilde;o, data de corte, janela, status auxiliar e KPI da matriz sem voltar ao site.</p><div class="dm-file-actions"><a class="button primary" href="/api/dm/excel-interativo?diretoria=DM" data-dm-interactive-excel-export download>Gerar Excel Interativo</a></div></article>
+          <article class="dm-file-card"><span class="eyebrow">SEI integral</span><h3>Atualizar turmas e alunos</h3><p>Use o acesso direto ao SEI ou analise o Excel Sintético já gerado pelo sistema acadêmico.</p><div class="dm-file-actions"><button class="button secondary" data-go="sei">Abrir integração</button></div></article>
+          <article class="dm-file-card"><span class="eyebrow">Turmas</span><h3>Modelo de importação</h3><p>Área, turma, abertura opcional, vagas e status.</p><div class="dm-file-actions"><a class="button secondary" href="/api/dm/modelo/turmas?diretoria=DM" download>Baixar modelo</a><button class="button primary" data-import-kind="turmas" data-write-action>Importar</button></div></article>
+          <article class="dm-file-card"><span class="eyebrow">Alunos</span><h3>Modelo de importação</h3><p>Turma, matrícula, ingresso opcional, qualificação, defesa e situação. Ingresso vazio permanece pendente até confirmação.</p><div class="dm-file-actions"><a class="button secondary" href="/api/dm/modelo/alunos?diretoria=DM" download>Baixar modelo</a><button class="button primary" data-import-kind="alunos" data-write-action>Importar</button></div></article>
+          <article class="dm-file-card"><span class="eyebrow">Homologação</span><h3>Dados demonstrativos</h3><p>Cria turmas e alunos fictícios. Inclui CTE Turma 21 e não cria SDS Turma 21.</p><div class="dm-file-actions"><button class="button secondary" id="resetDemo" data-write-action>Recriar demonstração</button></div></article>
+        </div>
+      </section>
+
+      <section id="section-governanca" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">Governança</span><h2>Regras da base por turmas</h2><p>Controles para impedir mistura entre áreas, turmas e trajetórias individuais.</p></div></div>
+        <div class="dashboard-grid two-columns">
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Estrutura</span><h3>Regras obrigatórias</h3></div></div><ul class="governance-list"><li>A turma é identificada por área + número.</li><li>A data de abertura é opcional e não substitui o ingresso individual.</li><li>O ingresso individual pode ser informado manualmente ou confirmado pelo SEI.</li><li>Uma turma aberta em CTE não é criada automaticamente em SDS.</li><li>A defesa não pode ser anterior ao ingresso quando ambos estiverem conhecidos.</li></ul></article>
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Indicadores</span><h3>Leitura gerencial</h3></div></div><ul class="governance-list"><li>Titulação e desligamento são resultados diferentes.</li><li>O tempo até a defesa usa o ingresso individual confirmado como marco inicial e a defesa individual como marco final.</li><li>Alunos desligados continuam no denominador da coorte.</li><li>Riscos de prazo só são calculados quando a data individual de ingresso estiver confirmada.</li><li>Percentuais aparecem junto às quantidades absolutas.</li></ul></article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+
+  <div id="targetModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card dm-modal-card"><div class="modal-header"><div><span class="eyebrow">DM · META</span><h2 id="targetModalTitle">Cadastrar meta</h2></div><button class="icon-button" data-close-modal="targetModal">×</button></div>
+      <form id="targetForm" class="form-grid"><input type="hidden" id="targetId">
+        <label class="span-2"><span>Indicador</span><select id="targetIndicator" required></select></label>
+        <label class="span-2"><span>Métrica</span><select id="targetMetric" required></select></label>
+        <label><span>Vigência inicial</span><input id="targetValidFrom" placeholder="AAAA-SEM1" required></label>
+        <label><span>Vigência final <small>(opcional)</small></span><input id="targetValidTo" placeholder="AAAA-SEM2"></label>
+        <label class="span-2"><span>Valor da meta</span><input type="number" step="0.01" min="0" id="targetValue" required><small id="targetValueHint"></small></label>
+        <label class="span-2"><span>Justificativa</span><textarea id="targetJustification" placeholder="Ex.: meta aprovada para o ciclo 2027-2028."></textarea></label>
+        <div id="targetErrors" class="form-errors span-2 hidden"></div>
+        <div class="form-actions"><button type="button" class="button secondary" data-close-modal="targetModal">Cancelar</button><button type="submit" class="button primary">Salvar meta</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="cohortModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card dm-modal-card"><div class="modal-header"><div><span class="eyebrow">DM · TURMA</span><h2 id="cohortModalTitle">Cadastrar turma</h2></div><button class="icon-button" data-close-modal="cohortModal">×</button></div><form id="cohortForm" class="form-grid"><input type="hidden" id="cohortId"><label class="span-2"><span>Área do programa</span><select id="cohortArea" required><option value="CTE">Ciência, Tecnologia e Educação</option><option value="SDS">Saúde e Desigualdade Social</option></select></label><label><span>Número da turma</span><input type="number" min="1" id="cohortNumber" required></label><label><span>Data de abertura <small>(opcional)</small></span><input type="date" id="cohortOpening"><small>Não é necessária para importar ou atualizar a turma pelo SEI.</small></label><label><span>Vagas autorizadas</span><input type="number" min="1" id="cohortVacancies"></label><label><span>Status</span><select id="cohortStatus"><option>Planejada</option><option>Aberta</option><option selected>Em andamento</option><option>Encerrada</option></select></label><label class="span-2"><span>Observações</span><textarea id="cohortNotes"></textarea></label><div id="cohortErrors" class="form-errors span-2 hidden"></div><div class="form-actions"><button type="button" class="button secondary" data-close-modal="cohortModal">Cancelar</button><button type="submit" class="button primary">Salvar turma</button></div></form></div>
+  </div>
+
+  <div id="studentModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card dm-modal-card wide"><div class="modal-header"><div><span class="eyebrow">DM · ALUNO</span><h2 id="studentModalTitle">Cadastrar aluno</h2></div><button class="icon-button" data-close-modal="studentModal">×</button></div><form id="studentForm" class="form-grid"><input type="hidden" id="studentId"><label class="span-2"><span>Turma</span><select id="studentCohort" required></select></label><label><span>Matrícula / código</span><input id="studentCode" required></label><label><span>Nome do aluno</span><input id="studentName" required></label><label><span>Data de ingresso</span><input type="date" id="studentEntry"><small>Pode ficar vazia até a confirmação individual pelo SEI.</small></label><label><span>Status</span><select id="studentStatus"><option>Ativo</option><option>Titulado</option><option>Desligado</option></select></label><label><span>Data de qualificação</span><input type="date" id="studentQualification"></label><label><span>Data da defesa <small>(opcional)</small></span><input type="date" id="studentDefense"><small>Ao informar a defesa, o status Titulado é confirmado automaticamente.</small></label><label><span>Defesa marcada</span><input type="date" id="studentDefenseScheduled"></label><label><span>Data de saída</span><input type="date" id="studentExit"></label><label><span>Linha de pesquisa</span><input id="studentResearchLine"></label><label class="span-2"><span>Observações</span><textarea id="studentNotes"></textarea></label><div id="studentErrors" class="form-errors span-2 hidden"></div><div class="form-actions"><button type="button" class="button secondary" data-close-modal="studentModal">Cancelar</button><button type="submit" class="button primary">Salvar aluno</button></div></form></div>
+  </div>
+
+
+  <div id="graduationModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="graduationModalTitle">
+    <div class="modal-card dm-modal-card graduation-modal-card">
+      <div class="modal-header"><div><span class="eyebrow">DM · DEFESA</span><h2 id="graduationModalTitle">Registrar defesa</h2><p class="graduation-modal-subtitle" id="graduationModalSubtitle">Revise as datas antes de confirmar.</p></div><button class="icon-button" data-close-modal="graduationModal" aria-label="Fechar">×</button></div>
+      <div class="modal-body graduation-modal-body">
+        <div id="graduationSummary" class="graduation-summary"></div>
+        <div class="graduation-mode-switch" role="radiogroup" aria-label="Forma de preenchimento"><label><input type="radio" name="graduationMode" value="common" checked><span><strong>Aplicar valores em lote</strong><small>Preenche somente os campos informados; datas já existentes são preservadas.</small></span></label><label><input type="radio" name="graduationMode" value="individual"><span><strong>Revisar por aluno</strong><small>Use quando as datas forem diferentes entre os selecionados.</small></span></label></div>
+        <div id="graduationCommonFields" class="form-grid graduation-common-fields"><label class="span-2"><span>Data de defesa <small>(opcional; se igual para o lote)</small></span><input type="date" id="graduationCommonDefense"><small>Quando informada, a defesa confirma Titulado. Em registros históricos sem data disponível, o status pode ser confirmado sem criar uma data fictícia.</small></label></div>
+        <div id="graduationIndividualWrap" class="hidden"><div class="table-wrap graduation-table-wrap"><table class="data-table graduation-table"><thead><tr><th>Aluno</th><th>Situação atual</th><th>Defesa</th></tr></thead><tbody id="graduationStudentsTable"></tbody></table></div></div>
+        <div id="graduationPreview" class="graduation-preview"></div>
+        <div id="graduationErrors" class="form-errors hidden"></div>
+        <div class="form-actions"><button class="button secondary" data-close-modal="graduationModal">Cancelar</button><button class="button secondary" id="previewGraduation">Validar alteração</button><button class="button primary" id="confirmGraduation" disabled>Confirmar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="importModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card import-card"><div class="modal-header"><div><span class="eyebrow">DM · IMPORTAÇÃO</span><h2 id="importTitle">Importar planilha</h2></div><button class="icon-button" data-close-modal="importModal">×</button></div><div class="modal-body"><p>O arquivo deve usar o modelo simples da seção Planilhas. A operação é transacional.</p><input type="file" id="importFile" accept=".xlsx,.xlsm"><div id="importResult" class="import-result hidden"></div><div class="form-actions"><button class="button secondary" data-close-modal="importModal">Cancelar</button><button class="button primary" id="confirmImport">Importar</button></div></div></div>
+  </div>
+
+  <div id="seiModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="seiModalTitle">
+    <div class="modal-card dm-modal-card sei-modal-card">
+      <div class="modal-header">
+        <div><span class="eyebrow">DM · INTEGRAÇÃO SEI</span><h2 id="seiModalTitle">Buscar relatório integral</h2></div>
+        <button class="icon-button" data-close-modal="seiModal" aria-label="Fechar">×</button>
+      </div>
+      <div class="modal-body sei-modal-body">
+        <div class="sei-steps" aria-label="Etapas da sincronização">
+          <span class="active" data-sei-step-indicator="source">1 · Origem</span>
+          <span data-sei-step-indicator="preview">2 · Conferência</span>
+          <span data-sei-step-indicator="result">3 · Resultado</span>
+        </div>
+
+        <div id="seiSourceStep" class="sei-step-panel">
+          <div id="seiDirectFields" class="sei-source-panel">
+            <div class="sei-source-intro"><strong>Acesso temporário ao SEI</strong><span>As credenciais serão usadas somente para gerar este relatório e não serão salvas no Data UNIVC.</span></div>
+            <div class="form-grid sei-form-grid">
+              <label><span>Usuário do SEI</span><input id="seiUsername" autocomplete="username"></label>
+              <label><span>Senha do SEI</span><input type="password" id="seiPassword" autocomplete="current-password"></label>
+              <label><span>Ano técnico do evento</span><input type="number" id="seiTechnicalYear" min="2000" max="2100"><small>O relatório final continua integral; este campo apenas atende ao evento da tela legada.</small></label>
+            </div>
+          </div>
+          <div id="seiUploadFields" class="sei-source-panel hidden">
+            <div class="sei-source-intro"><strong>Excel Sintético do SEI</strong><span>Selecione o arquivo integral gerado em Alunos por Unidade, Curso e Turma.</span></div>
+            <input type="file" id="seiReportFile" accept=".xlsx,.xlsm">
+          </div>
+          <label class="sei-check"><input type="checkbox" id="seiExcludeTest" checked><span>Ignorar turmas identificadas como TESTE, DEMO ou HOMOLOGAÇÃO</span></label>
+          <div id="seiSourceError" class="form-errors hidden"></div>
+          <div id="seiOperationProgress" class="du-operation-progress hidden" aria-live="polite" aria-busy="true"></div>
+          <div class="form-actions"><button class="button secondary" data-close-modal="seiModal">Cancelar</button><button class="button primary" id="seiAnalyzeButton">Gerar prévia</button></div>
+        </div>
+
+        <div id="seiPreviewStep" class="sei-step-panel hidden">
+          <div id="seiPreviewSummary" class="sei-preview-summary"></div>
+          <div class="sei-selection-toolbar"><div><button type="button" class="button secondary compact" id="seiSelectNewCohorts">Selecionar novas</button><button type="button" class="button secondary compact" id="seiSelectAllCohorts">Selecionar todas</button><button type="button" class="button secondary compact" id="seiClearCohorts">Limpar</button></div><strong id="seiSelectedCohortsCount">0 turma(s) selecionada(s)</strong></div>
+          <div class="table-wrap sei-preview-table-wrap"><table class="data-table sei-preview-table"><thead><tr><th>Usar</th><th>Área</th><th>Turma no SEI</th><th>Alunos</th><th>Situação no Data UNIVC</th><th>Data de abertura</th></tr></thead><tbody id="seiCohortPreviewTable"></tbody></table></div>
+          <label class="sei-check sei-check-featured" id="seiCheckDatesWrap"><input type="checkbox" id="seiCheckStudentDates" checked><span><strong>Aproveitar este acesso e completar os alunos agora</strong><small>Pesquisa a data real de início e a conclusão no SEI. A conclusão atualiza diretamente a Data de defesa e confirma Titulado.</small></span></label>
+          <label class="sei-check"><input type="checkbox" id="seiRemoveDemo" checked><span>Remover somente os dados demonstrativos antes da primeira sincronização real</span></label>
+          <div id="seiCommitError" class="form-errors hidden"></div>
+          <div id="seiCommitProgress" class="du-operation-progress hidden" aria-live="polite" aria-busy="true"></div>
+          <div class="form-actions"><button class="button secondary" id="seiBackButton">Voltar</button><button class="button primary" id="seiCommitButton">Confirmar sincronização</button></div>
+        </div>
+
+        <div id="seiResultStep" class="sei-step-panel hidden">
+          <div id="seiResultContent" class="sei-result-content"></div>
+          <div class="form-actions"><button class="button secondary" data-close-modal="seiModal">Fechar</button><button class="button primary" id="seiOpenStudentsButton">Revisar alunos</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="seiRefreshModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="seiRefreshTitle">
+    <div class="modal-card dm-modal-card">
+      <div class="modal-header"><div><span class="eyebrow">DM · ATUALIZAÇÃO INDIVIDUAL</span><h2 id="seiRefreshTitle">Atualizar alunos pelo SEI</h2></div><button class="icon-button" data-close-modal="seiRefreshModal" aria-label="Fechar">×</button></div>
+      <div class="modal-body">
+        <div class="sei-source-intro"><strong id="seiRefreshScope">Seleção atual</strong><span>O Data UNIVC pesquisará cada aluno pelo nome e matrícula. O início será atualizado e a conclusão encontrada no SEI será gravada como Data de defesa, confirmando o status Titulado.</span></div>
+        <div class="form-grid sei-form-grid">
+          <label><span>Usuário do SEI</span><input id="seiRefreshUsername" autocomplete="username"></label>
+          <label><span>Senha do SEI</span><input type="password" id="seiRefreshPassword" autocomplete="current-password"></label>
+        </div>
+        <div id="seiRefreshError" class="form-errors hidden"></div>
+        <div id="seiRefreshProgress" class="du-operation-progress hidden" aria-live="polite" aria-busy="true"></div>
+        <div id="seiRefreshResult" class="import-result hidden"></div>
+        <div class="form-actions"><button class="button secondary" data-close-modal="seiRefreshModal">Cancelar</button><button class="button primary" id="confirmSeiRefresh">Consultar e atualizar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/data-univc-auth.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/data-univc-identity.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/data-univc-ui.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dm.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/ui-v2.js?v={{ app_version }}" defer></script>
+</body>
+</html>

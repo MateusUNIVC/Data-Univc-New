@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="/static/img/univc-logo.png">
+  <title>Data UNIVC | Gestão por KPIs</title>
+  <link rel="stylesheet" href="/static/css/app.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/data-univc-foundation.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/ui-v2.css?v={{ app_version }}">
+</head>
+<body class="ui-v2 ui-v2-academic">
+  <div id="loginScreen" class="login-screen">
+    <form id="loginForm" class="login-card">
+      <img class="login-brand-logo" src="/static/img/univc-logo.png" alt="UNIVC">
+      <span class="eyebrow">Centro Universitário Vale do Cricaré</span><h1>Data UNIVC</h1>
+      <p>Acesse o ambiente institucional de gestão por KPIs da sua diretoria.</p>
+      <label class="field"><span>E-mail</span><input id="loginEmail" type="email" autocomplete="username" required></label>
+      <label class="field"><span>Senha</span><input id="loginPassword" type="password" autocomplete="current-password" required></label>
+      <button class="button primary" type="submit">Entrar</button>
+      <div id="loginError" class="login-error hidden"></div>
+    </form>
+  </div>
+  <div id="app" class="app-shell hidden">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <a class="brand brand-link" href="/" aria-label="Data UNIVC — página inicial">
+        <img class="brand-logo-image" src="/static/img/univc-logo.png" alt="UNIVC">
+        <div>
+          <strong>Data UNIVC</strong>
+          <span>Gestão por indicadores</span>
+        </div>
+      </a>
+
+      <nav class="nav-list">
+        <button class="nav-item active" data-section="dashboard">
+          <span class="nav-icon"></span><span>Painel executivo</span>
+        </button>
+        <div class="nav-caption nps-nav-caption" data-directorate-nav="ACADEMIC">NPS Discente</div>
+        <button class="nav-item" data-section="nps-institution" data-directorate-nav="ACADEMIC">
+          <span class="nav-icon"></span><span>NPS da instituição</span>
+        </button>
+        <button class="nav-item" data-section="nps-course" data-directorate-nav="ACADEMIC">
+          <span class="nav-icon"></span><span>NPS do curso</span>
+        </button>
+        <div class="nav-caption nps-nav-caption" data-directorate-nav="ACADEMIC">NPS Docente</div>
+        <button class="nav-item" data-section="nps-faculty" data-directorate-nav="ACADEMIC">
+          <span class="nav-icon"></span><span>NPS da instituição · docentes</span>
+        </button>
+        <div class="nav-caption academic-nav-caption" data-directorate-nav="ACADEMIC">Indicadores acadêmicos</div>
+        <button class="nav-item" data-section="avaliacao_docente" data-directorate-nav="ACADEMIC">
+          <span class="nav-icon"></span><span>Avaliação docente</span>
+        </button>
+        <button class="nav-item" data-section="resultados" data-directorate-nav="ACADEMIC">
+          <span class="nav-icon"></span><span>Aprovação e notas</span>
+        </button>
+        <div class="nav-caption management-nav-caption">Gestão</div>
+        <button class="nav-item" data-section="planos">
+          <span class="nav-icon"></span><span>Planos de ação</span>
+        </button>
+        <button class="nav-item" data-section="metas">
+          <span class="nav-icon"></span><span>Metas dos KPIs</span>
+        </button>
+        <button class="nav-item" data-section="cadastros" data-directorate-nav="ACADEMIC">
+          <span class="nav-icon"></span><span>Cursos e disciplinas</span>
+        </button>
+        <div class="nav-caption">Sistema</div>
+        <button class="nav-item" data-section="qualidade">
+          <span class="nav-icon"></span><span>Governança de dados</span>
+        </button>
+        <button class="nav-item" data-section="arquivos">
+          <span class="nav-icon"></span><span>Central de arquivos</span>
+        </button>
+        <button class="nav-item" data-section="configuracoes">
+          <span class="nav-icon"></span><span>Configurações</span>
+        </button>
+        <a id="adminUsersLink" class="nav-item admin-users-link hidden" href="/reitoria#usuarios">
+          <span class="nav-icon"></span><span>Usuários e acessos</span>
+        </a>
+        <button class="nav-item" data-section="ajuda">
+          <span class="nav-icon"></span><span>Guia de uso</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-mini" id="userMini">
+          <div class="user-avatar-wrap">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <span class="user-presence" aria-hidden="true"></span>
+          </div>
+          <div class="user-mini-copy">
+            <strong id="userMiniName">Carregando…</strong>
+            <small id="userMiniMeta">Perfil institucional</small>
+            <span class="user-mini-directorate" id="userMiniDirectorate">Data UNIVC</span>
+          </div>
+          <button class="user-logout" id="logoutButton" type="button" title="Encerrar sessão" aria-label="Encerrar sessão"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6.75A1.75 1.75 0 0 0 5 6.75v10.5C5 18.216 5.784 19 6.75 19H10M14.5 8.5 18 12l-3.5 3.5M18 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="connection-note"><span class="status-dot"></span><span>Sessão ativa</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <button id="menuToggle" class="icon-button mobile-only" aria-label="Abrir menu">☰</button>
+          <span class="eyebrow" id="directorLabel">DTNH</span>
+          <h1 id="pageTitle">Visão geral</h1>
+        </div>
+        <div class="topbar-actions">
+          <div class="directorate-switcher">
+            <label for="directorateSelect">Diretoria em visualização</label>
+            <div class="directorate-switcher-row">
+              <select id="directorateSelect" aria-label="Diretoria em visualização"></select>
+              <span id="directorateAccessBadge" class="access-badge"></span>
+            </div>
+          </div>
+          <span class="save-state" id="saveState"><span class="status-dot"></span> Banco sincronizado</span>
+          <a href="/api/excel" class="button secondary download-link" download>Exportar</a>
+          <button class="button primary" id="quickAddButton" data-write-action>+ KPI</button>
+        </div>
+      </header>
+
+      <div id="loadingBar" class="loading-bar hidden"><span></span></div>
+      <div id="readOnlyBanner" class="readonly-banner hidden">
+        <span class="readonly-icon">⌁</span>
+        <div><strong>Visualização somente leitura</strong><span id="readOnlyText">Você pode consultar esta diretoria, mas alterações devem ser realizadas por um usuário vinculado a ela.</span></div>
+      </div>
+
+      <section id="section-dashboard" class="page-section active">
+        <div id="dashboardDtnh">
+          <div class="page-lead compact-lead">
+            <div>
+              <span class="eyebrow" data-academic-directorate>DTNH · visão executiva</span>
+              <h2>Indicadores acadêmicos</h2>
+              <p>Acompanhe resultado, comparação e tendência em uma visão acadêmica semestral consistente.</p>
+            </div>
+          </div>
+
+          <div class="analysis-bar" aria-label="Filtros da visão geral acadêmica">
+            <label><span>Curso</span><select id="dashboardCourse"></select></label>
+            <label><span>Disciplina</span><select id="dashboardDiscipline" disabled><option value="(todas)">Selecione um curso</option></select></label>
+            <label><span>Visualização</span><select id="dashboardGranularity"><option value="semestral" selected>Semestral</option></select></label>
+            <label><span>Referência</span><select id="dashboardReference"></select></label>
+            <label><span>Comparação</span><select id="dashboardComparison"></select></label>
+            <label><span>Janela</span><select id="dashboardWindow"><option value="2">2 semestres</option><option value="4" selected>4 semestres</option><option value="6">6 semestres</option><option value="all">Todo histórico</option></select></label>
+            <button class="button primary compact" id="applyFilters">Aplicar</button>
+            <button class="button subtle compact" id="resetFilters">Limpar</button>
+          </div>
+
+          <div id="kpiContext" class="analysis-context"></div>
+          <div class="metric-grid executive" id="metricGrid">
+            <article class="metric-card skeleton"></article><article class="metric-card skeleton"></article><article class="metric-card skeleton"></article><article class="metric-card skeleton"></article><article class="metric-card skeleton"></article>
+          </div>
+          <div class="academic-outcome-grid" id="academicOutcomeGrid" aria-label="Composição dos resultados acadêmicos"></div>
+
+          <div class="dashboard-grid three-columns executive-grid executive-nps-grid">
+            <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="01A">DTNH-01A</span><h3>NPS da Instituição · Alunos</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsInstitutionExecutive" class="chart-canvas"></div></article>
+            <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="01B">DTNH-01B</span><h3>NPS do Curso</h3></div><span class="chart-unit">pontos</span></div><div id="chartNps" class="chart-canvas"></div></article>
+            <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="01C">DTNH-01C</span><h3>NPS da Instituição · Docentes</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsFacultyExecutive" class="chart-canvas"></div></article>
+          </div>
+          <div class="dashboard-grid two-columns executive-grid">
+            <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="02">DTNH-02</span><h3>Avaliação docente pelo aluno</h3></div><span class="chart-unit">nota 0–10</span></div><div id="chartAvaliacaoDocente" class="chart-canvas"></div></article>
+            <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Taxa de aprovação</h3></div><span class="chart-unit">%</span></div><div id="chartAprovacao" class="chart-canvas"></div></article>
+          </div>
+          <article class="panel attention-panel"><div class="panel-heading"><div><span class="eyebrow">Síntese</span><h3>Pontos de atenção</h3></div></div><div id="insightsList" class="insights-list compact-insights"></div></article>
+
+          <article class="panel academic-discipline-panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Resultados por disciplina</h3></div><span class="chart-unit">contagens + média</span></div>
+            <div class="data-source-note compact"><strong>Leitura agregada:</strong> esta tabela é calculada diretamente no banco por disciplina. Nomes e matrículas de alunos não são carregados para o painel executivo.</div>
+            <div id="academicDisciplineSummaryTable" class="table-wrap compact-table"></div>
+          </article>
+
+          <article class="panel comparison-panel">
+            <div class="panel-heading responsive-heading comparison-heading">
+              <div><span class="eyebrow">Comparação</span><h3>Desempenho entre cursos</h3></div>
+              <div class="comparison-controls">
+                <label class="comparison-period-filter"><span>Período</span><select id="coursePerformancePeriod"><option value="geral">Geral · todo histórico</option></select></label>
+                <div class="segmented-control" id="comparisonMetric"><button class="active" data-metric="nps">NPS</button><button data-metric="avaliacao_docente">Avaliação docente</button><button data-metric="aprovacao">Aprovação</button></div>
+              </div>
+            </div>
+            <div class="data-source-note compact"><strong>Leitura do desempenho:</strong> use o consolidado geral para a visão histórica ou selecione um semestre para identificar períodos excepcionalmente fortes ou fracos em cada curso.</div>
+            <div id="chartCourseComparison" class="chart-canvas tall"></div><div id="courseComparisonTable" class="table-wrap compact-table"></div>
+          </article>
+
+          <details class="context-drawer"><summary>Metas vigentes e contexto da análise</summary><div id="activeGoals" class="active-goals-grid"></div></details>
+        </div>
+
+
+      </section>
+      <section id="section-nps-institution" class="page-section data-page nps-workspace" data-dataset="nps-institution">
+        <div class="section-intro compact-intro">
+          <div><span class="eyebrow" data-academic-code="01A">DTNH-01A</span><h2>NPS da Instituição</h2><p>Acompanhe a recomendação do UNIVC pelos discentes e compare o resultado dos cursos da diretoria com o NPS geral da instituição.</p></div>
+          <div class="section-actions"><button class="button primary" id="npsInstitutionSeiImportButton" data-write-action title="Atualizar NPS da Instituição pelo SEI">Atualizar via SEI</button></div>
+        </div>
+        <div class="kpi-essentials" id="meta-nps-institution"></div>
+        <div class="data-source-note"><strong>Indicador institucional:</strong> cada diretoria acadêmica sincroniza sua parcela da mesma pergunta institucional. O Data UNIVC agrega DTNH + DCS pelas contagens reais de respostas e informa quando a cobertura do semestre estiver incompleta.</div>
+        <div class="analysis-bar kpi-analysis-bar nps-analysis-bar" id="npsInstitutionFilters" aria-label="Filtros do NPS da Instituição">
+          <label><span>Semestre</span><select id="npsInstitutionPeriodFilter"><option value="">Todos os semestres</option></select></label>
+          <label><span>Curso</span><select id="npsInstitutionCourseFilter"><option value="">Todos os cursos</option></select></label>
+          <label><span>Janela do gráfico</span><select id="npsInstitutionWindow"><option value="4">4 semestres</option><option value="6" selected>6 semestres</option><option value="8">8 semestres</option><option value="12">12 semestres</option><option value="all">Todo histórico</option></select></label>
+          <button class="button subtle compact" id="resetNpsInstitutionFilters" type="button">Limpar</button>
+        </div>
+        <div id="npsInstitutionContext" class="analysis-context"></div>
+        <div class="metric-grid executive" id="npsInstitutionSummary"></div>
+        <div class="dashboard-grid two-columns executive-grid kpi-chart-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Diretoria</span><h3 id="npsInstitutionEvolutionTitle">NPS institucional dos cursos da diretoria</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsInstitution" class="chart-canvas"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">UNIVC</span><h3 id="npsInstitutionOverallTitle">NPS geral da instituição</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsInstitutionOverall" class="chart-canvas"></div></article>
+        </div>
+        <article class="panel chart-panel nps-course-benchmark-panel"><div class="panel-heading"><div><span class="eyebrow">Comparação por curso</span><h3 id="npsInstitutionComparisonTitle">NPS institucional por curso</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsInstitutionCourses" class="chart-canvas"></div></article>
+        <div class="panel data-panel"><div class="table-toolbar"><div class="search-field"><span>⌕</span><input type="search" id="npsInstitutionSearch" placeholder="Buscar semestre ou pergunta"></div><div class="toolbar-count" id="count-nps-institution"></div></div><div class="table-wrap" id="table-nps-institution"></div></div>
+      </section>
+
+      <section id="section-nps-course" class="page-section data-page nps-workspace" data-dataset="nps">
+        <div class="section-intro compact-intro">
+          <div><span class="eyebrow" data-academic-code="01B">DTNH-01B</span><h2>NPS do Curso</h2><p>Acompanhe a recomendação do próprio curso por meio da pergunta oficial 0–10. Esta área mantém o resultado agregado dos cursos e o detalhamento de cada curso.</p></div>
+          <div class="section-actions"><button class="button primary" id="npsCourseSeiImportButton" data-write-action title="Atualizar NPS dos Cursos pelo SEI">Atualizar via SEI</button></div>
+        </div>
+        <div class="kpi-essentials" id="meta-nps-course"></div>
+        <div class="data-source-note"><strong>Indicador por curso:</strong> o SEI fornece as distribuições 0–10 por curso e o Data UNIVC calcula o NPS geral dos cursos e cada curso individualmente, sempre ponderando pelas contagens reais de respostas.</div>
+        <div class="analysis-bar kpi-analysis-bar nps-analysis-bar" id="npsCourseFilters" aria-label="Filtros do NPS do Curso">
+          <label><span>Semestre</span><select id="npsCoursePeriodFilter"><option value="">Todos os semestres</option></select></label>
+          <label><span>Curso</span><select id="npsCourseFilter"><option value="">Todos os cursos</option></select></label>
+          <label><span>Janela do gráfico</span><select id="npsCourseWindow"><option value="4">4 semestres</option><option value="6" selected>6 semestres</option><option value="8">8 semestres</option><option value="12">12 semestres</option><option value="all">Todo histórico</option></select></label>
+          <button class="button subtle compact" id="resetNpsCourseFilters" type="button">Limpar</button>
+        </div>
+        <div id="npsCourseContext" class="analysis-context"></div>
+        <div class="metric-grid executive" id="npsCourseSummary"></div>
+        <div class="dashboard-grid two-columns executive-grid kpi-chart-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução</span><h3 id="npsCourseEvolutionTitle">NPS dos Cursos</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsCourseEvolution" class="chart-canvas"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Comparação</span><h3 id="npsCourseComparisonTitle">Cursos no recorte</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsCourseComparison" class="chart-canvas"></div></article>
+        </div>
+        <div class="panel data-panel"><div class="table-toolbar"><div class="search-field"><span>⌕</span><input type="search" class="table-search" data-dataset="nps" placeholder="Buscar curso, semestre, fonte ou responsável"></div><div class="toolbar-count" id="count-nps"></div></div><div class="table-wrap" id="table-nps"></div></div>
+      </section>
+      <section id="section-nps-faculty" class="page-section data-page nps-workspace" data-dataset="nps-faculty">
+        <div class="section-intro compact-intro">
+          <div><span class="eyebrow" data-academic-code="01C">DTNH-01C</span><h2>NPS da Instituição · Docentes</h2><p>Acompanhe a recomendação da UNIVC pelo corpo docente a partir da pergunta oficial 0–10 da Avaliação Institucional. A população é anônima e institucional, sem separação por curso, disciplina ou professor.</p></div>
+          <div class="section-actions"><button class="button primary" id="npsFacultySeiImportButton" data-write-action title="Atualizar NPS da Instituição pelos docentes via SEI">Atualizar via SEI</button></div>
+        </div>
+        <div class="kpi-essentials" id="meta-nps-faculty"></div>
+        <div class="data-source-note"><strong>População institucional anônima:</strong> o relatório docente do SEI não identifica respondentes nem informa cursos. Por isso todos os docentes elegíveis são analisados em conjunto. DTNH e DCS consultam o mesmo resultado factual; cada diretoria mantém sua própria meta 01C.</div>
+        <div class="analysis-bar kpi-analysis-bar nps-analysis-bar" id="npsFacultyFilters" aria-label="Filtros do NPS da Instituição pelos docentes">
+          <label><span>Semestre</span><select id="npsFacultyPeriodFilter"><option value="">Todos os semestres</option></select></label>
+          <label><span>Janela do gráfico</span><select id="npsFacultyWindow"><option value="4">4 semestres</option><option value="6" selected>6 semestres</option><option value="8">8 semestres</option><option value="12">12 semestres</option><option value="all">Todo histórico</option></select></label>
+          <button class="button subtle compact" id="resetNpsFacultyFilters" type="button">Limpar</button>
+        </div>
+        <div id="npsFacultyContext" class="analysis-context"></div>
+        <div class="metric-grid executive" id="npsFacultySummary"></div>
+        <div class="dashboard-grid two-columns executive-grid kpi-chart-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução</span><h3>NPS institucional dos docentes</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsFaculty" class="chart-canvas"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Composição</span><h3 id="npsFacultyCompositionTitle">Promotores, neutros e detratores</h3></div><span class="chart-unit">%</span></div><div id="chartNpsFacultyComposition" class="chart-canvas"></div></article>
+        </div>
+        <div class="panel data-panel"><div class="table-toolbar"><div class="search-field"><span>⌕</span><input type="search" id="npsFacultySearch" placeholder="Buscar semestre ou pergunta"></div><div class="toolbar-count" id="count-nps-faculty"></div></div><div class="table-wrap" id="table-nps-faculty"></div></div>
+      </section>
+
+      <section id="section-avaliacao_docente" class="page-section data-page" data-dataset="avaliacao_docente">
+        <div class="section-intro compact-intro"><div><span class="eyebrow" data-academic-code="02">DTNH-02</span><h2>Avaliação Docente pelo Aluno</h2><p>Analise a evolução por professor, disciplina, curso e semestre sem perder o histórico consolidado.</p></div><div class="section-actions"><button class="button secondary" id="teacherSeiReadinessButton" type="button">Integração SEI</button><a class="button secondary" href="/api/modelos/avaliacao_docente" download>Modelo Excel</a><button class="button secondary import-button" data-write-action data-dataset="avaliacao_docente">Importar Excel</button><button class="button primary add-button" data-write-action data-dataset="avaliacao_docente">+ Registrar</button></div></div>
+        <div class="kpi-essentials" id="meta-dtnh-02"></div>
+        <div class="analysis-bar kpi-analysis-bar" id="teacherAnalysisFilters" aria-label="Filtros da avaliação docente">
+          <label><span>Semestre</span><select id="teacherPeriodFilter"><option value="">Todos os semestres</option></select></label>
+          <label><span>Curso</span><select id="teacherCourseFilter"><option value="">Todos os cursos</option></select></label>
+          <label><span>Disciplina</span><select id="teacherDisciplineFilter"><option value="">Todas as disciplinas</option></select></label>
+          <label><span>Professor</span><select id="teacherProfessorFilter"><option value="">Todos os professores</option></select></label>
+          <button class="button subtle compact" id="resetTeacherFilters" type="button">Limpar</button>
+        </div>
+        <div id="teacherKpiContext" class="analysis-context"></div>
+        <div id="teacherAnalysisCards" class="academic-result-summary-cards teacher-summary-cards"></div>
+        <div class="dashboard-grid two-columns kpi-chart-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="02">DTNH-02</span><h3>Evolução da avaliação</h3></div><span class="chart-unit">nota 0–10</span></div><div id="chartTeacherKpiEvolution" class="chart-canvas"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Comparação</span><h3 id="teacherComparisonTitle">Professores no recorte</h3></div><span class="chart-unit">média ponderada</span></div><div id="chartTeacherKpiComparison" class="chart-canvas"></div></article>
+        </div>
+        <div class="data-source-note"><strong>Fundação SEI preparada:</strong> o banco já representa semestre, curso, disciplina, turma/oferta e professor separadamente. O importador específico de avaliação docente só será ativado depois que existir um XLSX/ZIP real do SEI, evitando assumir um formato que ainda não foi validado. O fluxo manual atual permanece disponível até lá.</div>
+        <div class="panel data-panel"><div class="table-toolbar"><div class="search-field"><span>⌕</span><input type="search" class="table-search" data-dataset="avaliacao_docente" placeholder="Buscar curso, disciplina, professor ou semestre"></div><div class="toolbar-count" id="count-avaliacao_docente"></div></div><div class="table-wrap" id="table-avaliacao_docente"></div></div>
+      </section>
+      <section id="section-resultados" class="page-section data-page" data-dataset="resultados">
+        <div class="section-intro compact-intro"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h2>Aprovação, Notas e Motivos de Reprovação</h2><p>Compare a evolução da taxa e da quantidade de aprovações por curso e disciplina ao longo dos semestres.</p></div><div class="section-actions"><a class="button secondary" href="/api/modelos/resultados" download>Modelo Excel</a><button class="button secondary import-button" data-write-action data-dataset="resultados">Importar Excel/SEI</button><button class="button secondary" id="seiImportButton" data-write-action>Buscar direto no SEI</button><button class="button primary add-button" data-write-action data-dataset="resultados">+ Registrar linha</button></div></div>
+        <div class="kpi-essentials" id="meta-dtnh-03"></div>
+        <div id="resultsTrendContext" class="analysis-context"></div>
+        <div class="dashboard-grid two-columns kpi-chart-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Taxa de aprovação — evolução</h3></div><span class="chart-unit">%</span></div><div id="chartResultsApprovalTrend" class="chart-canvas"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Alunos aprovados — evolução</h3></div><span class="chart-unit">alunos distintos</span></div><div id="chartResultsApprovedTrend" class="chart-canvas"></div></article>
+        </div>
+        <div class="data-source-note"><strong>Base detalhada preservada, análise agregada:</strong> os registros aluno-disciplina continuam no banco para auditoria, correções e bloqueio de duplicatas, porém os cálculos e a visão padrão usam somente consolidações por semestre, curso e disciplina. Assim o navegador não precisa receber milhares de linhas para calcular aprovações, reprovações e médias.</div>
+        <div class="results-view-tabs segmented-control" id="resultsViewTabs"><button class="active" data-results-view="resumo">Resumo por disciplina</button><button data-results-view="detalhes">Registros individuais</button></div>
+        <div class="academic-result-summary-cards" id="resultsSummaryCards"></div>
+        <div class="panel data-panel"><div class="table-toolbar results-toolbar"><div class="results-filter-row"><div class="search-field"><span>⌕</span><input type="search" class="table-search" data-dataset="resultados" placeholder="Buscar curso, disciplina, aluno, matrícula, turma ou situação"></div><label class="table-filter"><span>Semestre</span><select id="resultsPeriodFilter"><option value="">Todos os semestres</option></select></label><label class="table-filter"><span>Curso</span><select id="resultsCourseFilter"><option value="">Todos os cursos</option></select></label><label class="table-filter"><span>Disciplina</span><select id="resultsDisciplineFilter" disabled><option value="">Todas as disciplinas</option></select></label></div><div class="toolbar-count" id="count-resultados"></div></div><div class="table-wrap" id="table-resultados"></div></div>
+      </section>
+      <section id="section-planos" class="page-section">
+        <div class="section-intro">
+          <div>
+            <span class="eyebrow">Gestão da melhoria</span>
+            <h2>Planos de ação</h2>
+            <p>Transforme alertas em responsabilidades, prazos e resultados esperados. Os planos são registrados no banco oficial e incluídos automaticamente no Excel consolidado quando ele é exportado.</p>
+          </div>
+          <button class="button primary" id="addActionButton" data-write-action>+ Plano</button>
+        </div>
+        <div class="action-summary" id="actionSummary"></div>
+        <div class="panel data-panel">
+          <div class="table-toolbar">
+            <div class="search-field"><span>⌕</span><input type="search" id="actionSearch" placeholder="Buscar plano, responsável, curso ou KPI"></div>
+            <div class="toolbar-count" id="count-planos"></div>
+          </div>
+          <div class="table-wrap" id="table-planos"></div>
+        </div>
+      </section>
+
+      <section id="section-metas" class="page-section">
+        <div class="section-intro">
+          <div>
+            <span class="eyebrow">Parâmetros de avaliação</span>
+            <h2>Metas e limites dos KPIs</h2>
+            <p>Defina metas com vigência histórica. Uma nova meta deve ser acrescentada com uma nova data, preservando as decisões anteriores.</p>
+          </div>
+          <button class="button primary" id="addGoalButton" data-write-action>+ Meta</button>
+        </div>
+        <div class="tip-box"><strong>Hierarquia de recortes:</strong> metas específicas prevalecem sobre TOTAL. Nas diretorias acadêmicas vale disciplina → curso → TOTAL.</div>
+        <div class="panel data-panel">
+          <div class="table-toolbar">
+            <div class="search-field"><span>⌕</span><input type="search" id="goalSearch" placeholder="Buscar KPI, recorte, vigência ou justificativa"></div>
+            <div class="toolbar-count" id="count-metas"></div>
+          </div>
+          <div class="table-wrap" id="table-metas"></div>
+        </div>
+      </section>
+
+
+      <section id="section-cadastros" class="page-section">
+        <div class="section-intro">
+          <div>
+            <span class="eyebrow">Estrutura acadêmica</span>
+            <h2>Cursos e disciplinas</h2>
+            <p>Cadastre novos cursos e disciplinas sem abrir o Excel. Itens inativados deixam de aparecer em novos lançamentos, mas continuam preservados no histórico.</p>
+          </div>
+          <div class="section-actions">
+            <a class="button secondary download-link" href="/api/modelos/disciplinas" download>Baixar modelo</a>
+            <button class="button secondary" id="importDisciplineButton" data-write-action>Importar disciplinas</button>
+            <button class="button secondary" id="addCourseButton" data-write-action>+ Novo curso</button>
+            <button class="button primary" id="addDisciplineButton" data-write-action>+ Nova disciplina</button>
+          </div>
+        </div>
+        <div class="tip-box"><strong>Preservação histórica:</strong> cursos e disciplinas que já possuem dados não são apagados. Use “Inativar” para retirar o item dos novos lançamentos sem quebrar períodos antigos.</div>
+        <div class="dashboard-grid two-columns catalog-grid">
+          <article class="panel data-panel">
+            <div class="table-toolbar">
+              <div><strong>Cursos</strong><small class="toolbar-help"> Podem ser mantidos manualmente, mas também são criados automaticamente a partir dos novos lançamentos acadêmicos e importações.</small></div>
+              <div class="toolbar-count" id="count-cursos"></div>
+            </div>
+            <div class="table-wrap" id="table-cursos"></div>
+          </article>
+          <article class="panel data-panel">
+            <div class="table-toolbar">
+              <div class="search-field"><span>⌕</span><input type="search" id="disciplineSearch" placeholder="Buscar curso ou disciplina"></div>
+              <div class="toolbar-count" id="count-disciplinas"></div>
+            </div>
+            <div class="table-wrap" id="table-disciplinas"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="section-qualidade" class="page-section">
+        <div class="section-intro">
+          <div>
+            <span class="eyebrow">Confiabilidade</span>
+            <h2>Governança e qualidade dos dados</h2>
+            <p>Monitore integridade, cobertura e consistência antes de utilizar os KPIs em reuniões de gestão.</p>
+          </div>
+          <button class="button secondary" id="refreshQuality">Atualizar verificação</button>
+        </div>
+        <div id="qualityCards" class="metric-grid three"></div>
+        <div class="dashboard-grid two-columns">
+          <article class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">Checklist</span><h3>Antes da reunião de gestão</h3></div></div>
+            <ol class="checklist">
+              <li><span>1</span><div><strong>Corrija todas as linhas com erro</strong><p>Abra a base indicada, localize o selo vermelho e edite a linha.</p></div></li>
+              <li><span>2</span><div><strong>Confira a cobertura do período</strong><p>Garanta que os recortes esperados para a diretoria selecionada tenham lançamento na competência.</p></div></li>
+              <li><span>3</span><div><strong>Valide a fonte oficial</strong><p>Confirme que cada KPI foi alimentado a partir da fonte institucional definida em sua ficha de governança.</p></div></li>
+              <li><span>4</span><div><strong>Abra planos para desvios relevantes</strong><p>Use problema, causa, ação, responsável e prazo verificável.</p></div></li>
+            </ol>
+          </article>
+          <article class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">Regras incorporadas</span><h3>Controles automáticos</h3></div></div>
+            <div class="rule-list">
+              <div><strong>NPS e desempenho</strong><span>Validação de categorias, notas, situação oficial, vínculos e bloqueio de duplicatas.</span></div>
+              <div><strong>Matrículas</strong><span>Valor não negativo e uma fotografia por mês e curso.</span></div>
+              <div><strong>Frequência</strong><span>Presenças válidas, disciplina vinculada ao curso e chave única.</span></div>
+              <div><strong>Rastreabilidade</strong><span>Criações, alterações, exclusões e importações são registradas no log de auditoria.</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="section-arquivos" class="page-section">
+        <div class="section-intro">
+          <div>
+            <span class="eyebrow">Interoperabilidade</span>
+            <h2>Central de arquivos</h2>
+            <p>Exporte um snapshot consolidado ou baixe os modelos que ainda possuem importação própria. O NPS é alimentado exclusivamente pela integração de questionários do SEI.</p>
+          </div>
+          <div class="section-actions">
+            <a class="button secondary download-link hidden" data-academic-interactive-excel href="/api/excel-interativo" download>Excel Interativo (beta)</a>
+            <a class="button primary download-link" href="/api/excel" download>Exportar Excel</a>
+          </div>
+        </div>
+        <div class="file-hub-grid">
+          <article class="file-card featured">
+            <div class="file-icon">XLSX</div>
+            <div><span class="eyebrow">Snapshot</span><h3>Base consolidada</h3><p>Gera o painel Excel com os dados mais recentes do banco.</p></div>
+            <a class="button secondary download-link" href="/api/excel" download>Exportar</a>
+          </article>
+          <article class="file-card hidden" data-academic-interactive-excel>
+            <div class="file-icon">V3</div>
+            <div><span class="eyebrow" data-academic-interactive-label>Beta · DTNH</span><h3>Excel Interativo</h3><p>Exporta o histórico autorizado com parâmetros, gráficos, matriz e governança para análise dentro do Excel.</p></div>
+            <a class="button secondary download-link" href="/api/excel-interativo" download>Gerar beta</a>
+          </article>
+          <article class="file-card" data-file-directorate="ACADEMIC"><div class="file-icon">02</div><div><span class="eyebrow" data-academic-code="02">DTNH-02</span><h3>Modelo · Avaliação docente</h3><p>Importação semestral por curso, disciplina e professor.</p></div><a class="button secondary download-link" href="/api/modelos/avaliacao_docente" download>Baixar</a></article>
+          <article class="file-card" data-file-directorate="ACADEMIC"><div class="file-icon">03</div><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Modelo · Resultados acadêmicos</h3><p>Notas, situação oficial e motivo de reprovação. Também aceita o mapa bruto do SEI.</p></div><a class="button secondary download-link" href="/api/modelos/resultados" download>Baixar</a></article>
+          <article class="file-card" data-file-directorate="ACADEMIC"><div class="file-icon">CAD</div><div><span class="eyebrow">Cadastro</span><h3>Modelo · Disciplinas</h3><p>Cadastro ou atualização em lote de disciplinas.</p></div><a class="button secondary download-link" href="/api/modelos/disciplinas" download>Baixar</a></article>
+        </div>
+        <div class="tip-box"><strong>Fonte oficial:</strong> os arquivos são instrumentos de entrada e saída. O banco PostgreSQL continua sendo a fonte institucional de dados.</div>
+      </section>
+
+      <section id="section-configuracoes" class="page-section">
+        <div class="section-intro">
+          <div>
+            <span class="eyebrow">Perfil e recorrência</span>
+            <h2>Configurações</h2>
+            <p>Revise sua identificação operacional e os prazos de alimentação dos KPIs da diretoria.</p>
+          </div>
+        </div>
+        <form id="configForm" class="panel form-card">
+          <label class="field"><span>Nome do responsável pelos lançamentos</span><input id="configResponsavel" name="responsavel" required maxlength="80"><small>Será gravado na coluna “Lançado por”.</small></label>
+          <label class="field"><span>Diretoria</span><input id="configDiretoria" name="diretoria_exibicao" readonly></label>
+          <div class="form-footer"><button type="submit" class="button primary" data-profile-write>Salvar configurações</button></div>
+        </form>
+        <article class="panel" style="margin-top:18px">
+          <div class="panel-heading"><div><span class="eyebrow">Recorrência</span><h3>Calendário de alimentação</h3></div></div>
+          <p style="padding:0 18px;color:var(--ink-600)">Cada KPI pode ter uma periodicidade e um dia útil de vencimento próprios. Isso mantém a rotina de alimentação alinhada à governança institucional.</p>
+          <div class="table-wrap" id="scheduleTable"></div>
+        </article>
+      </section>
+
+      <section id="section-ajuda" class="page-section">
+        <div class="section-intro">
+          <div>
+            <span class="eyebrow">Primeiros passos</span>
+            <h2>Guia de uso</h2>
+            <p>O fluxo foi desenhado para quem não trabalha com sistemas no dia a dia.</p>
+          </div>
+        </div>
+        <div class="help-grid">
+          <article class="help-card"><span>1</span><h3>Escolha a diretoria</h3><p>No topo, selecione a diretoria. Sua diretoria principal permite edição; a diretoria compartilhada fica em modo somente leitura.</p></article>
+          <article class="help-card"><span>2</span><h3>Adicione ou importe</h3><p>Você pode registrar uma linha no formulário ou baixar e importar o modelo Excel correspondente.</p></article>
+          <article class="help-card"><span>3</span><h3>Revise a validação</h3><p>Linhas válidas aparecem com selo verde. Erros aparecem em vermelho e podem ser editados.</p></article>
+          <article class="help-card"><span>4</span><h3>Volte à visão geral</h3><p>O painel executivo é atualizado usando os dados recém-gravados no banco oficial.</p></article>
+        </div>
+        <article class="panel faq">
+          <details open><summary>O Excel ainda é o banco de dados?</summary><p>Não. O PostgreSQL é a fonte oficial. O Excel é gerado sob demanda para consulta, auditoria e compatibilidade.</p></details>
+          <details><summary>As alterações ficam registradas?</summary><p>Sim. Inserções, edições, exclusões e importações geram registros de auditoria no banco.</p></details>
+          <details><summary>O sistema funciona sem internet?</summary><p>A versão cloud precisa de internet, pois consulta o banco e a autenticação online.</p></details>
+          <details><summary>Posso importar o modelo Excel?</summary><p>Sim. Baixe o modelo, preencha as linhas e importe novamente. O backend valida os registros antes de gravá-los no banco.</p></details>
+          <details><summary>Como sair?</summary><p>Use “Encerrar sessão” no cartão do usuário, no rodapé do menu lateral.</p></details>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div id="operationOverlay" class="operation-overlay hidden" aria-live="polite" aria-busy="true">
+    <div id="operationProgress" class="du-operation-progress is-indeterminate">
+      <div class="du-operation-head"><div class="du-operation-copy"><strong>Processando</strong><span>Aguarde alguns instantes.</span></div></div>
+      <div class="du-progress-track"><div class="du-progress-fill"></div></div>
+      <div class="du-operation-stage">Operação em andamento</div>
+    </div>
+  </div>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div><span class="eyebrow" id="modalEyebrow"></span><h2 id="modalTitle"></h2></div>
+        <button class="icon-button" id="closeModal" aria-label="Fechar">×</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="confirmBackdrop" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal small" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="modal-header"><div><span class="eyebrow">Confirmação</span><h2 id="confirmTitle">Excluir registro?</h2></div></div>
+      <div class="modal-body"><p id="confirmText"></p><div class="confirm-actions"><button id="confirmCancel" class="button secondary">Cancelar</button><button id="confirmOk" class="button danger">Excluir</button></div></div>
+    </div>
+  </div>
+
+  <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+  <script src="/static/js/data-univc-auth.js?v={{ app_version }}"></script>
+  <script src="/static/js/data-univc-identity.js?v={{ app_version }}"></script>
+  <script src="/static/js/data-univc-ui.js?v={{ app_version }}"></script>
+  <script src="/static/js/app.js?v={{ app_version }}"></script>
+  <script src="/static/js/ui-v2.js?v={{ app_version }}"></script>
+</body>
+</html>

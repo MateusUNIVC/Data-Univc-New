@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: univc-data-driven
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health/ready
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: ENVIRONMENT
+        value: production
+      - key: AUTH_DISABLED
+        value: "false"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: AUTO_CREATE_DB
+        value: "false"
+      - key: DEFAULT_DIRECTORATE_CODE
+        value: DTNH
+      - key: ENABLE_API_DOCS
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: MAX_UPLOAD_MB
+        value: "25"
+      - key: MAX_XLSX_UNCOMPRESSED_MB
+        value: "250"
+      - key: EXCEL_EXPORT_CONCURRENCY
+        value: "1"
+      - key: EXCEL_EXPORT_WAIT_SECONDS
+        value: "10"
+      - key: ACADEMIC_EXCEL_INPUT_RESERVE_ROWS
+        value: "250"
+      - key: MAX_DASHBOARD_WINDOW
+        value: "12000"
+      - key: AUTH_CACHE_TTL_SECONDS
+        value: "60"
+      - key: AUTH_CACHE_MAX_ENTRIES
+        value: "512"
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_AVATAR_BUCKET
+        value: data-univc-avatars
+      - key: HIDDEN_DIRECTORATE_CODES
+        value: DPE

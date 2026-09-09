@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="/static/img/univc-logo.png">
+  <title>Data UNIVC | DADM</title>
+  <link rel="stylesheet" href="/static/css/app.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/data-univc-foundation.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/dadm.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/ui-v2.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/dadm_tallos.css?v={{ app_version }}">
+</head>
+<body class="ui-v2 ui-v2-dadm">
+  <div id="dadmApp" class="app-shell dadm-shell">
+    <aside class="sidebar" aria-label="Navegação da DADM">
+      <a class="brand brand-link" href="/" aria-label="Data UNIVC — página inicial">
+        <img class="brand-logo-image" src="/static/img/univc-logo.png" alt="UNIVC">
+        <div><strong>Data UNIVC</strong><span>Gestão por indicadores</span></div>
+      </a>
+      <nav class="nav-list">
+        <button class="nav-item active" data-section="dashboard"><span class="nav-icon nav-code"></span><span>Painel executivo</span></button>
+
+        <div class="nav-caption">TALLOS Analytics Center</div>
+        <button class="nav-item" data-section="tallos-overview"><span class="nav-icon nav-code"></span><span>Visão geral</span></button>
+        <button class="nav-item" data-section="tallos-operators"><span class="nav-icon nav-code"></span><span>Operadores</span></button>
+        <button class="nav-item" data-section="tallos-departments"><span class="nav-icon nav-code"></span><span>Departamentos</span></button>
+        <button class="nav-item" data-section="tallos-experience"><span class="nav-icon nav-code"></span><span>Canais e avaliações</span></button>
+        <button class="nav-item" data-section="tallos-sync"><span class="nav-icon nav-code"></span><span>Sincronização</span></button>
+
+        <div class="nav-caption">Indicadores institucionais</div>
+        <button class="nav-item" data-section="dadm01"><span class="nav-icon"></span><span>Tempo de resposta</span></button>
+        <button class="nav-item" data-section="dadm02"><span class="nav-icon"></span><span>Satisfação</span></button>
+
+        <div class="nav-caption">Gestão</div>
+        <button class="nav-item" data-section="planos"><span class="nav-icon nav-code"></span><span>Planos de ação</span></button>
+        <button class="nav-item" data-section="metas"><span class="nav-icon nav-code"></span><span>Metas dos KPIs</span></button>
+
+        <div class="nav-caption">Sistema</div>
+        <button class="nav-item" data-section="arquivos"><span class="nav-icon nav-code"></span><span>Central de arquivos</span></button>
+        <button class="nav-item" data-section="governanca"><span class="nav-icon nav-code"></span><span>Governança de dados</span></button>
+        <a class="nav-item nav-link" href="/"><span class="nav-icon nav-code"></span><span>Voltar ao Data UNIVC</span></a>
+      </nav>
+      <div class="sidebar-footer dadm-sidebar-footer">
+        <div class="user-mini" id="dadmUserMini">
+          <div class="user-avatar-wrap"><div class="user-avatar" id="dadmUserAvatar">D</div><span class="user-presence" aria-hidden="true"></span></div>
+          <div class="user-mini-copy"><strong id="dadmUserName">Carregando…</strong><small id="dadmUserMeta">Perfil institucional</small><span class="user-mini-directorate" id="dadmUserDirectorate">Data UNIVC</span></div>
+          <button class="user-logout" id="dadmLogout" type="button" title="Encerrar sessão" aria-label="Encerrar sessão"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6.75A1.75 1.75 0 0 0 5 6.75v10.5C5 18.216 5.784 19 6.75 19H10M14.5 8.5 18 12l-3.5 3.5M18 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="connection-note"><span class="status-dot"></span><span>Sessão ativa</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div><span class="eyebrow">DADM · Diretoria Administrativa</span><h1 id="dadmPageTitle">Painel executivo</h1></div>
+        <div class="topbar-actions">
+          <div class="directorate-switcher">
+            <label for="dadmDirectorateSelect">Diretoria em visualização</label>
+            <div class="directorate-switcher-row"><select id="dadmDirectorateSelect"></select><span id="dadmDirectorateAccessBadge" class="access-badge"></span></div>
+          </div>
+          <span class="save-state" id="dadmTallosTopState"><span class="status-dot"></span> Banco sincronizado</span>
+          <a id="dadmFullExcel" href="/api/dadm/excel?diretoria=DADM" class="button secondary" download>Exportar</a>
+        </div>
+      </header>
+
+      <div id="dadmLoading" class="loading-bar hidden"><span></span></div>
+      <div id="dadmReadOnly" class="readonly-banner hidden"><span class="readonly-icon">⌁</span><div><strong>Visualização somente leitura</strong><span>Você pode consultar a DADM, mas somente usuários vinculados a ela podem alterar, importar ou sincronizar dados.</span></div></div>
+      <div id="dadmAlert" class="dadm-alert hidden"></div>
+      <div id="dadmTallosAlert" class="dadm-tallos-alert hidden"></div>
+
+      <section id="tallosOnboarding" class="panel dadm-tallos-onboarding hidden" aria-live="polite">
+        <div class="dadm-tallos-onboarding-main">
+          <span class="eyebrow" id="tallosOnboardingEyebrow">Homologação TALLOS</span>
+          <h2 id="tallosOnboardingTitle">Preparando integração</h2>
+          <p id="tallosOnboardingText">Verificando a conexão e a base local.</p>
+          <div class="dadm-tallos-onboarding-actions" id="tallosOnboardingActions"></div>
+        </div>
+        <div class="dadm-tallos-steps">
+          <div class="dadm-tallos-step" id="tallosStepConnection"><strong>1</strong><span>Conectar TALLOS</span></div>
+          <div class="dadm-tallos-step" id="tallosStepSync"><strong>2</strong><span>Sincronizar agosto</span></div>
+          <div class="dadm-tallos-step" id="tallosStepValidate"><strong>3</strong><span>Validar indicadores</span></div>
+        </div>
+      </section>
+
+      <!-- Filtros globais TALLOS: o recorte gerencial é sempre mensal. -->
+      <section id="dadmTallosFilterPanel" class="panel dadm-tallos-filter-panel hidden" aria-label="Filtros do TALLOS Analytics Center">
+        <div class="dadm-tallos-filter-header">
+          <div><span class="eyebrow">Período de análise</span><h3>Escolha o mês inicial e o mês final</h3><p>As avaliações e os tempos são apresentados mês a mês. Meses sem avaliação permanecem sem dado; nunca viram zero.</p></div>
+          <div class="dadm-tallos-filter-actions"><button class="button primary compact" id="tallosApplyFilters">Aplicar período</button></div>
+        </div>
+        <div class="dadm-tallos-filters dadm-tallos-month-filters">
+          <label><span>Mês inicial</span><input id="tallosFilterStartMonth" type="month"></label>
+          <label><span>Mês final</span><input id="tallosFilterEndMonth" type="month"></label>
+          <label><span>Comparação</span><select id="tallosFilterComparison"><option value="none" selected>Sem comparação</option><option value="previous_period">Período anterior equivalente</option><option value="previous_year">Mesmo período do ano anterior</option></select></label>
+          <label><span>Departamento</span><select id="tallosFilterDepartment"><option value="">Todos</option></select></label>
+          <label><span>Operador</span><select id="tallosFilterEmployee"><option value="">Todos</option></select></label>
+          <label><span>Canal</span><select id="tallosFilterChannel"><option value="">Todos</option></select></label>
+          <label><span>Status</span><select id="tallosFilterStatus"><option value="">Todos</option></select></label>
+          <label><span>Tabulação</span><select id="tallosFilterTabulation"><option value="">Todas</option></select></label>
+        </div>
+        <div class="dadm-tallos-filter-footer"><span id="tallosFilterContext">Carregando período…</span><span id="tallosDataRange">Base ainda não sincronizada</span></div>
+      </section>
+
+      <!-- Painel executivo DADM: operacional + institucional -->
+      <section id="section-dashboard" class="page-section active">
+        <div class="page-lead compact-lead">
+          <div><span class="eyebrow">DADM · atendimento e experiência</span><h2>Centro executivo de atendimento</h2><p>Leitura operacional do TALLOS combinada aos indicadores institucionais DADM-01 e DADM-02. A camada detalhada permanece no banco; o navegador recebe somente agregados.</p></div>
+        </div>
+        <div class="dadm-section-heading"><div><span class="eyebrow">Operação TALLOS</span><h3>Atendimentos recentes</h3></div><span id="tallosExecutivePeriod" class="chart-unit">período selecionado</span></div>
+        <div id="tallosExecutiveCards" class="metric-grid executive dadm-tallos-card-grid"></div>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Volume</span><h3>Atendimentos por período</h3></div><span class="chart-unit">abertos × finalizados</span></div><div id="tallosExecutiveVolume" class="dadm-tallos-chart"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Velocidade</span><h3>Tempo Médio de Espera (TME) e Tempo Médio de Atendimento (TMA)</h3></div><span class="chart-unit">tempo médio</span></div><div id="tallosExecutiveTimes" class="dadm-tallos-chart"></div></article>
+        </div>
+
+        <div class="dadm-section-heading spaced"><div><span class="eyebrow">Indicadores DADM</span><h3>Leitura institucional alimentada pelo TALLOS</h3></div><span class="chart-unit">mesmo período selecionado</span></div>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel dadm-tallos-indicator-summary"><div class="panel-heading"><div><span class="eyebrow">DADM-01</span><h3>Tempos de resposta e atendimento</h3></div></div><div id="tallosExecutiveDadm01"></div></article>
+          <article class="panel dadm-tallos-indicator-summary"><div class="panel-heading"><div><span class="eyebrow">DADM-02</span><h3>Avaliações e satisfação</h3></div></div><div id="tallosExecutiveDadm02"></div></article>
+        </div>
+        <div class="dadm-legacy-dashboard hidden" aria-hidden="true">
+          <div class="analysis-bar dadm-dashboard-filter">
+            <label><span>Referência</span><select id="dashboardReference"></select></label>
+            <label><span>Comparação</span><select id="dashboardComparison"></select></label>
+            <label><span>Janela</span><select id="dashboardWindow"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option><option value="60">60 meses</option></select></label>
+            <span id="dadmAnalysisContext" class="analysis-context">Atualização automática</span>
+          </div>
+          <div id="dashboardCards" class="metric-grid executive dadm-card-grid"></div>
+          <div id="chartDashboard01"></div><div id="chartDashboard02"></div><div id="dashboardChannelTable"></div><div id="dashboardInsights"></div>
+        </div>
+      </section>
+
+      <!-- TALLOS / Visão Geral -->
+      <section id="section-tallos-overview" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">TALLOS Analytics Center</span><h2>Visão geral dos atendimentos</h2><p>Volume, pessoas, protocolos, tempos e avaliações por mês, usando somente dados já sincronizados no banco.</p></div></div>
+        <div id="tallosOverviewCards" class="metric-grid executive dadm-tallos-card-grid"></div>
+        <article class="panel dadm-tallos-definitions"><div class="panel-heading"><div><span class="eyebrow">Leitura dos tempos</span><h3>O que significam TME e TMA?</h3></div></div><div class="governance-list"><p><strong>TME — Tempo Médio de Espera:</strong> tempo médio que o contato aguarda até o atendimento começar. É lido de <code>tme.value</code> e permanece <strong>provisório</strong> até a validação final do mapeamento.</p><p><strong>TMA — Tempo Médio de Atendimento:</strong> duração média do atendimento depois de iniciado. É lido de <code>tma.value</code> e está <strong>validado</strong> contra a exportação TALLOS usada na homologação.</p></div></article>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Velocidade</span><h3>Tempo Médio de Espera (TME) e Tempo Médio de Atendimento (TMA)</h3></div><span class="chart-unit">média por período</span></div><div id="tallosTimeTimeline" class="dadm-tallos-chart"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Experiência</span><h3>Avaliação média</h3></div><span class="chart-unit">escala TALLOS 1–10</span></div><div id="tallosRatingTimeline" class="dadm-tallos-chart"></div></article>
+        </div>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Volume</span><h3>Abertos e finalizados</h3></div><span class="chart-unit">sessões de atendimento</span></div><div id="tallosVolumeTimeline" class="dadm-tallos-chart"></div></article>
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Operadores</span><h3>Maiores volumes</h3></div><span class="chart-unit">recorte atual</span></div><div id="tallosOperatorBars" class="dadm-tallos-bars"></div></article>
+        </div>
+      </section>
+
+      <!-- TALLOS / Operadores -->
+      <section id="section-tallos-operators" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">TALLOS · operadores</span><h2>Desempenho individual e comparativo</h2><p>Volume, TME (Tempo Médio de Espera), TMA (Tempo Médio de Atendimento), mediana, P90 e avaliação na escala 1–10 com o tamanho real da amostra.</p></div></div>
+        <article class="panel dadm-tallos-compare-panel">
+          <div class="panel-heading"><div><span class="eyebrow">Comparação mensal</span><h3>Selecione até quatro operadores</h3></div><div class="dadm-tallos-inline-controls"><select id="tallosCompareMetric"><option value="tma">Tempo Médio de Atendimento (TMA)</option><option value="tme">Tempo Médio de Espera (TME)</option><option value="rating">Avaliação média</option><option value="volume">Volume</option><option value="protocols">Protocolos</option></select><button class="button primary compact" id="tallosCompareOperators">Comparar</button></div></div>
+          <div id="tallosOperatorCompareChoices" class="dadm-tallos-operator-choices"></div>
+          <div id="tallosOperatorComparisonChart" class="dadm-tallos-chart compare-chart"></div>
+        </article>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Matriz gerencial</span><h3>Tempo Médio de Atendimento (TMA) × avaliação × volume</h3></div><span id="tallosOperatorScatterPeriod" class="chart-unit">mês final selecionado</span></div><div id="tallosOperatorScatter" class="dadm-tallos-scatter"></div></article>
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Avaliação mensal</span><h3>Nota média por operador</h3></div><span id="tallosOperatorRatingPeriod" class="chart-unit">mês final selecionado</span></div><div id="tallosOperatorRatingBars" class="dadm-tallos-bars"></div></article>
+        </div>
+        <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Leitura mensal</span><h3>Operador × mês</h3></div><span class="chart-unit">S/A não entra na média</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Mês</th><th>Operador</th><th>Atendimentos</th><th>Protocolos</th><th>Tempo Médio de Espera (TME)</th><th>Tempo Médio de Atendimento (TMA)</th><th>Nota média / 10</th><th>Avaliações válidas</th><th>Sem avaliação</th><th>Cobertura</th></tr></thead><tbody id="tallosOperatorsTable"></tbody></table></div></article>
+      </section>
+
+      <!-- TALLOS / Departamentos -->
+      <section id="section-tallos-departments" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">TALLOS · departamentos</span><h2>Comparação entre setores</h2><p>Volume, operadores ativos, tempos e avaliação agrupados pela fila/departamento de origem.</p></div></div>
+        <div class="dashboard-grid two-columns executive-grid"><article class="panel"><div class="panel-heading"><div><span class="eyebrow">Volume</span><h3>Atendimentos por departamento</h3></div></div><div id="tallosDepartmentBars" class="dadm-tallos-bars"></div></article><article class="panel"><div class="panel-heading"><div><span class="eyebrow">Experiência</span><h3>Avaliação por departamento</h3></div></div><div id="tallosDepartmentRatingBars" class="dadm-tallos-bars"></div></article></div>
+        <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Tabela gerencial</span><h3>Departamentos no recorte</h3></div><span class="chart-unit">clique para filtrar</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Departamento</th><th>Atendimentos</th><th>Protocolos</th><th>Operadores</th><th>Tempo Médio de Espera (TME)</th><th>Tempo Médio de Atendimento (TMA)</th><th>Nota média / 10</th><th>Avaliações</th></tr></thead><tbody id="tallosDepartmentsTable"></tbody></table></div></article>
+      </section>
+
+      <!-- TALLOS / Canais e avaliações -->
+      <section id="section-tallos-experience" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">TALLOS · experiência</span><h2>Canais, avaliações e tabulações</h2><p>A avaliação TALLOS usa notas numéricas de 1 a 10. S/A, nulos e level=0 são tratados como ausência de avaliação e ficam fora da média mensal.</p></div></div>
+        <div id="tallosExperienceCards" class="metric-grid executive dadm-tallos-experience-cards"></div>
+        <div class="dashboard-grid two-columns executive-grid dadm-tallos-rating-grid">
+          <article class="panel dadm-tallos-rating-hero-panel"><div class="panel-heading"><div><span class="eyebrow">Experiência</span><h3>Nota média e cobertura</h3></div><span class="chart-unit">escala 1–10</span></div><div id="tallosRatingHero" class="dadm-tallos-rating-hero"></div></article>
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Avaliações</span><h3>Distribuição das notas</h3></div><span class="chart-unit">1–10 · quantidade e %</span></div><div id="tallosRatingDonut" class="dadm-tallos-donut-panel"></div></article>
+        </div>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Comparação precisa</span><h3>Participação por nota</h3></div><span class="chart-unit">1 a 10</span></div><div id="tallosRatingBars" class="dadm-tallos-rating-bars"></div></article>
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Qualidade da amostra</span><h3>Avaliados × sem avaliação</h3></div><span class="chart-unit">ausentes ficam fora da média</span></div><div id="tallosSentiment" class="dadm-tallos-sentiment"></div></article>
+        </div>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução</span><h3>Avaliação média por período</h3></div><span class="chart-unit">1–10 · amostra no tooltip</span></div><div id="tallosExperienceRatingTimeline" class="dadm-tallos-chart"></div></article>
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Canais</span><h3>Distribuição do volume</h3></div></div><div id="tallosChannelDonut" class="dadm-tallos-donut-panel"></div></article>
+        </div>
+        <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Tabulação</span><h3>Principais classificações</h3></div></div><div id="tallosTabulationBars" class="dadm-tallos-bars"></div></article>
+        <article class="panel dadm-tallos-audit-panel"><div class="panel-heading"><div><span class="eyebrow">Homologação</span><h3>Auditoria das avaliações TALLOS</h3><p>Compara o <code>level</code> bruto preservado com a nota normalizada. <code>level=0</code>, S/A e nulos são ausência; somente 1–10 entra na média.</p></div></div><div id="tallosRatingAuditSummary" class="dadm-tallos-audit-summary"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Mês</th><th>Operador</th><th>Protocolo</th><th>level bruto</th><th>Nota usada</th><th>Classificação</th></tr></thead><tbody id="tallosRatingAuditTable"></tbody></table></div></article>
+      </section>
+
+      <!-- TALLOS / Sincronização -->
+      <section id="section-tallos-sync" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">TALLOS · dados</span><h2>Sincronização e histórico</h2><p>A API alimenta o banco; o dashboard nunca consulta meses históricos em massa ao abrir. Reexecutar um período atualiza registros existentes sem duplicar.</p></div></div>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel dadm-tallos-sync-card">
+            <div class="panel-heading"><div><span class="eyebrow">Conexão</span><h3>Autenticação TALLOS</h3></div><span id="tallosTokenState" class="status-chip info">Verificando</span></div>
+            <div id="tallosConnectionSummary" class="dadm-tallos-connection-summary">Verificando ambiente e token…</div>
+            <div id="tallosLocalTokenControls" class="dadm-tallos-token-form hidden" data-write-action>
+              <label><span>Token da API</span><input type="password" id="tallosTokenInput" autocomplete="off" placeholder="Cole o Bearer token da TALLOS"></label>
+              <p>Disponível apenas no ambiente local de homologação. O navegador não recebe nem recupera o token salvo.</p>
+              <div class="dadm-tallos-token-actions"><button class="button secondary" id="tallosTestConnection" type="button">Testar conexão</button><button class="button primary" id="tallosSaveToken" type="button">Validar e salvar</button></div>
+            </div>
+            <div id="tallosManagedTokenNotice" class="governance-list hidden"><p><strong>Produção:</strong> configure <code>TALLOS_API_TOKEN</code> no ambiente do servidor. A interface não permite gravar segredos em produção.</p></div>
+          </article>
+          <article class="panel dadm-tallos-sync-card">
+            <div class="panel-heading"><div><span class="eyebrow">Atualização manual</span><h3>Sincronizar um intervalo</h3></div><span id="tallosSyncState" class="status-chip info">Aguardando</span></div>
+            <div class="dadm-tallos-sync-form"><label><span>Início</span><input type="date" id="tallosSyncStart"></label><label><span>Fim</span><input type="date" id="tallosSyncEnd"></label><div class="dadm-tallos-sync-actions"><button class="button primary" id="tallosStartSync" data-write-action>Sincronizar período</button></div><p>Para a primeira homologação, recomendamos agosto/2026. O resultado esperado é próximo de 5.074 registros recebidos, sem usar protocolo como chave única.</p></div>
+            <div id="tallosSyncProgress" class="dadm-tallos-progress hidden"><div class="dadm-tallos-progress-head"><strong id="tallosSyncProgressTitle">Sincronizando…</strong><span id="tallosSyncProgressPct">0%</span></div><div class="dadm-tallos-progress-track"><span id="tallosSyncProgressBar"></span></div><div id="tallosSyncProgressMeta" class="dadm-tallos-progress-meta"></div></div>
+          </article>
+        </div>
+        <div id="tallosLocalHomologTools" class="panel dadm-tallos-homolog-tools hidden" data-write-action>
+          <div><span class="eyebrow">Ferramentas de homologação local</span><h3>Recomeçar um teste sem afetar os indicadores oficiais</h3><p>Estas ações existem somente fora de produção.</p></div>
+          <div class="dadm-tallos-homolog-actions"><button class="button secondary" id="tallosClearLocalData" type="button">Limpar base TALLOS local</button><button class="button secondary" id="tallosRemoveLocalToken" type="button">Remover token local</button></div>
+        </div>
+        <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Auditoria</span><h3>Histórico de sincronizações</h3></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>#</th><th>Período</th><th>Status</th><th>Páginas</th><th>Recebidos</th><th>Novos</th><th>Atualizados</th><th>Inalterados</th><th>Falhas</th><th>Concluído</th></tr></thead><tbody id="tallosSyncRunsTable"></tbody></table></div></article>
+      </section>
+
+      <!-- Indicadores institucionais: leitura principal alimentada pelo TALLOS. -->
+      <section id="section-dadm01" class="page-section">
+        <div class="page-lead dadm-indicator-lead"><div><span class="eyebrow">DADM-01</span><h2>Tempo de resposta e atendimento</h2><p><strong>Tempo Médio de Espera (TME)</strong> é quanto o contato aguarda até o atendimento começar. <strong>Tempo Médio de Atendimento (TMA)</strong> é quanto dura o atendimento depois de iniciado. A leitura abaixo vem diretamente da base TALLOS sincronizada.</p></div></div>
+        <div id="tallosDADM01Cards" class="metric-grid executive dadm-tallos-card-grid"></div>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução mensal</span><h3>Tempo Médio de Espera (TME) × Tempo Médio de Atendimento (TMA)</h3></div></div><div id="tallosDADM01Timeline" class="dadm-tallos-chart"></div></article>
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Operadores</span><h3>Tempos médios no período</h3></div></div><div id="tallosDADM01Operators" class="dadm-tallos-bars"></div></article>
+        </div>
+        <details class="dadm-legacy-details"><summary>Dados manuais legados do DADM-01</summary><div class="dadm-legacy-body">
+          <div id="tallosDADM01Bridge" class="dadm-tallos-bridge"></div>
+          <div class="analysis-bar dadm-indicator-filter"><label><span>Referência</span><select data-reference="DADM-01"></select></label><label><span>Comparação</span><select data-comparison="DADM-01"></select></label><label><span>Janela</span><select data-window="DADM-01"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option><option value="60">60 meses</option></select></label><a class="button secondary compact" href="/api/dadm/excel/DADM-01?diretoria=DADM" data-export="DADM-01" download>Exportar legado</a></div>
+          <div id="cardsDADM01" class="metric-grid executive dadm-metric-grid"></div><div class="dashboard-grid two-columns executive-grid"><article class="panel chart-panel"><div id="chartDADM01" class="chart-canvas dadm-chart large"></div></article><article class="panel chart-panel"><div id="barDADM01" class="chart-canvas dadm-bars"></div></article></div><article class="panel"><div class="table-wrap"><table class="data-table"><tbody id="recordsDADM01"></tbody></table></div><div class="dadm-pagination"><button class="button secondary compact" data-prev-records="DADM-01">Anterior</button><span data-record-count="DADM-01"></span><button class="button secondary compact" data-next-records="DADM-01">Próxima</button></div></article>
+        </div></details>
+      </section>
+
+      <section id="section-dadm02" class="page-section">
+        <div class="page-lead dadm-indicator-lead"><div><span class="eyebrow">DADM-02</span><h2>Avaliações e satisfação do atendimento</h2><p>A nota TALLOS é analisada na escala <strong>1 a 10</strong>. Somente avaliações numéricas válidas entram na média mensal; S/A, nulos e <code>level=0</code> significam ausência e não reduzem a nota.</p></div></div>
+        <div id="tallosDADM02Cards" class="metric-grid executive dadm-tallos-card-grid"></div>
+        <div class="dashboard-grid two-columns executive-grid">
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução mensal</span><h3>Nota média das avaliações</h3></div><span class="chart-unit">1–10</span></div><div id="tallosDADM02Timeline" class="dadm-tallos-chart"></div></article>
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Distribuição</span><h3>Quantidade por nota</h3></div><span class="chart-unit">somente 1–10</span></div><div id="tallosDADM02Distribution" class="dadm-tallos-rating-bars"></div></article>
+        </div>
+        <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Operador × mês</span><h3>Média mensal das avaliações</h3></div><span class="chart-unit">mês sem avaliação = —</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Mês</th><th>Operador</th><th>Nota média / 10</th><th>Avaliações válidas</th><th>Sem avaliação</th><th>Cobertura</th></tr></thead><tbody id="tallosDADM02Monthly"></tbody></table></div></article>
+        <details class="dadm-legacy-details"><summary>Dados manuais legados do DADM-02</summary><div class="dadm-legacy-body">
+          <div id="tallosDADM02Bridge" class="dadm-tallos-bridge"></div>
+          <div class="analysis-bar dadm-indicator-filter"><label><span>Referência</span><select data-reference="DADM-02"></select></label><label><span>Comparação</span><select data-comparison="DADM-02"></select></label><label><span>Janela</span><select data-window="DADM-02"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option><option value="60">60 meses</option></select></label><a class="button secondary compact" href="/api/dadm/excel/DADM-02?diretoria=DADM" data-export="DADM-02" download>Exportar legado</a></div>
+          <div id="cardsDADM02" class="metric-grid executive dadm-metric-grid"></div><div class="dashboard-grid two-columns executive-grid"><article class="panel chart-panel"><div id="chartDADM02" class="chart-canvas dadm-chart large"></div></article><article class="panel chart-panel"><div id="barDADM02" class="chart-canvas dadm-bars"></div></article></div><article class="panel"><div class="table-wrap"><table class="data-table"><tbody id="recordsDADM02"></tbody></table></div><div class="dadm-pagination"><button class="button secondary compact" data-prev-records="DADM-02">Anterior</button><span data-record-count="DADM-02"></span><button class="button secondary compact" data-next-records="DADM-02">Próxima</button></div></article>
+        </div></details>
+      </section>
+
+      <section id="section-planos" class="page-section"><div class="page-lead"><div><span class="eyebrow">Gestão</span><h2>Planos de ação</h2><p>Problema, causa, ação corretiva, responsável, prazo e evidência vinculados ao indicador.</p></div><button class="button primary" id="newAction" data-write-action>+ Plano</button></div><article class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>Indicador</th><th>Período</th><th>Problema</th><th>Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th><th></th></tr></thead><tbody id="actionsTable"></tbody></table></div></article></section>
+
+      <section id="section-metas" class="page-section"><div class="page-lead"><div><span class="eyebrow">Vigência</span><h2>Metas dos KPIs</h2><p>Metas institucionais ou específicas por canal e recorte, preservadas por vigência.</p></div><button class="button primary" id="newTarget" data-write-action>+ Meta</button></div><article class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>Indicador</th><th>Métrica</th><th>Recorte</th><th>Vigência</th><th>Meta</th><th>Atenção</th><th></th></tr></thead><tbody id="targetsTable"></tbody></table></div></article></section>
+
+      <section id="section-arquivos" class="page-section"><div class="page-lead"><div><span class="eyebrow">Arquivos e importação</span><h2>Central DADM</h2><p>Modelos dos indicadores oficiais e exportações reconstruídas sobre a base gerencial atual. Os fatos TALLOS permanecem no banco analítico.</p></div></div><div class="dadm-file-grid"><article class="dadm-file-card featured"><div><span class="eyebrow">Painel completo</span><h3>Excel da Diretoria Administrativa</h3><p>DADM-01, DADM-02, qualidade, matriz, metas, planos de ação e base completa.</p></div><div class="dadm-file-actions"><a class="button white" href="/api/dadm/excel?diretoria=DADM" download>Exportar</a></div></article><article class="dadm-file-card"><div><span class="eyebrow">DADM-01</span><h3>Tempo de resposta</h3><p>Importação mensal por canal, com tempos médios e volumes operacionais.</p></div><div class="dadm-file-actions"><a class="button secondary compact" href="/api/dadm/modelo/DADM-01?diretoria=DADM" download>Modelo</a><button class="button primary compact" data-import="DADM-01" data-write-action>Importar</button></div></article><article class="dadm-file-card"><div><span class="eyebrow">DADM-02</span><h3>Satisfação</h3><p>Importação mensal da pesquisa pós-atendimento, preservando a amostra.</p></div><div class="dadm-file-actions"><a class="button secondary compact" href="/api/dadm/modelo/DADM-02?diretoria=DADM" download>Modelo</a><button class="button primary compact" data-import="DADM-02" data-write-action>Importar</button></div></article></div></section>
+
+      <section id="section-governanca" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">Qualidade e governança</span><h2>Contrato de dados da DADM</h2><p>DADM-01 e DADM-02 permanecem indicadores oficiais; o TALLOS Analytics Center funciona como camada operacional detalhada e auditável.</p></div></div>
+        <div id="governanceCards" class="metric-grid executive dadm-card-grid"></div>
+        <div class="dashboard-grid two-columns executive-grid"><article class="panel"><div class="panel-heading"><div><span class="eyebrow">Regras</span><h3>Controles automáticos</h3></div></div><div class="governance-list"><p><strong>DADM-01:</strong> solicitações no prazo não podem superar recebidas; reabertas não podem superar concluídas.</p><p><strong>DADM-02:</strong> a leitura TALLOS usa avaliações 1–10; S/A, nulos e level=0 não entram na média. O legado manual permanece apenas para compatibilidade.</p><p><strong>Amostra:</strong> sempre exibir quantidade de avaliações e cobertura junto da média mensal.</p><p><strong>TALLOS:</strong> protocolo, atendimento e pessoa são unidades diferentes; fatos não são gravados como ManagementMeasurement bruto.</p><p><strong>Privacidade:</strong> CPF, CNPJ, telefone e nome do cliente não são persistidos na camada analítica.</p></div></article><article class="panel"><div class="panel-heading"><div><span class="eyebrow">Catálogo</span><h3>Indicadores oficiais</h3></div></div><div id="catalogSummary" class="governance-list"></div></article></div>
+        <div class="dadm-section-heading spaced"><div><span class="eyebrow">TALLOS</span><h3>Contrato e mapeamento operacional</h3></div></div>
+        <div id="tallosFieldStatusCards" class="metric-grid executive dadm-tallos-governance-grid"></div>
+        <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Departamentos</span><h3>Tradução dos identificadores TALLOS</h3></div><span class="chart-unit">o identificador original nunca é apagado</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Identificador TALLOS</th><th>Nome exibido</th><th>Ativo</th><th>Observação</th><th></th></tr></thead><tbody id="tallosDepartmentMapTable"></tbody></table></div></article>
+      </section>
+    </main>
+  </div>
+
+  <div id="dadmModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card dadm-modal-card"><div class="modal-header"><div><span class="eyebrow" id="modalEyebrow">DADM</span><h2 id="modalTitle">Novo registro</h2><p id="modalSubtitle"></p></div><button class="icon-button" data-close-modal="dadmModal" aria-label="Fechar">×</button></div><div id="modalBody"></div></div></div>
+  <div id="importModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card import-card"><div class="modal-header"><div><span class="eyebrow">IMPORTAÇÃO</span><h2 id="importTitle">Importar DADM</h2></div><button class="icon-button" data-close-modal="importModal" aria-label="Fechar">×</button></div><p>O arquivo inteiro é validado antes da gravação. Se houver qualquer inconsistência, nenhuma linha será importada.</p><input id="importFile" type="file" accept=".xlsx,.xlsm"><div id="importErrors" class="form-errors hidden"></div><div class="form-actions"><button class="button secondary" data-close-modal="importModal">Cancelar</button><button class="button primary" id="confirmImport">Importar arquivo</button></div></div></div>
+
+  <script src="/static/js/data-univc-auth.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/data-univc-identity.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/data-univc-ui.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/ui-v2.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dadm.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dadm_tallos.js?v={{ app_version }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+/* Data UNIVC Product Foundation v0.8.22.0
+   Shared visual tokens and interaction primitives. Feature pages remain responsible
+   for their information architecture; this file provides the common product language. */
+:root{
+  --du-canvas:#f3f6f4;
+  --du-surface:#ffffff;
+  --du-surface-muted:#f7faf8;
+  --du-surface-strong:#edf5f0;
+  --du-brand-950:#082f23;
+  --du-brand-900:#0b3d2d;
+  --du-brand-800:#0e5940;
+  --du-brand-700:#13704f;
+  --du-brand-600:#1b825d;
+  --du-brand-100:#dceee5;
+  --du-brand-50:#f0f8f4;
+  --du-accent:#a9cb55;
+  --du-ink-950:#14211b;
+  --du-ink-800:#314139;
+  --du-ink-700:#46574f;
+  --du-ink-600:#66756e;
+  --du-ink-500:#85918b;
+  --du-line:#dce5e0;
+  --du-line-strong:#cbd8d1;
+  --du-success:#18714f;
+  --du-warning:#9a650b;
+  --du-danger:#a43f3f;
+  --du-info:#34658f;
+  --du-radius-sm:8px;
+  --du-radius:12px;
+  --du-radius-lg:18px;
+  --du-shadow-1:0 1px 2px rgba(10,48,34,.04),0 8px 24px rgba(10,48,34,.035);
+  --du-shadow-2:0 8px 30px rgba(7,47,34,.09);
+  --du-ease:cubic-bezier(.2,.7,.2,1);
+}
+
+/* Shared form language */
+.du-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.du-field-label{color:var(--du-ink-600);font-size:8px;font-weight:820;letter-spacing:.09em;text-transform:uppercase}
+.du-control{width:100%;min-height:40px;padding:0 11px;border:1px solid var(--du-line-strong);border-radius:10px;background:var(--du-surface);color:var(--du-ink-800);font:inherit;outline:0;transition:border-color .16s var(--du-ease),box-shadow .16s var(--du-ease),background .16s var(--du-ease)}
+.du-control:hover{border-color:#b7c9c0}
+.du-control:focus,.du-control:focus-visible{border-color:var(--du-brand-600);box-shadow:0 0 0 3px rgba(27,130,93,.10);outline:0}
+.du-control:disabled{background:#f0f3f1;color:var(--du-ink-500);cursor:not-allowed}
+.du-control-help{color:var(--du-ink-500);font-size:8.5px;line-height:1.45}
+.du-password{position:relative}
+.du-password .du-control{padding-right:42px}
+.du-password-toggle{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:31px;height:31px;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:transparent;color:var(--du-ink-600)}
+.du-password-toggle:hover{background:var(--du-brand-50);color:var(--du-brand-800)}
+.du-password-toggle svg{width:16px;height:16px}
+
+/* Long-running integrations: one product-wide language for TALLOS, SEI and imports. */
+.du-operation-progress{padding:14px 15px;border:1px solid var(--du-line);border-radius:12px;background:linear-gradient(180deg,#fff,var(--du-surface-muted));box-shadow:var(--du-shadow-1);color:var(--du-ink-800)}
+.du-operation-progress.hidden{display:none!important}
+.du-operation-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.du-operation-copy{min-width:0}
+.du-operation-copy strong{display:block;color:var(--du-ink-950);font-size:11px;line-height:1.25}
+.du-operation-copy span{display:block;margin-top:3px;color:var(--du-ink-600);font-size:9px;line-height:1.45}
+.du-operation-percent{flex:0 0 auto;color:var(--du-brand-800);font-size:12px;font-weight:820;font-variant-numeric:tabular-nums}
+.du-progress-track{position:relative;height:7px;overflow:hidden;border-radius:999px;background:#dfe8e3}
+.du-progress-fill{height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--du-brand-700),#39a176);transition:width .35s var(--du-ease)}
+.du-operation-progress.is-indeterminate .du-progress-fill{width:34%;animation:du-progress-indeterminate 1.15s infinite var(--du-ease)}
+@keyframes du-progress-indeterminate{0%{transform:translateX(-120%)}100%{transform:translateX(330%)}}
+.du-operation-meta{display:flex;gap:8px 18px;flex-wrap:wrap;margin-top:10px;color:var(--du-ink-600);font-size:8.5px}
+.du-operation-meta strong{color:var(--du-ink-950);font-weight:760}
+.du-operation-stage{display:inline-flex;align-items:center;gap:6px;margin-top:8px;color:var(--du-brand-800);font-size:8.5px;font-weight:720}
+.du-operation-stage::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--du-brand-600);box-shadow:0 0 0 3px rgba(27,130,93,.10)}
+.du-operation-progress.is-error{border-color:#eccaca;background:#fff8f8}.du-operation-progress.is-error .du-operation-stage{color:var(--du-danger)}.du-operation-progress.is-error .du-operation-stage::before{background:var(--du-danger)}
+.du-operation-progress.is-success{border-color:#bfddcf;background:#f5fbf7}.du-operation-progress.is-success .du-progress-fill{width:100%;background:var(--du-success)}
+
+/* Shared status pill */
+.du-status{display:inline-flex;align-items:center;gap:6px;min-height:27px;padding:0 9px;border:1px solid var(--du-line);border-radius:999px;background:rgba(255,255,255,.72);color:var(--du-ink-600);font-size:8.5px;font-weight:690}
+.du-status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--du-success);box-shadow:0 0 0 3px rgba(24,113,79,.09)}
+.du-status.warning::before{background:#d49b2f}.du-status.error::before{background:#ca4a4a}
+
+/* Shared icon rules */
+.du-icon{display:inline-grid;place-items:center;flex:0 0 auto;color:currentColor}
+.du-icon svg{display:block;width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* Product motion: subtle by default, never required for comprehension. */
+.du-enter{animation:du-enter .2s var(--du-ease)}
+@keyframes du-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.du-enter,.du-operation-progress.is-indeterminate .du-progress-fill{animation:none!important}.du-progress-fill{transition:none!important}}

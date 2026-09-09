@@ -1,0 +1,3 @@
+Data UNIVC v0.9.6.9
+Reitoria Administration & Directorate Visibility
+Schema: 33 (sem migration nova)
