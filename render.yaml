@@ -11,6 +11,8 @@ services:
         value: 3.12.7
       - key: ENVIRONMENT
         value: production
+      - key: REQUIRE_SCHEMA_VERSION
+        value: "true"
       - key: AUTH_DISABLED
         value: "false"
       - key: COOKIE_SECURE
@@ -45,8 +47,10 @@ services:
         sync: false
       - key: SUPABASE_PUBLISHABLE_KEY
         sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
+      - key: SUPABASE_SECRET_KEY
         sync: false
+      - key: DATA_UNIVC_JWT_SECRET
+        generateValue: true
       - key: SUPABASE_AVATAR_BUCKET
         value: data-univc-avatars
       - key: HIDDEN_DIRECTORATE_CODES

@@ -20,27 +20,56 @@ class IdentityAdminError(Exception):
 
 
 def _config() -> tuple[str, str]:
+    """Return the Supabase project URL and the server-side admin API key.
+
+    New Supabase projects should use ``SUPABASE_SECRET_KEY=sb_secret_...``.
+    ``SUPABASE_SERVICE_ROLE_KEY`` is kept as a compatibility fallback for
+    deployments that still use the legacy service_role JWT.  A temporarily
+    misnamed ``sb_secret_...`` value in the legacy variable also remains safe:
+    header construction is based on the key format, not on the env var name.
+    """
     url = os.getenv("SUPABASE_URL", "").rstrip("/")
-    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    key = (
+        os.getenv("SUPABASE_SECRET_KEY", "").strip()
+        or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    )
     missing = []
     if not url:
         missing.append("SUPABASE_URL")
     if not key:
-        missing.append("SUPABASE_SERVICE_ROLE_KEY")
+        missing.append("SUPABASE_SECRET_KEY")
     if missing:
+        suffix = " (ou SUPABASE_SERVICE_ROLE_KEY legado)" if "SUPABASE_SECRET_KEY" in missing else ""
         raise IdentityAdminError(
             503,
-            "Administração de identidades indisponível. Configure no backend: " + ", ".join(missing) + ".",
+            "Administração de identidades indisponível. Configure no backend: "
+            + ", ".join(missing)
+            + suffix
+            + ".",
         )
     return url, key
 
 
+def _is_legacy_jwt_key(key: str) -> bool:
+    """Legacy anon/service_role keys are JWTs; new sb_* API keys are not."""
+    value = str(key or "").strip()
+    return value.startswith("eyJ") and value.count(".") == 2
+
+
 def _headers(key: str, *, content_type: str = "application/json") -> dict[str, str]:
-    return {
+    """Build Supabase API headers without treating sb_secret_* as a JWT.
+
+    Supabase publishable/secret API keys belong in ``apikey``.  Only the
+    legacy JWT-shaped service_role key is also sent as a Bearer token for
+    backwards compatibility with older projects.
+    """
+    headers = {
         "apikey": key,
-        "Authorization": f"Bearer {key}",
         "Content-Type": content_type,
     }
+    if _is_legacy_jwt_key(key):
+        headers["Authorization"] = f"Bearer {key}"
+    return headers
 
 
 def _message(response: httpx.Response, fallback: str) -> str:
@@ -59,7 +88,14 @@ def _message(response: httpx.Response, fallback: str) -> str:
     return fallback
 
 
-def _request(method: str, path: str, *, json: dict | None = None, content: bytes | None = None, content_type: str = "application/json") -> httpx.Response:
+def _request(
+    method: str,
+    path: str,
+    *,
+    json: dict | None = None,
+    content: bytes | None = None,
+    content_type: str = "application/json",
+) -> httpx.Response:
     url, key = _config()
     try:
         with httpx.Client(timeout=20) as client:
