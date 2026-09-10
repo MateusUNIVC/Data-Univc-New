@@ -1,3 +1,3 @@
-Data UNIVC v0.9.6.9
-Reitoria Administration & Directorate Visibility
+Data UNIVC v0.9.6.10
+Supabase Secret Key & Production Provisioning
 Schema: 33 (sem migration nova)

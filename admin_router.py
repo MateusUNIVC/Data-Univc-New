@@ -80,6 +80,32 @@ def _identity_admin_error(exc: IdentityAdminError) -> None:
     raise HTTPException(exc.status_code, exc.message) from exc
 
 
+def _cleanup_rolled_back_identity_rows(db: Session, provider_id: str) -> None:
+    """Remove rows left by the auth.users trigger after a rolled-back provision.
+
+    Supabase Auth and the application database commit in separate transactions.
+    If Auth successfully creates a user, database/033 may already have created
+    ``app_users`` before a later local authorization step fails.  When the new
+    Auth identity is deleted during rollback, ``profiles`` cascades from
+    ``auth.users`` but ``app_users`` deliberately has no FK to auth.users (local
+    test identities also live there).  Clean only the exact SUPABASE identity
+    that was created by this request.
+    """
+    try:
+        target = db.get(AppUser, provider_id)
+        if target and (
+            str(target.auth_provider or "").upper() == "SUPABASE"
+            and str(target.auth_provider_id or target.id) == str(provider_id)
+        ):
+            db.delete(target)
+        profile = db.get(Profile, provider_id)
+        if profile:
+            db.delete(profile)
+        db.commit()
+    except Exception:
+        db.rollback()
+
+
 def _catalog(db: Session) -> dict[str, Directorate]:
     visible_codes = visible_operating_directorate_codes()
     rows = db.scalars(
@@ -400,20 +426,36 @@ def provision_user(
                 db.add(profile)
 
         target = db.get(AppUser, provider_id)
+        created_app_user = False
         if target:
-            raise HTTPException(409, "A identidade já está vinculada a outro usuário do Data UNIVC.")
-        target = AppUser(
-            id=provider_id,
-            auth_provider="SUPABASE",
-            auth_provider_id=provider_id,
-            email=email,
-            name=payload.name.strip(),
-            global_role=ROLE_DIRECTORATE,
-            active=True,
-            permission_version=1,
-        )
-        db.add(target)
-        db.flush()
+            # database/033 registers an AFTER INSERT trigger on auth.users that
+            # creates profiles + app_users with the same UUID.  A successful
+            # Supabase Admin create therefore commonly arrives here with the
+            # AppUser already materialized.  Treat that row as the expected
+            # synchronization result instead of reporting a false conflict.
+            provider_matches = (
+                str(target.auth_provider or "SUPABASE").upper() == "SUPABASE"
+                and str(target.auth_provider_id or target.id) == provider_id
+            )
+            target_email = str(target.email or "").strip().casefold()
+            if not provider_matches or (target_email and target_email != email):
+                raise HTTPException(409, "A identidade já está vinculada a outro usuário do Data UNIVC.")
+        else:
+            # Compatibility path for databases without the synchronization
+            # trigger (for example isolated tests or an older installation).
+            target = AppUser(
+                id=provider_id,
+                auth_provider="SUPABASE",
+                auth_provider_id=provider_id,
+                email=email,
+                name=payload.name.strip(),
+                global_role=ROLE_DIRECTORATE,
+                active=True,
+                permission_version=1,
+            )
+            db.add(target)
+            db.flush()
+            created_app_user = True
         result, _, _ = _apply_user_update(db, target=target, payload=payload, actor=ctx, email=email)
         log_auth_event(
             db,
@@ -422,7 +464,11 @@ def provision_user(
             actor_user_id=ctx.user_id,
             target_user_id=target.id,
             email=target.email,
-            details={"created_auth_identity": created_identity, "created_app_user": True},
+            details={
+                "created_auth_identity": created_identity,
+                "created_app_user": created_app_user,
+                "trigger_materialized_app_user": bool(created_identity and not created_app_user),
+            },
             commit=True,
         )
         return result
@@ -432,10 +478,14 @@ def provision_user(
     except Exception:
         db.rollback()
         if created_identity and provider_id:
+            identity_deleted = False
             try:
                 delete_identity(provider_id)
+                identity_deleted = True
             except IdentityAdminError:
                 pass
+            if identity_deleted:
+                _cleanup_rolled_back_identity_rows(db, provider_id)
         raise
 
 

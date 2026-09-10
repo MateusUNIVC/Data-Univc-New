@@ -1,3 +1,26 @@
+## v0.9.6.10 — Supabase Secret Key & Production Provisioning
+
+### Supabase atual
+- `SUPABASE_SECRET_KEY=sb_secret_...` passa a ser a credencial administrativa recomendada para Auth Admin e Storage;
+- chaves `sb_secret_...` são enviadas em `apikey`, sem `Authorization: Bearer`;
+- `SUPABASE_SERVICE_ROLE_KEY` permanece como fallback para JWT legado e não precisa ser configurada em projetos novos.
+
+### Provisionamento pela Reitoria
+- corrige o conflito entre o fluxo `/api/admin/users` e o trigger `on_auth_user_created` da migration 033;
+- quando Supabase Auth cria a identidade e o trigger já materializa `profiles/app_users`, a Reitoria reaproveita o mesmo UUID e aplica nome, papel e grants;
+- instalações sem o trigger continuam usando o caminho de compatibilidade que cria `AppUser` pelo backend;
+- rollback de identidade recém-criada remove a linha `app_users` específica caso o Auth precise ser desfeito.
+
+### DADM
+- preserva `dadm@ivc.br` com DADM/EDIT e leitura limitada a Financeiro, Secretaria Acadêmica, Mestrado, Negociação, Prouni/Nbolsa/Fies e Estágio;
+- preserva `rodrigo.ghirardelli@ivc.br` com DADM/EDIT e leitura integral de todos os departamentos da DADM.
+
+### Deploy
+- `render.yaml` usa `SUPABASE_SECRET_KEY` como segredo server-side;
+- `REQUIRE_SCHEMA_VERSION=true` é explícito;
+- `DATA_UNIVC_JWT_SECRET` é gerado pelo Render no primeiro Blueprint;
+- schema permanece `33`; nenhuma migration `034`.
+
 ## v0.9.6.9 — Reitoria Administration & Directorate Visibility
 
 ### Reitoria

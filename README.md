@@ -1,3 +1,14 @@
+## v0.9.6.10 — Supabase Secret Key & Production Provisioning
+
+- Atualiza a administração server-side para projetos Supabase novos com `SUPABASE_SECRET_KEY=sb_secret_...`; novas API keys ficam somente no header `apikey` e não são tratadas como JWT.
+- Mantém fallback compatível com `SUPABASE_SERVICE_ROLE_KEY` legado (`eyJ...`) e aceita com segurança um `sb_secret_...` temporariamente colocado no nome legado.
+- Corrige o provisionamento pela Reitoria quando o trigger da migration 033 já cria `profiles` e `app_users`: a linha sincronizada passa a ser reutilizada, em vez de gerar falso conflito após o Auth criar a identidade.
+- Mantém `dadm@ivc.br` com DADM/EDIT e leitura restrita aos seis departamentos governados; `rodrigo.ghirardelli@ivc.br` permanece DADM/EDIT com leitura integral de todos os departamentos da DADM.
+- `render.yaml` passa a exigir `SUPABASE_SECRET_KEY`, `DATABASE_URL`, `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`, gera `DATA_UNIVC_JWT_SECRET` no primeiro Blueprint e exige schema 33 em produção.
+- Sem migration nova: `SCHEMA_VERSION = 33` e `033_identity_access_security_rebase.sql` permanecem canônicos.
+
+Guia de produção: `docs/SUPABASE_RENDER_PRODUCTION_v09610.md`.
+
 ## v0.9.6.9 — Reitoria Administration & Directorate Visibility
 
 - Cria `/reitoria` como workspace administrativo próprio da Reitoria, sem depender de entrar em DTNH/DCS.

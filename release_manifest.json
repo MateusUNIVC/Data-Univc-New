@@ -1,10 +1,10 @@
 {
   "artifact_profile": "production",
-  "created_at_utc": "2026-09-09T19:01:02.556422+00:00",
-  "app_version": "0.9.6.9",
-  "build_fingerprint": "7df207b56b10",
+  "created_at_utc": "2026-09-10T12:20:03.107685+00:00",
+  "app_version": "0.9.6.10",
+  "build_fingerprint": "b2461aabf49a",
   "schema_expected": 33,
-  "file_count": 207,
+  "file_count": 208,
   "files": [
     {
       "path": ".dockerignore",
@@ -13,13 +13,13 @@
     },
     {
       "path": ".env.example",
-      "bytes": 3110,
-      "sha256": "e92bc0f6029d59e9d2b66d79a40768828bf5550853dc591c976c464a3f1e1fd2"
+      "bytes": 3287,
+      "sha256": "308d95dbcd97c8d088c159d219e77c76f36ed5d066fe9d34e4d2675e93370afd"
     },
     {
       "path": "BUILD_INFO.txt",
-      "bytes": 101,
-      "sha256": "067a47f2409c938793b8c22c41599a0cd140b8f6065d5d142cc800cf5d219453"
+      "bytes": 99,
+      "sha256": "559e58fe0bff4978a0c788fd64af63d4ea6e1c1d8a4e6811602bdac1ce3dffd9"
     },
     {
       "path": "Dockerfile",
@@ -28,8 +28,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 43492,
-      "sha256": "f08ecde9fda199aec7a8265324bed31bc82eadba34cc9d4f86ade47e8a699ddb"
+      "bytes": 44706,
+      "sha256": "be3f5edb9518f7d55c9d8f85f86e00fee1387bc79d9020cea28023ccf971eed6"
     },
     {
       "path": "academic_analytics.py",
@@ -63,8 +63,8 @@
     },
     {
       "path": "admin_router.py",
-      "bytes": 25594,
-      "sha256": "8fed81feec9ed099696dc81dff7d01b8c3853b1950ba929de4ded20b03b05b5d"
+      "bytes": 28060,
+      "sha256": "cd92786b00fbbcb516eb068530a89e9175361f6f52b8233236fc78096ce982e8"
     },
     {
       "path": "analytics.py",
@@ -163,8 +163,8 @@
     },
     {
       "path": "auth/identity_admin.py",
-      "bytes": 7351,
-      "sha256": "cb9b7211537828b881e742e24f5930b40e42930b38d1007e0b0cce115a7cd90f"
+      "bytes": 8621,
+      "sha256": "6ed2266523339aa51003e2e74763e318a2ccc751b520a4b7d3432869f598b99b"
     },
     {
       "path": "auth/identity_provider.py",
@@ -543,8 +543,8 @@
     },
     {
       "path": "docs/CHANGELOG.md",
-      "bytes": 41679,
-      "sha256": "a34f629c00e9e25489e608d8d1448ebca20228ea2c20515e365ac988af08aced"
+      "bytes": 43118,
+      "sha256": "a93547307657923caf5cc47d6689a22268723a05374d019b8495978d434c1582"
     },
     {
       "path": "docs/DADM_SHARED_INGESTION_SCOPED_VISIBILITY_v0964.md",
@@ -598,8 +598,8 @@
     },
     {
       "path": "docs/DEPLOY.md",
-      "bytes": 20614,
-      "sha256": "32c0d505d832c073835f6c86493375e054dc5bfe20618353b72bc8fde89fe2b3"
+      "bytes": 23032,
+      "sha256": "45e0345cc9b71d48de7c3ed3d70329299a111a6817edce37271bdb7d0e985057"
     },
     {
       "path": "docs/DM_DOMAIN_SIMPLIFICATION_v08290.md",
@@ -660,6 +660,11 @@
       "path": "docs/REITORIA_ADMIN_VISIBILITY_v0969.md",
       "bytes": 4907,
       "sha256": "5a415c4d07851af6dd3f13a63601d29303b3e236712447c056aecd8b4f87f4fb"
+    },
+    {
+      "path": "docs/SUPABASE_RENDER_PRODUCTION_v09610.md",
+      "bytes": 3651,
+      "sha256": "2b9346c57e30e43db7b338e82872d9c7d52a53a44bc78ffffaeed9c3cda1c540"
     },
     {
       "path": "dpe_analytics.py",
@@ -738,13 +743,13 @@
     },
     {
       "path": "release_info.py",
-      "bytes": 222,
-      "sha256": "7722beb7886f94a6012d787b17cd7a034c4f1121418bb22b3d8a02535c245741"
+      "bytes": 220,
+      "sha256": "5e7894feabe4b85284ce0f8d029f37a730739604cf2f6c2fcdd06375152a3e58"
     },
     {
       "path": "render.yaml",
-      "bytes": 1451,
-      "sha256": "8c05dd1ee3f1b3607ccf2c2e8e5243f6a8b6fb51514c4043fafcd617b604ca61"
+      "bytes": 1566,
+      "sha256": "6cc2db92ed7735ba23a36bc2a978d45fc94e7d4fad85d93f9684ec8459173001"
     },
     {
       "path": "repository.py",

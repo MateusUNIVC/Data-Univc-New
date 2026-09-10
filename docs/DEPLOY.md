@@ -1,3 +1,55 @@
+## v0.9.6.10 — Supabase Secret Key & Production Provisioning
+
+Sem migration nova; schema permanece `33` com `033_identity_access_security_rebase.sql`.
+
+### Variáveis de produção
+
+Para um projeto Supabase novo, configure no backend:
+
+```text
+DATABASE_URL=<Session Pooler PostgreSQL + psycopg>
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
+SUPABASE_AVATAR_BUCKET=data-univc-avatars
+HIDDEN_DIRECTORATE_CODES=DPE
+```
+
+`SUPABASE_SECRET_KEY` é server-side e nunca pode aparecer em HTML/JavaScript. A variável legada `SUPABASE_SERVICE_ROLE_KEY` é aceita somente como fallback de compatibilidade.
+
+O `render.yaml` exige schema 33, mantém `COOKIE_SECURE=true`, gera `DATA_UNIVC_JWT_SECRET` uma vez no primeiro Blueprint e pede os quatro segredos externos com `sync: false`.
+
+### Bootstrap da primeira Reitoria
+
+1. Crie a primeira identidade em Supabase > Authentication > Users com e-mail/senha e confirmação ativa.
+2. A migration 033 deve materializar automaticamente `profiles` e `app_users` com o mesmo UUID.
+3. Promova somente essa identidade no SQL Editor:
+
+```sql
+update public.app_users
+set global_role = 'REITORIA', active = true, name = 'Reitoria UNIVC'
+where lower(email) = lower('SEU_EMAIL_DA_REITORIA');
+
+update public.profiles
+set role = 'admin', full_name = 'Reitoria UNIVC', directorate_id = null
+where lower(email) = lower('SEU_EMAIL_DA_REITORIA');
+```
+
+Depois do primeiro login em `/reitoria`, os demais usuários devem ser criados pela própria interface. Para `dadm@ivc.br` e `rodrigo.ghirardelli@ivc.br`, conceda DADM / EDIT e defina DADM como principal. O primeiro recebe automaticamente o escopo limitado de departamentos; Rodrigo recebe leitura integral da DADM.
+
+### Homologação pós-deploy
+
+1. confirme `/api/health/live` com versão `0.9.6.10`;
+2. confirme `/api/health/ready` com database `ok` e schema expected/current `33`;
+3. entre com a Reitoria e crie `dadm@ivc.br` pela interface;
+4. entre como DADM e confirme `data_scopes.DADM.full=false` em `/api/auth/me`;
+5. crie `rodrigo.ghirardelli@ivc.br` pela interface;
+6. entre como Rodrigo e confirme `data_scopes.DADM.full=true`;
+7. valide criação, troca de senha/e-mail e avatar de um usuário de teste;
+8. confirme que DPE continua indisponível enquanto `HIDDEN_DIRECTORATE_CODES=DPE`.
+
+Detalhes completos: `docs/SUPABASE_RENDER_PRODUCTION_v09610.md`.
+
 ## v0.9.6.9 — Reitoria Administration & Directorate Visibility
 
 Sem migration nova; schema permanece `33` com `033_identity_access_security_rebase.sql`.
