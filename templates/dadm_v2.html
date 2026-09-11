@@ -119,7 +119,7 @@
           <div class="v2-kpi-strip" id="v2OperationKpis"></div>
           <div class="v2-secondary-stats" id="v2OperationSecondary"></div>
 
-          <article class="v2-panel v2-panel-large">
+          <article class="v2-panel v2-panel-large" id="v2VolumeEvolutionPanel">
             <div class="v2-panel-head"><div><span class="v2-kicker">Operação</span><h3>Volume ao longo do período</h3></div><span class="v2-unit">atendimentos por mês</span></div>
             <div class="v2-chart" id="v2VolumeChart"></div>
           </article>
@@ -136,7 +136,7 @@
 
           <article class="v2-section-card experience">
             <div class="v2-section-card-head"><div><span class="v2-kicker">DADM-02</span><h3>Experiência do atendimento</h3><p>Avaliações válidas de 1 a 10. Atendimentos sem avaliação não entram na média.</p></div></div>
-            <div class="v2-experience-layout"><div><div class="v2-rating-hero" id="v2RatingHero"></div><div class="v2-rating-bars" id="v2RatingDistribution"></div></div><div class="v2-chart" id="v2RatingTimeline"></div></div>
+            <div class="v2-experience-layout" id="v2OverviewExperienceLayout"><div><div class="v2-rating-hero" id="v2RatingHero"></div><div class="v2-rating-bars" id="v2RatingDistribution"></div></div><div class="v2-chart" id="v2RatingTimeline"></div></div>
           </article>
         </section>
 
@@ -157,9 +157,9 @@
         <section class="v2-view" id="view-experience" data-view-section="experience">
           <div class="v2-page-lead"><div><span class="v2-kicker">DADM-02</span><h2>Experiência do atendimento</h2><p>Entenda a nota, a quantidade de respostas, a cobertura e onde a experiência muda.</p></div></div>
           <div class="v2-experience-summary" id="v2ExperienceSummary"></div>
-          <div class="v2-grid-2">
+          <div class="v2-grid-2" id="v2ExperienceCharts">
             <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Distribuição</span><h3>Avaliações de 1 a 10</h3></div></div><div class="v2-rating-bars" id="v2ExperienceDistribution"></div></article>
-            <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Evolução</span><h3>Média mensal e amostra</h3></div></div><div class="v2-chart" id="v2ExperienceTimeline"></div></article>
+            <article class="v2-panel" id="v2ExperienceEvolutionPanel"><div class="v2-panel-head"><div><span class="v2-kicker">Evolução</span><h3>Média mensal e amostra</h3></div></div><div class="v2-chart" id="v2ExperienceTimeline"></div></article>
           </div>
           <article class="v2-panel">
             <div class="v2-panel-head responsive"><div><span class="v2-kicker">Onde muda?</span><h3>Analisar experiência por dimensão</h3></div><div class="v2-segmented compact" id="v2ExperienceDimension"><button type="button" class="active" data-dimension="employee">Operador</button><button type="button" data-dimension="department">Departamento</button><button type="button" data-dimension="channel">Canal</button><button type="button" data-dimension="tabulation">Tabulação</button></div></div>

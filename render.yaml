@@ -55,3 +55,17 @@ services:
         value: data-univc-avatars
       - key: HIDDEN_DIRECTORATE_CODES
         value: DPE
+      # TALLOS/RD Station Conversas - usado pela sincronizacao manual do DADM.
+      # Nao ha Cron Job nesta release. O usuario dispara a sincronizacao pela interface.
+      - key: TALLOS_API_TOKEN
+        sync: false
+      - key: TALLOS_BASE_URL
+        value: https://api.tallos.com.br
+      - key: TALLOS_PAGE_LIMIT
+        value: "49"
+      - key: TALLOS_REQUEST_TIMEOUT
+        value: "60"
+      - key: TALLOS_REQUEST_RETRIES
+        value: "4"
+      - key: TALLOS_CHUNK_DAYS
+        value: "90"

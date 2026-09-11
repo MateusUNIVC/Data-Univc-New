@@ -1,10 +1,10 @@
 {
   "artifact_profile": "production",
-  "created_at_utc": "2026-09-10T12:20:03.107685+00:00",
+  "created_at_utc": "2026-09-11T13:32:22.141052+00:00",
   "app_version": "0.9.6.10",
-  "build_fingerprint": "b2461aabf49a",
+  "build_fingerprint": "fa75bd3e6294",
   "schema_expected": 33,
-  "file_count": 208,
+  "file_count": 211,
   "files": [
     {
       "path": ".dockerignore",
@@ -253,8 +253,8 @@
     },
     {
       "path": "dadm_v2_analytics.py",
-      "bytes": 17930,
-      "sha256": "eb00f75db9b6e12ce4f14bc34c77e21483dfed28e1ee58541ae9859317e33b86"
+      "bytes": 22760,
+      "sha256": "682683ef03506308d63d4845530475d5a2001677ebcea0795ea3b299710c3dea"
     },
     {
       "path": "dadm_v2_management.py",
@@ -268,8 +268,8 @@
     },
     {
       "path": "dadm_v2_router.py",
-      "bytes": 11389,
-      "sha256": "7c57772b323c5602c001c8325d5103b03ddde1ae192a12777be1fe60b90d288a"
+      "bytes": 12691,
+      "sha256": "8518168d65d527cc05c031211528085a6209ce5f9c998eb5ef5ea0fc4bb81778"
     },
     {
       "path": "database/001_init.sql",
@@ -547,6 +547,16 @@
       "sha256": "a93547307657923caf5cc47d6689a22268723a05374d019b8495978d434c1582"
     },
     {
+      "path": "docs/DADM_INDIVIDUAL_EVALUATIONS_PROMPT2.md",
+      "bytes": 2249,
+      "sha256": "eba57d9d8465d9dbb5e85b5bb26c256a4e2c4302581508c9d460b0c8c96530df"
+    },
+    {
+      "path": "docs/DADM_PRODUCTION_NO_CRON_v09610.md",
+      "bytes": 1646,
+      "sha256": "73cf8e41d12518f61c72ffa244b0401a823d86d17cc2d9146540732eee50ffb2"
+    },
+    {
       "path": "docs/DADM_SHARED_INGESTION_SCOPED_VISIBILITY_v0964.md",
       "bytes": 1951,
       "sha256": "2ac283c894f46d340b48e8b969687960fcee7d41bbd226dcc1b3f689bbadb9fb"
@@ -565,6 +575,11 @@
       "path": "docs/DADM_TALLOS_RATING_RECONCILIATION_v08203.md",
       "bytes": 1601,
       "sha256": "a8833f218b4cafb1bf54a047a2d3784bef14b823cc971cbe158d4b6a97f74628"
+    },
+    {
+      "path": "docs/DADM_TEMPORAL_UX_PROMPT3.md",
+      "bytes": 3854,
+      "sha256": "2e2579ab7ae61e64dbfeb44e393284cc5f26ccbe1f6d06a3f7c3df6d7690a67c"
     },
     {
       "path": "docs/DADM_V2_BLUEPRINT_v08210.md",
@@ -748,8 +763,8 @@
     },
     {
       "path": "render.yaml",
-      "bytes": 1566,
-      "sha256": "6cc2db92ed7735ba23a36bc2a978d45fc94e7d4fad85d93f9684ec8459173001"
+      "bytes": 2067,
+      "sha256": "ac2f61bd836d686feb6014435382b38a42bf1e7defe899087dc2598ff31e7a2f"
     },
     {
       "path": "repository.py",
@@ -818,8 +833,8 @@
     },
     {
       "path": "static/css/dadm_v2.css",
-      "bytes": 49528,
-      "sha256": "ae9c680fde9fee8e14280c51401752314ae669d0f823d0b5244d1e3062bb368c"
+      "bytes": 51366,
+      "sha256": "2672235807f8aabc20269e54404c359166c4ff6294bcc332516bf46c919f08cb"
     },
     {
       "path": "static/css/data-univc-foundation.css",
@@ -878,8 +893,8 @@
     },
     {
       "path": "static/js/dadm_v2.js",
-      "bytes": 87234,
-      "sha256": "5c21d8dded165a7b2558f42d124e7f54ede9db49451b09ebac9fb98c033d39d3"
+      "bytes": 94826,
+      "sha256": "751def1759c4601fc2a9183dbf0dbf0f2f3549c9888f45da47afd8bda4c3979f"
     },
     {
       "path": "static/js/dadm_v2_api.js",
@@ -893,8 +908,8 @@
     },
     {
       "path": "static/js/dadm_v2_state.js",
-      "bytes": 4074,
-      "sha256": "b55a7204cb6909114b54ac3c5c136aabd16f1f82c04586c0c86c3357625c483f"
+      "bytes": 4165,
+      "sha256": "ad11f258a6f82137c7ce844072eb9dc42f93e221fd4a38dcc5c38ec99601bca2"
     },
     {
       "path": "static/js/data-univc-auth.js",
@@ -1013,8 +1028,8 @@
     },
     {
       "path": "templates/dadm_v2.html",
-      "bytes": 24083,
-      "sha256": "ab9281661ae721b517f0ec0cb779975fc386b921f6a8d27be7dc7ccb67fd62ab"
+      "bytes": 24199,
+      "sha256": "71a328d4aed67c3d47f47eda0b7dd30b090c7334fe60af4ad3d5e0332964eaf4"
     },
     {
       "path": "templates/dm.html",

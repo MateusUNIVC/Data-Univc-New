@@ -23,8 +23,18 @@ window.DADMV2 = window.DADMV2 || {};
     tme_avg_seconds: { label: 'Tempo médio de espera', format: NS.formatSeconds },
     tma_avg_seconds: { label: 'Tempo médio de atendimento', format: NS.formatSeconds },
     rating_avg: { label: 'Avaliação média', format: NS.formatRating },
-    rating_coverage_pct: { label: 'Cobertura das avaliações', format: NS.formatPct },
   };
+
+  function selectedMonthCount() {
+    const start = NS.monthIndex(state.filters.fromMonth);
+    const end = NS.monthIndex(state.filters.toMonth);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0;
+    return end - start + 1;
+  }
+
+  function hasTemporalEvolution() {
+    return selectedMonthCount() > 1;
+  }
   const prefersReducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
   function showLayer(element) {
@@ -457,12 +467,18 @@ window.DADMV2 = window.DADMV2 || {};
     ].map(([label, value, sub]) => `<article class="v2-kpi"><span>${label}</span><strong>${value}</strong><small>${sub}</small></article>`).join('');
     $('#v2OperationSecondary').innerHTML = `<span>Finalizados <strong>${NS.formatInt(s.finalized)}</strong></span><span>Em aberto <strong>${NS.formatInt(s.open)}</strong></span><span>Taxa de finalização <strong>${NS.formatPct(s.finalization_rate_pct)}</strong></span><span>Operadores ativos <strong>${NS.formatInt(s.active_operators)}</strong></span>`;
 
-    NS.barChart($('#v2VolumeChart'), data.timeline || [], {
-      value: row => row.attendances,
-      label: row => NS.monthLabel(row.period, true).split('/')[0],
-      tooltip: row => `${NS.monthLabel(row.period)} · ${NS.formatInt(row.attendances)} atendimentos · ${NS.formatInt(row.protocols)} protocolos`,
-      ariaLabel: 'Volume mensal de atendimentos',
-    });
+    const showEvolution = hasTemporalEvolution();
+    $('#v2VolumeEvolutionPanel')?.classList.toggle('hidden', !showEvolution);
+    if (showEvolution) {
+      NS.barChart($('#v2VolumeChart'), data.timeline || [], {
+        value: row => row.attendances,
+        label: row => NS.monthLabel(row.period, true).split('/')[0],
+        tooltip: row => `${NS.monthLabel(row.period)} · ${NS.formatInt(row.attendances)} atendimentos · ${NS.formatInt(row.protocols)} protocolos`,
+        ariaLabel: 'Volume mensal de atendimentos',
+      });
+    } else if ($('#v2VolumeChart')) {
+      $('#v2VolumeChart').innerHTML = '';
+    }
 
     $('#v2EfficiencyKpis').innerHTML = [
       ['Tempo Médio de Espera (TME)', NS.formatSeconds(s.tme_avg_seconds), 'média do período', 'tme_avg_seconds', s.tme_avg_seconds],
@@ -474,17 +490,28 @@ window.DADMV2 = window.DADMV2 || {};
       targetReference('tme_avg_seconds', 'TME'),
       targetReference('tma_avg_seconds', 'TMA'),
     ].filter(Boolean);
-    NS.lineChart($('#v2EfficiencyChart'), data.timeline || [], [
-      { key: 'tme_avg_seconds', label: 'Tempo Médio de Espera (TME)', tooltip: row => `${NS.monthLabel(row.period)} · Espera ${NS.formatSeconds(row.tme_avg_seconds)}` },
-      { key: 'tma_avg_seconds', label: 'Tempo Médio de Atendimento (TMA)', tooltip: row => `${NS.monthLabel(row.period)} · Atendimento ${NS.formatSeconds(row.tma_avg_seconds)}` },
-    ], { formatY: NS.formatSeconds, formatX: row => NS.monthLabel(row.period, true).split('/')[0], ariaLabel: 'Evolução dos tempos médios', references: efficiencyReferences });
+    $('#v2EfficiencyChart')?.classList.toggle('hidden', !showEvolution);
+    if (showEvolution) {
+      NS.lineChart($('#v2EfficiencyChart'), data.timeline || [], [
+        { key: 'tme_avg_seconds', label: 'Tempo Médio de Espera (TME)', tooltip: row => `${NS.monthLabel(row.period)} · Espera ${NS.formatSeconds(row.tme_avg_seconds)}` },
+        { key: 'tma_avg_seconds', label: 'Tempo Médio de Atendimento (TMA)', tooltip: row => `${NS.monthLabel(row.period)} · Atendimento ${NS.formatSeconds(row.tma_avg_seconds)}` },
+      ], { formatY: NS.formatSeconds, formatX: row => NS.monthLabel(row.period, true).split('/')[0], ariaLabel: 'Evolução dos tempos médios', references: efficiencyReferences });
+    } else if ($('#v2EfficiencyChart')) {
+      $('#v2EfficiencyChart').innerHTML = '';
+    }
 
     renderRatingHero($('#v2RatingHero'), s);
     NS.ratingBars($('#v2RatingDistribution'), data.ratings || []);
-    const ratingReference = targetReference('rating_avg', 'Avaliação');
-    NS.lineChart($('#v2RatingTimeline'), data.timeline || [], [
-      { key: 'rating_avg', label: 'Avaliação média', tooltip: row => `${NS.monthLabel(row.period)} · ${row.rating_avg == null ? 'sem avaliações' : NS.formatRating(row.rating_avg)} · ${NS.formatInt(row.rating_count)} respostas` },
-    ], { min: 1, max: 10, formatY: value => NS.formatNumber(value, 0), formatX: row => NS.monthLabel(row.period, true).split('/')[0], ariaLabel: 'Avaliação média mensal', references: ratingReference ? [ratingReference] : [] });
+    $('#v2OverviewExperienceLayout')?.classList.toggle('single-period', !showEvolution);
+    $('#v2RatingTimeline')?.classList.toggle('hidden', !showEvolution);
+    if (showEvolution) {
+      const ratingReference = targetReference('rating_avg', 'Avaliação');
+      NS.lineChart($('#v2RatingTimeline'), data.timeline || [], [
+        { key: 'rating_avg', label: 'Avaliação média', tooltip: row => `${NS.monthLabel(row.period)} · ${row.rating_avg == null ? 'sem avaliações' : NS.formatRating(row.rating_avg)} · ${NS.formatInt(row.rating_count)} respostas` },
+      ], { min: 1, max: 10, formatY: value => NS.formatNumber(value, 0), formatX: row => NS.monthLabel(row.period, true).split('/')[0], ariaLabel: 'Avaliação média mensal', references: ratingReference ? [ratingReference] : [] });
+    } else if ($('#v2RatingTimeline')) {
+      $('#v2RatingTimeline').innerHTML = '';
+    }
   }
 
   function renderRatingHero(container, summary) {
@@ -550,6 +577,7 @@ window.DADMV2 = window.DADMV2 || {};
   async function openProfile(kind, id, updateUrl = true) {
     state.entity.kind = kind;
     state.entity.profileId = id;
+    state.entity.evaluations = { data: null, page: 1, pageSize: 20, order: 'newest', loading: false };
     if (updateUrl) NS.syncUrl();
     setLoading(true);
     try {
@@ -572,7 +600,10 @@ window.DADMV2 = window.DADMV2 || {};
     const e = profile.entity || {};
     const kindLabel = state.entity.kind === 'employee' ? 'Operadores' : 'Departamentos';
     const compositionTitle = profile.composition_type === 'employee' ? 'Equipe no período' : 'Departamentos no período';
+    const showEvolution = hasTemporalEvolution();
     const timelineCards = (profile.timeline || []).map(row => `<div class="v2-month-card"><span>${NS.monthLabel(row.period)}</span><strong>${row.rating_avg == null ? '—' : NS.formatNumber(row.rating_avg, 2) + ' / 10'}</strong><small>${NS.formatInt(row.rating_count)} avaliações · ${NS.formatInt(row.attendances)} atendimentos</small></div>`).join('');
+    const evolutionPanel = showEvolution ? `<article class="v2-panel"><div class="v2-panel-head responsive"><div><span class="v2-kicker">Evolução</span><h3>${NS.escapeHtml(e.name || '')} ao longo dos meses</h3></div><select id="v2ProfileMetric"><option value="attendances">Atendimentos</option><option value="tme_avg_seconds">Tempo médio de espera</option><option value="tma_avg_seconds">Tempo médio de atendimento</option><option value="rating_avg" selected>Avaliação média</option></select></div><div class="v2-chart" id="v2ProfileChart"></div></article>` : '';
+    const monthlyPanel = showEvolution ? `<article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Avaliações por mês</span><h3>Média mensal e quantidade de respostas</h3></div><span class="v2-unit">mês sem avaliação = —</span></div><div class="v2-month-table">${timelineCards || '<div class="v2-empty">Sem meses no recorte.</div>'}</div></article>` : '';
     root.innerHTML = `
       <div class="v2-profile-head"><button type="button" class="v2-profile-back" id="v2ProfileBack" aria-label="Voltar">←</button><div><span class="v2-kicker">${kindLabel}</span><h2>${NS.escapeHtml(e.name || e.id)}</h2><p>${NS.periodLabel(state.filters.fromMonth, state.filters.toMonth)}</p></div><button type="button" class="v2-btn v2-btn-secondary v2-profile-action" id="v2AddProfileCompare">Adicionar à comparação</button></div>
       <div class="v2-profile-kpis">
@@ -582,17 +613,22 @@ window.DADMV2 = window.DADMV2 || {};
         ${profileKpi('Avaliação média', s.rating_avg == null ? '—' : NS.formatNumber(s.rating_avg, 2) + ' / 10', `${NS.formatInt(s.rating_count)} avaliações válidas`)}
         ${profileKpi('Cobertura', NS.formatPct(s.rating_coverage_pct), `${NS.formatInt(s.rating_missing)} sem avaliação`)}
       </div>
-      <div class="v2-profile-grid">
-        <article class="v2-panel"><div class="v2-panel-head responsive"><div><span class="v2-kicker">Evolução</span><h3>${NS.escapeHtml(e.name || '')} ao longo do tempo</h3></div><select id="v2ProfileMetric"><option value="attendances">Atendimentos</option><option value="tme_avg_seconds">Tempo médio de espera</option><option value="tma_avg_seconds">Tempo médio de atendimento</option><option value="rating_avg" selected>Avaliação média</option><option value="rating_coverage_pct">Cobertura das avaliações</option></select></div><div class="v2-chart" id="v2ProfileChart"></div></article>
+      <div class="v2-profile-grid ${showEvolution ? '' : 'single-period'}">
+        ${evolutionPanel}
         <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Contexto</span><h3>${compositionTitle}</h3></div></div><div class="v2-bars-large" id="v2ProfileComposition"></div></article>
       </div>
-      <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Avaliações por mês</span><h3>Média mensal e quantidade de respostas</h3></div><span class="v2-unit">mês sem avaliação = —</span></div><div class="v2-month-table">${timelineCards || '<div class="v2-empty">Sem meses no recorte.</div>'}</div></article>
+      <article class="v2-panel" id="v2ProfileEvaluationsPanel">
+        <div class="v2-panel-head responsive"><div><span class="v2-kicker">Avaliações individuais</span><h3>Atendimentos avaliados no período</h3><p>Consulte cada sessão avaliada que compõe a média apresentada acima.</p></div><select id="v2ProfileEvaluationOrder"><option value="newest">Mais recentes</option><option value="lowest">Menores notas</option><option value="highest">Maiores notas</option></select></div>
+        <div id="v2ProfileEvaluations"><div class="v2-empty v2-empty-compact">Carregando avaliações…</div></div>
+      </article>
+      ${monthlyPanel}
     `;
-    renderProfileChart('rating_avg');
+    if (showEvolution) renderProfileChart('rating_avg');
     NS.horizontalBars($('#v2ProfileComposition'), profile.composition || [], 'attendances', { limit: 10 });
     $('#v2ProfileBack').addEventListener('click', () => {
       state.entity.profileId = '';
       state.entity.profile = null;
+      state.entity.evaluations = { data: null, page: 1, pageSize: 20, order: 'newest', loading: false };
       NS.syncUrl();
       showExplorer();
       renderEntities();
@@ -602,19 +638,101 @@ window.DADMV2 = window.DADMV2 || {};
       state.comparison.ids = [String(e.id)];
       navigate('comparison');
     });
-    $('#v2ProfileMetric').addEventListener('change', event => renderProfileChart(event.target.value));
+    $('#v2ProfileMetric')?.addEventListener('change', event => renderProfileChart(event.target.value));
+    $('#v2ProfileEvaluationOrder').value = state.entity.evaluations?.order || 'newest';
+    $('#v2ProfileEvaluationOrder').addEventListener('change', async event => {
+      state.entity.evaluations.order = event.target.value;
+      await loadProfileEvaluations(1);
+    });
+    loadProfileEvaluations(1);
   }
 
   function profileKpi(label, value, sub) {
     return `<div class="v2-profile-kpi"><span>${label}</span><strong>${value}</strong><small>${sub}</small></div>`;
   }
 
+  function formatEvaluationDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return '\u2014';
+    const [year, month, day] = value.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  function evaluationStatusLabel(value) {
+    return { finalized: 'Finalizado', open: 'Em aberto', unknown: 'N\u00e3o identificado' }[value] || value || '\u2014';
+  }
+
+  async function loadProfileEvaluations(page = 1) {
+    const target = $('#v2ProfileEvaluations');
+    if (!target || !state.entity.profileId) return;
+    const requestProfileId = String(state.entity.profileId);
+    const requestKind = state.entity.kind;
+    const evaluations = state.entity.evaluations || (state.entity.evaluations = { data: null, page: 1, pageSize: 20, order: 'newest', loading: false });
+    evaluations.loading = true;
+    target.innerHTML = '<div class="v2-empty v2-empty-compact">Carregando avalia\u00e7\u00f5es\u2026</div>';
+    try {
+      const params = {
+        ...NS.filterParams(state.filters),
+        kind: requestKind,
+        entity_id: requestProfileId,
+        page,
+        page_size: evaluations.pageSize || 20,
+        order: evaluations.order || 'newest',
+      };
+      if (requestKind === 'employee') params.employee = '';
+      else params.department = '';
+      const payload = await NS.api('/api/dadm/v2/entity/evaluations', {}, params);
+      if (String(state.entity.profileId) !== requestProfileId || state.entity.kind !== requestKind) return;
+      evaluations.data = payload;
+      evaluations.page = payload?.pagination?.page || page;
+      renderProfileEvaluations();
+    } catch (error) {
+      if (String(state.entity.profileId) !== requestProfileId || state.entity.kind !== requestKind) return;
+      target.innerHTML = `<div class="v2-evaluation-error"><strong>N\u00e3o foi poss\u00edvel carregar as avalia\u00e7\u00f5es.</strong><span>${NS.escapeHtml(error?.message || 'Tente novamente.')}</span><button type="button" class="v2-btn v2-btn-secondary" id="v2RetryEvaluations">Tentar novamente</button></div>`;
+      $('#v2RetryEvaluations')?.addEventListener('click', () => loadProfileEvaluations(page));
+    } finally {
+      evaluations.loading = false;
+    }
+  }
+
+  function renderProfileEvaluations() {
+    const target = $('#v2ProfileEvaluations');
+    const payload = state.entity.evaluations?.data;
+    if (!target || !payload) return;
+    const items = payload.items || [];
+    const pg = payload.pagination || {};
+    const isDepartment = state.entity.kind === 'department';
+    if (!items.length) {
+      target.innerHTML = '<div class="v2-empty v2-empty-compact">Nenhuma avalia\u00e7\u00e3o v\u00e1lida neste recorte.</div>';
+      return;
+    }
+    const employeeHead = isDepartment ? '<th>Operador</th>' : '';
+    const rows = items.map(item => `
+      <tr>
+        <td>${NS.escapeHtml(formatEvaluationDate(item.reference_date))}</td>
+        ${isDepartment ? `<td><strong>${NS.escapeHtml(item.employee_name || 'Operador sem nome')}</strong></td>` : ''}
+        <td><span class="v2-protocol">${NS.escapeHtml(item.protocol || '\u2014')}</span></td>
+        <td class="numeric"><span class="v2-rating-badge">${NS.escapeHtml(item.rating)} / 10</span></td>
+        <td class="numeric">${NS.escapeHtml(NS.formatSeconds(item.tme_seconds))}</td>
+        <td class="numeric">${NS.escapeHtml(NS.formatSeconds(item.tma_seconds))}</td>
+        <td>${NS.escapeHtml(item.channel || '\u2014')}</td>
+        <td class="wrap">${NS.escapeHtml(item.tabulation || '\u2014')}</td>
+        <td><span class="v2-evaluation-status">${NS.escapeHtml(evaluationStatusLabel(item.status))}</span></td>
+      </tr>`).join('');
+    target.innerHTML = `
+      <div class="v2-evaluation-summary"><strong>${NS.formatInt(pg.total)} avalia\u00e7\u00f5es v\u00e1lidas</strong><span>Exibindo sess\u00f5es Tallos individualmente, sem dados pessoais do atendido.</span></div>
+      <div class="v2-table-wrap"><table class="v2-table v2-evaluations-table"><thead><tr><th>Data</th>${employeeHead}<th>Protocolo</th><th class="numeric">Nota</th><th class="numeric">TME</th><th class="numeric">TMA</th><th>Canal</th><th>Tabula\u00e7\u00e3o</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="v2-pagination"><span>P\u00e1gina ${NS.formatInt(pg.page)}${pg.pages ? ` de ${NS.formatInt(pg.pages)}` : ''}</span><div><button type="button" class="v2-btn v2-btn-secondary" id="v2EvaluationsPrev" ${pg.has_previous ? '' : 'disabled'}>Anterior</button><button type="button" class="v2-btn v2-btn-secondary" id="v2EvaluationsNext" ${pg.has_next ? '' : 'disabled'}>Pr\u00f3xima</button></div></div>`;
+    $('#v2EvaluationsPrev')?.addEventListener('click', () => { if (pg.has_previous) loadProfileEvaluations(Math.max(1, Number(pg.page) - 1)); });
+    $('#v2EvaluationsNext')?.addEventListener('click', () => { if (pg.has_next) loadProfileEvaluations(Number(pg.page) + 1); });
+  }
+
   function renderProfileChart(metric) {
+    if (!hasTemporalEvolution()) return;
     const profile = state.entity.profile;
     const meta = PROFILE_METRICS[metric] || PROFILE_METRICS.rating_avg;
     NS.lineChart($('#v2ProfileChart'), profile?.timeline || [], [{ key: metric, label: meta.label, tooltip: row => `${NS.monthLabel(row.period)} · ${meta.format(row[metric])}${metric === 'rating_avg' ? ` · ${NS.formatInt(row.rating_count)} avaliações` : ''}` }], {
-      min: metric === 'rating_avg' ? 1 : metric === 'rating_coverage_pct' ? 0 : undefined,
-      max: metric === 'rating_avg' ? 10 : metric === 'rating_coverage_pct' ? 100 : undefined,
+      min: metric === 'rating_avg' ? 1 : undefined,
+      max: metric === 'rating_avg' ? 10 : undefined,
       formatY: meta.format,
       formatX: row => NS.monthLabel(row.period, true).split('/')[0],
       ariaLabel: `Evolução de ${meta.label}`,
@@ -635,7 +753,14 @@ window.DADMV2 = window.DADMV2 || {};
     const s = data.summary || {};
     $('#v2ExperienceSummary').innerHTML = `<div class="v2-score"><span>Avaliação média</span><strong>${s.rating_avg == null ? '—' : NS.formatNumber(s.rating_avg, 2) + ' / 10'}</strong><small>média das avaliações válidas no período</small></div><div class="v2-score"><span>Avaliações válidas</span><strong>${NS.formatInt(s.rating_count)}</strong><small>${NS.formatInt(s.rating_missing)} atendimentos sem avaliação</small></div><div class="v2-score"><span>Cobertura</span><strong>${NS.formatPct(s.rating_coverage_pct)}</strong><small>respostas ÷ atendimentos</small></div>`;
     NS.ratingBars($('#v2ExperienceDistribution'), data.ratings || []);
-    NS.lineChart($('#v2ExperienceTimeline'), data.timeline || [], [{ key: 'rating_avg', label: 'Avaliação média', tooltip: row => `${NS.monthLabel(row.period)} · ${row.rating_avg == null ? 'sem avaliações' : NS.formatRating(row.rating_avg)} · ${NS.formatInt(row.rating_count)} respostas` }], { min: 1, max: 10, formatY: value => NS.formatNumber(value, 0), formatX: row => NS.monthLabel(row.period, true).split('/')[0] });
+    const showEvolution = hasTemporalEvolution();
+    $('#v2ExperienceCharts')?.classList.toggle('single-period', !showEvolution);
+    $('#v2ExperienceEvolutionPanel')?.classList.toggle('hidden', !showEvolution);
+    if (showEvolution) {
+      NS.lineChart($('#v2ExperienceTimeline'), data.timeline || [], [{ key: 'rating_avg', label: 'Avaliação média', tooltip: row => `${NS.monthLabel(row.period)} · ${row.rating_avg == null ? 'sem avaliações' : NS.formatRating(row.rating_avg)} · ${NS.formatInt(row.rating_count)} respostas` }], { min: 1, max: 10, formatY: value => NS.formatNumber(value, 0), formatX: row => NS.monthLabel(row.period, true).split('/')[0] });
+    } else if ($('#v2ExperienceTimeline')) {
+      $('#v2ExperienceTimeline').innerHTML = '';
+    }
     $$('[data-dimension]').forEach(button => button.classList.toggle('active', button.dataset.dimension === state.experienceDimension));
     $('#v2ExperienceBreakdown').innerHTML = (data.items || []).length ? data.items.map(item => `<tr><td><strong>${NS.escapeHtml(item.name)}</strong></td><td class="numeric">${NS.formatInt(item.attendances)}</td><td class="numeric">${item.rating_avg == null ? '<span class="v2-no-rating">—</span>' : NS.formatNumber(item.rating_avg, 2) + ' / 10'}</td><td class="numeric">${NS.formatInt(item.rating_count)}</td><td class="numeric">${NS.formatPct(item.rating_coverage_pct)}</td><td class="numeric">${NS.formatSeconds(item.tme_avg_seconds)}</td><td class="numeric">${NS.formatSeconds(item.tma_avg_seconds)}</td></tr>`).join('') : '<tr><td colspan="7"><div class="v2-empty">Sem dados para esta dimensão.</div></td></tr>';
   }
@@ -700,7 +825,10 @@ window.DADMV2 = window.DADMV2 || {};
       ];
       const table = `<article class="v2-panel v2-compare-table"><div class="v2-table-wrap"><table class="v2-table"><thead><tr><th>Métrica</th>${names.map(name => `<th class="numeric">${NS.escapeHtml(name)}</th>`).join('')}</tr></thead><tbody>${metrics.map(([label, getter]) => `<tr><td><strong>${label}</strong></td>${profiles.map(p => `<td class="numeric">${getter(p)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></article>`;
       const root = $('#v2CompareResults');
-      root.innerHTML = `${table}<article class="v2-panel"><div class="v2-panel-head responsive"><div><span class="v2-kicker">Evolução</span><h3>Explorar no gráfico</h3></div><select id="v2CompareMetric"><option value="rating_avg">Avaliação média</option><option value="attendances">Atendimentos</option><option value="tme_avg_seconds">Tempo médio de espera</option><option value="tma_avg_seconds">Tempo médio de atendimento</option><option value="rating_coverage_pct">Cobertura das avaliações</option></select></div><div class="v2-chart" id="v2CompareChart"></div></article>`;
+      const singleMonth = !hasTemporalEvolution();
+      const chartKicker = singleMonth ? 'Comparação do mês' : 'Evolução';
+      const chartTitle = singleMonth ? 'Resultado das entidades no período' : 'Evolução mensal das entidades';
+      root.innerHTML = `${table}<article class="v2-panel"><div class="v2-panel-head responsive"><div><span class="v2-kicker">${chartKicker}</span><h3>${chartTitle}</h3></div><select id="v2CompareMetric"><option value="rating_avg">Avaliação média</option><option value="attendances">Atendimentos</option><option value="tme_avg_seconds">Tempo médio de espera</option><option value="tma_avg_seconds">Tempo médio de atendimento</option></select></div><div class="v2-chart" id="v2CompareChart"></div></article>`;
       const draw = metric => drawProfilesComparison(profiles, metric);
       draw('rating_avg');
       $('#v2CompareMetric').addEventListener('change', event => draw(event.target.value));
@@ -717,19 +845,20 @@ window.DADMV2 = window.DADMV2 || {};
       value: row => row.values[index],
       tooltip: row => `${NS.monthLabel(row.period)} · ${profile.entity?.name || ''} · ${meta.format(row.values[index])}${metric === 'rating_avg' ? ` · ${NS.formatInt(row.samples[index])} avaliações` : ''}`,
     }));
-    if (periods.length === 1) {
+    if (!hasTemporalEvolution()) {
+      const period = state.filters.toMonth || periods[0] || '';
       NS.snapshotComparisonChart($('#v2CompareChart'), profiles, metric, {
-        period: periods[0],
+        period,
         format: meta.format,
         min: metric === 'rating_avg' ? 1 : 0,
-        max: metric === 'rating_avg' ? 10 : metric === 'rating_coverage_pct' ? 100 : undefined,
+        max: metric === 'rating_avg' ? 10 : undefined,
         rating: metric === 'rating_avg',
       });
       return;
     }
     NS.lineChart($('#v2CompareChart'), rows, series, {
-      min: metric === 'rating_avg' ? 1 : metric === 'rating_coverage_pct' ? 0 : undefined,
-      max: metric === 'rating_avg' ? 10 : metric === 'rating_coverage_pct' ? 100 : undefined,
+      min: metric === 'rating_avg' ? 1 : undefined,
+      max: metric === 'rating_avg' ? 10 : undefined,
       formatY: meta.format,
       formatX: row => NS.monthLabel(row.period, true).split('/')[0],
     });

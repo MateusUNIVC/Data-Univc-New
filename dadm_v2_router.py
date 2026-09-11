@@ -11,6 +11,7 @@ from database import get_db
 from auth.data_scopes import dadm_department_scope, department_allowed
 from dadm_v2_analytics import (
     context_payload,
+    entity_evaluations_payload,
     entity_profile_payload,
     experience_breakdown,
     overview_payload,
@@ -152,6 +153,36 @@ def dadm_v2_entity(
             department=department, employee=employee, channel=channel,
             status=status, tabulation=tabulation,
             allowed_departments=_allowed_departments(scope),
+        )
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.get("/api/dadm/v2/entity/evaluations")
+def dadm_v2_entity_evaluations(
+    kind: str = Query(..., pattern="^(employee|department)$"),
+    entity_id: str = Query(..., min_length=1),
+    from_month: str | None = Query(None),
+    to_month: str | None = Query(None),
+    department: str | None = Query(None),
+    employee: str | None = Query(None),
+    channel: str | None = Query(None),
+    status: str | None = Query(None),
+    tabulation: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    order: str = Query("newest", pattern="^(newest|lowest|highest)$"),
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_access("DADM")),
+):
+    try:
+        _require_dadm(scope)
+        _require_department(scope, entity_id if kind == "department" else department)
+        return entity_evaluations_payload(
+            db, scope.directorate_id, kind, entity_id, from_month, to_month,
+            department=department, employee=employee, channel=channel,
+            status=status, tabulation=tabulation, page=page, page_size=page_size,
+            order=order, allowed_departments=_allowed_departments(scope),
         )
     except Exception as exc:
         _translate(exc)
