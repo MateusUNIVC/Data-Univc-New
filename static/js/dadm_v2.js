@@ -577,7 +577,7 @@ window.DADMV2 = window.DADMV2 || {};
   async function openProfile(kind, id, updateUrl = true) {
     state.entity.kind = kind;
     state.entity.profileId = id;
-    state.entity.evaluations = { data: null, page: 1, pageSize: 20, order: 'newest', loading: false };
+    state.entity.attendances = { data: null, page: 1, pageSize: 20, order: 'newest', ratingFilter: 'all', loading: false };
     if (updateUrl) NS.syncUrl();
     setLoading(true);
     try {
@@ -617,9 +617,15 @@ window.DADMV2 = window.DADMV2 || {};
         ${evolutionPanel}
         <article class="v2-panel"><div class="v2-panel-head"><div><span class="v2-kicker">Contexto</span><h3>${compositionTitle}</h3></div></div><div class="v2-bars-large" id="v2ProfileComposition"></div></article>
       </div>
-      <article class="v2-panel" id="v2ProfileEvaluationsPanel">
-        <div class="v2-panel-head responsive"><div><span class="v2-kicker">Avaliações individuais</span><h3>Atendimentos avaliados no período</h3><p>Consulte cada sessão avaliada que compõe a média apresentada acima.</p></div><select id="v2ProfileEvaluationOrder"><option value="newest">Mais recentes</option><option value="lowest">Menores notas</option><option value="highest">Maiores notas</option></select></div>
-        <div id="v2ProfileEvaluations"><div class="v2-empty v2-empty-compact">Carregando avaliações…</div></div>
+      <article class="v2-panel" id="v2ProfileAttendancesPanel">
+        <div class="v2-panel-head responsive">
+          <div><span class="v2-kicker">Atendimentos individuais</span><h3>Atendimentos do período</h3><p>Consulte cada sessão Tallos que compõe os tempos médios e identifique atendimentos com ou sem avaliação.</p></div>
+          <div class="v2-attendance-controls">
+            <select id="v2ProfileAttendanceRatingFilter" aria-label="Filtrar atendimentos por avaliação"><option value="all">Todos</option><option value="rated">Com avaliação</option><option value="unrated">Sem avaliação</option></select>
+            <select id="v2ProfileAttendanceOrder" aria-label="Ordenar atendimentos"><option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option><option value="tme_high">Maior TME primeiro</option><option value="tma_high">Maior TMA primeiro</option><option value="lowest_rating">Menores notas</option><option value="highest_rating">Maiores notas</option></select>
+          </div>
+        </div>
+        <div id="v2ProfileAttendances"><div class="v2-empty v2-empty-compact">Carregando atendimentos...</div></div>
       </article>
       ${monthlyPanel}
     `;
@@ -628,7 +634,7 @@ window.DADMV2 = window.DADMV2 || {};
     $('#v2ProfileBack').addEventListener('click', () => {
       state.entity.profileId = '';
       state.entity.profile = null;
-      state.entity.evaluations = { data: null, page: 1, pageSize: 20, order: 'newest', loading: false };
+      state.entity.attendances = { data: null, page: 1, pageSize: 20, order: 'newest', ratingFilter: 'all', loading: false };
       NS.syncUrl();
       showExplorer();
       renderEntities();
@@ -639,12 +645,17 @@ window.DADMV2 = window.DADMV2 || {};
       navigate('comparison');
     });
     $('#v2ProfileMetric')?.addEventListener('change', event => renderProfileChart(event.target.value));
-    $('#v2ProfileEvaluationOrder').value = state.entity.evaluations?.order || 'newest';
-    $('#v2ProfileEvaluationOrder').addEventListener('change', async event => {
-      state.entity.evaluations.order = event.target.value;
-      await loadProfileEvaluations(1);
+    $('#v2ProfileAttendanceRatingFilter').value = state.entity.attendances?.ratingFilter || 'all';
+    $('#v2ProfileAttendanceOrder').value = state.entity.attendances?.order || 'newest';
+    $('#v2ProfileAttendanceRatingFilter').addEventListener('change', async event => {
+      state.entity.attendances.ratingFilter = event.target.value;
+      await loadProfileAttendances(1);
     });
-    loadProfileEvaluations(1);
+    $('#v2ProfileAttendanceOrder').addEventListener('change', async event => {
+      state.entity.attendances.order = event.target.value;
+      await loadProfileAttendances(1);
+    });
+    loadProfileAttendances(1);
   }
 
   function profileKpi(label, value, sub) {
@@ -661,69 +672,51 @@ window.DADMV2 = window.DADMV2 || {};
     return { finalized: 'Finalizado', open: 'Em aberto', unknown: 'N\u00e3o identificado' }[value] || value || '\u2014';
   }
 
-  async function loadProfileEvaluations(page = 1) {
-    const target = $('#v2ProfileEvaluations');
+  async function loadProfileAttendances(page = 1) {
+    const target = $('#v2ProfileAttendances');
     if (!target || !state.entity.profileId) return;
     const requestProfileId = String(state.entity.profileId);
     const requestKind = state.entity.kind;
-    const evaluations = state.entity.evaluations || (state.entity.evaluations = { data: null, page: 1, pageSize: 20, order: 'newest', loading: false });
-    evaluations.loading = true;
-    target.innerHTML = '<div class="v2-empty v2-empty-compact">Carregando avalia\u00e7\u00f5es\u2026</div>';
+    const attendances = state.entity.attendances || (state.entity.attendances = { data: null, page: 1, pageSize: 20, order: 'newest', ratingFilter: 'all', loading: false });
+    attendances.loading = true;
+    target.innerHTML = '<div class="v2-empty v2-empty-compact">Carregando atendimentos...</div>';
     try {
-      const params = {
-        ...NS.filterParams(state.filters),
-        kind: requestKind,
-        entity_id: requestProfileId,
-        page,
-        page_size: evaluations.pageSize || 20,
-        order: evaluations.order || 'newest',
-      };
-      if (requestKind === 'employee') params.employee = '';
-      else params.department = '';
-      const payload = await NS.api('/api/dadm/v2/entity/evaluations', {}, params);
+      const params = { ...NS.filterParams(state.filters), kind: requestKind, entity_id: requestProfileId, page, page_size: attendances.pageSize || 20, rating_filter: attendances.ratingFilter || 'all', order: attendances.order || 'newest' };
+      if (requestKind === 'employee') params.employee = ''; else params.department = '';
+      const payload = await NS.api('/api/dadm/v2/entity/attendances', {}, params);
       if (String(state.entity.profileId) !== requestProfileId || state.entity.kind !== requestKind) return;
-      evaluations.data = payload;
-      evaluations.page = payload?.pagination?.page || page;
-      renderProfileEvaluations();
+      attendances.data = payload;
+      attendances.page = payload?.pagination?.page || page;
+      renderProfileAttendances();
     } catch (error) {
       if (String(state.entity.profileId) !== requestProfileId || state.entity.kind !== requestKind) return;
-      target.innerHTML = `<div class="v2-evaluation-error"><strong>N\u00e3o foi poss\u00edvel carregar as avalia\u00e7\u00f5es.</strong><span>${NS.escapeHtml(error?.message || 'Tente novamente.')}</span><button type="button" class="v2-btn v2-btn-secondary" id="v2RetryEvaluations">Tentar novamente</button></div>`;
-      $('#v2RetryEvaluations')?.addEventListener('click', () => loadProfileEvaluations(page));
-    } finally {
-      evaluations.loading = false;
-    }
+      target.innerHTML = `<div class="v2-evaluation-error"><strong>N\u00e3o foi poss\u00edvel carregar os atendimentos.</strong><span>${NS.escapeHtml(error?.message || 'Tente novamente.')}</span><button type="button" class="v2-btn v2-btn-secondary" id="v2RetryAttendances">Tentar novamente</button></div>`;
+      $('#v2RetryAttendances')?.addEventListener('click', () => loadProfileAttendances(page));
+    } finally { attendances.loading = false; }
   }
 
-  function renderProfileEvaluations() {
-    const target = $('#v2ProfileEvaluations');
-    const payload = state.entity.evaluations?.data;
+  function renderProfileAttendances() {
+    const target = $('#v2ProfileAttendances');
+    const payload = state.entity.attendances?.data;
     if (!target || !payload) return;
     const items = payload.items || [];
     const pg = payload.pagination || {};
+    const counts = payload.counts || {};
     const isDepartment = state.entity.kind === 'department';
+    const ratingFilter = state.entity.attendances?.ratingFilter || 'all';
+    const filterLabel = { all: 'atendimentos', rated: 'atendimentos com avalia\u00e7\u00e3o', unrated: 'atendimentos sem avalia\u00e7\u00e3o' }[ratingFilter] || 'atendimentos';
     if (!items.length) {
-      target.innerHTML = '<div class="v2-empty v2-empty-compact">Nenhuma avalia\u00e7\u00e3o v\u00e1lida neste recorte.</div>';
+      target.innerHTML = `<div class="v2-empty v2-empty-compact">Nenhum ${NS.escapeHtml(filterLabel)} neste recorte.</div>`;
       return;
     }
     const employeeHead = isDepartment ? '<th>Operador</th>' : '';
-    const rows = items.map(item => `
-      <tr>
-        <td>${NS.escapeHtml(formatEvaluationDate(item.reference_date))}</td>
-        ${isDepartment ? `<td><strong>${NS.escapeHtml(item.employee_name || 'Operador sem nome')}</strong></td>` : ''}
-        <td><span class="v2-protocol">${NS.escapeHtml(item.protocol || '\u2014')}</span></td>
-        <td class="numeric"><span class="v2-rating-badge">${NS.escapeHtml(item.rating)} / 10</span></td>
-        <td class="numeric">${NS.escapeHtml(NS.formatSeconds(item.tme_seconds))}</td>
-        <td class="numeric">${NS.escapeHtml(NS.formatSeconds(item.tma_seconds))}</td>
-        <td>${NS.escapeHtml(item.channel || '\u2014')}</td>
-        <td class="wrap">${NS.escapeHtml(item.tabulation || '\u2014')}</td>
-        <td><span class="v2-evaluation-status">${NS.escapeHtml(evaluationStatusLabel(item.status))}</span></td>
-      </tr>`).join('');
-    target.innerHTML = `
-      <div class="v2-evaluation-summary"><strong>${NS.formatInt(pg.total)} avalia\u00e7\u00f5es v\u00e1lidas</strong><span>Exibindo sess\u00f5es Tallos individualmente, sem dados pessoais do atendido.</span></div>
-      <div class="v2-table-wrap"><table class="v2-table v2-evaluations-table"><thead><tr><th>Data</th>${employeeHead}<th>Protocolo</th><th class="numeric">Nota</th><th class="numeric">TME</th><th class="numeric">TMA</th><th>Canal</th><th>Tabula\u00e7\u00e3o</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="v2-pagination"><span>P\u00e1gina ${NS.formatInt(pg.page)}${pg.pages ? ` de ${NS.formatInt(pg.pages)}` : ''}</span><div><button type="button" class="v2-btn v2-btn-secondary" id="v2EvaluationsPrev" ${pg.has_previous ? '' : 'disabled'}>Anterior</button><button type="button" class="v2-btn v2-btn-secondary" id="v2EvaluationsNext" ${pg.has_next ? '' : 'disabled'}>Pr\u00f3xima</button></div></div>`;
-    $('#v2EvaluationsPrev')?.addEventListener('click', () => { if (pg.has_previous) loadProfileEvaluations(Math.max(1, Number(pg.page) - 1)); });
-    $('#v2EvaluationsNext')?.addEventListener('click', () => { if (pg.has_next) loadProfileEvaluations(Number(pg.page) + 1); });
+    const rows = items.map(item => {
+      const ratingCell = item.rating == null ? '<span class="v2-rating-missing">Sem avalia\u00e7\u00e3o</span>' : `<span class="v2-rating-badge">${NS.escapeHtml(item.rating)} / 10</span>`;
+      return `<tr><td>${NS.escapeHtml(formatEvaluationDate(item.reference_date))}</td>${isDepartment ? `<td><strong>${NS.escapeHtml(item.employee_name || 'Operador sem nome')}</strong></td>` : ''}<td><span class="v2-protocol">${NS.escapeHtml(item.protocol || '\u2014')}</span></td><td class="numeric">${ratingCell}</td><td class="numeric">${NS.escapeHtml(NS.formatSeconds(item.tme_seconds))}</td><td class="numeric">${NS.escapeHtml(NS.formatSeconds(item.tma_seconds))}</td><td>${NS.escapeHtml(item.channel || '\u2014')}</td><td class="wrap">${NS.escapeHtml(item.tabulation || '\u2014')}</td><td><span class="v2-evaluation-status">${NS.escapeHtml(evaluationStatusLabel(item.status))}</span></td></tr>`;
+    }).join('');
+    target.innerHTML = `<div class="v2-evaluation-summary"><strong>${NS.formatInt(pg.total)} ${NS.escapeHtml(filterLabel)}</strong><span>${NS.formatInt(counts.rated)} com avalia\u00e7\u00e3o \u00b7 ${NS.formatInt(counts.unrated)} sem avalia\u00e7\u00e3o \u00b7 ${NS.formatInt(counts.all)} no total</span></div><div class="v2-table-wrap"><table class="v2-table v2-attendances-table"><thead><tr><th>Data</th>${employeeHead}<th>Protocolo</th><th class="numeric">Nota</th><th class="numeric">TME</th><th class="numeric">TMA</th><th>Canal</th><th>Tabula\u00e7\u00e3o</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div><div class="v2-pagination"><span>P\u00e1gina ${NS.formatInt(pg.page)}${pg.pages ? ` de ${NS.formatInt(pg.pages)}` : ''}</span><div><button type="button" class="v2-btn v2-btn-secondary" id="v2AttendancesPrev" ${pg.has_previous ? '' : 'disabled'}>Anterior</button><button type="button" class="v2-btn v2-btn-secondary" id="v2AttendancesNext" ${pg.has_next ? '' : 'disabled'}>Pr\u00f3xima</button></div></div>`;
+    $('#v2AttendancesPrev')?.addEventListener('click', () => { if (pg.has_previous) loadProfileAttendances(Math.max(1, Number(pg.page) - 1)); });
+    $('#v2AttendancesNext')?.addEventListener('click', () => { if (pg.has_next) loadProfileAttendances(Number(pg.page) + 1); });
   }
 
   function renderProfileChart(metric) {

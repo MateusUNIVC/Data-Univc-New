@@ -1,3 +1,7 @@
+## v0.9.6.11 - DADM Full Attendance Explorer
+
+Deploy incremental sobre a v0.9.6.10. Nao existe migration nova: mantenha o mesmo banco Supabase/PostgreSQL no schema 33 e o mesmo servico Render. Esta release nao adiciona Cron Job.
+
 ## v0.9.6.10 — Supabase Secret Key & Production Provisioning
 
 Sem migration nova; schema permanece `33` com `033_identity_access_security_rebase.sql`.

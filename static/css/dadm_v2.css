@@ -532,3 +532,11 @@ body.dadm-v2:not(.v2-is-loading) .v2-loading{opacity:0}
 .v2-evaluation-error strong{color:#8d3333;font-size:10px}
 .v2-evaluation-error span{font-size:8.5px;color:var(--v2-ink-500);margin-bottom:4px}
 @media (max-width:760px){.v2-evaluation-summary{align-items:flex-start;flex-direction:column}.v2-pagination{align-items:flex-start;flex-direction:column}.v2-pagination>div{width:100%}.v2-pagination button{flex:1}}
+
+/* DADM V2 v0.9.6.11 - full Tallos attendance explorer */
+.v2-attendance-controls{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.v2-attendance-controls select{min-width:145px}
+.v2-attendances-table{min-width:980px}
+.v2-attendances-table td{font-variant-numeric:tabular-nums}
+.v2-rating-missing{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:2px 7px;border:1px solid var(--v2-line);border-radius:999px;color:var(--v2-ink-500);background:#f7f8f8;font-size:8px;white-space:nowrap}
+@media (max-width:760px){.v2-attendance-controls{width:100%;justify-content:stretch}.v2-attendance-controls select{flex:1;min-width:135px}}

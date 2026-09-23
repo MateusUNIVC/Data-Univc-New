@@ -1,3 +1,7 @@
+## v0.9.6.11 - DADM Full Attendance Explorer
+
+Pessoas & Setores agora permite investigar todos os atendimentos, filtrar sessoes com/sem avaliacao e ordenar por maior TME/TMA. Mantem schema 33, o fluxo Tallos atual e nao adiciona Cron Job.
+
 ## v0.9.6.10 — Supabase Secret Key & Production Provisioning
 
 - Atualiza a administração server-side para projetos Supabase novos com `SUPABASE_SECRET_KEY=sb_secret_...`; novas API keys ficam somente no header `apikey` e não são tratadas como JWT.

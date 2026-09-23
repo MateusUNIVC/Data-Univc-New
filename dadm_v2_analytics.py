@@ -353,144 +353,112 @@ def entity_profile_payload(
     }
 
 
-def entity_evaluations_payload(
-    db: Session,
-    directorate_id: int,
-    kind: str,
-    entity_id: str,
-    from_month: str | None = None,
-    to_month: str | None = None,
-    *,
-    department: str | None = None,
-    employee: str | None = None,
-    channel: str | None = None,
-    status: str | None = None,
-    tabulation: str | None = None,
-    page: int = 1,
-    page_size: int = 20,
-    order: str = "newest",
+def entity_attendances_payload(
+    db: Session, directorate_id: int, kind: str, entity_id: str,
+    from_month: str | None = None, to_month: str | None = None, *,
+    department: str | None = None, employee: str | None = None,
+    channel: str | None = None, status: str | None = None,
+    tabulation: str | None = None, page: int = 1, page_size: int = 20,
+    rating_filter: str = "all", order: str = "newest",
     allowed_departments: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
-    """Return rated TALLOS sessions for one employee or department.
-
-    The endpoint is intentionally session-based (``source_id``), not protocol-based,
-    so separate TALLOS sessions that share a protocol remain independently auditable.
-    Customer identity and source payload are never selected.
-    """
+    """Return Tallos sessions for one employee or department."""
     kind = str(kind or "").strip().lower()
     if kind not in {"employee", "department"}:
-        raise ValueError("Tipo de entidade inv\u00e1lido.")
-    page = int(page or 1)
-    page_size = int(page_size or 20)
+        raise ValueError("Tipo de entidade inválido.")
+    page, page_size = int(page or 1), int(page_size or 20)
     if page < 1:
-        raise ValueError("A p\u00e1gina deve ser maior ou igual a 1.")
+        raise ValueError("A página deve ser maior ou igual a 1.")
     if page_size < 1 or page_size > 100:
-        raise ValueError("O tamanho da p\u00e1gina deve ficar entre 1 e 100.")
+        raise ValueError("O tamanho da página deve ficar entre 1 e 100.")
+    rating_filter = str(rating_filter or "all").strip().lower()
+    if rating_filter not in {"all", "rated", "unrated"}:
+        raise ValueError("Filtro de avaliação inválido.")
     order = str(order or "newest").strip().lower()
-    if order not in {"newest", "lowest", "highest"}:
-        raise ValueError("Ordena\u00e7\u00e3o inv\u00e1lida.")
+    if order not in {"newest", "oldest", "tme_high", "tma_high", "lowest_rating", "highest_rating"}:
+        raise ValueError("Ordenação inválida.")
 
     start_month, end_month, start_date, end_date = resolve_month_range(
         db, directorate_id, from_month, to_month, allowed_departments=allowed_departments
     )
-    filters = _filter_kwargs(
-        department=department,
-        employee=employee,
-        channel=channel,
-        status=status,
-        tabulation=tabulation,
+    filters = _filter_kwargs(department=department, employee=employee, channel=channel, status=status, tabulation=tabulation)
+    filters["employee" if kind == "employee" else "department"] = entity_id
+    base_conditions = _conditions(
+        directorate_id, start_date, end_date, allowed_departments=allowed_departments, **filters
     )
-    if kind == "employee":
-        filters["employee"] = entity_id
+    counts = db.execute(select(func.count(DADMTallosAttendance.id), func.count(DADMTallosAttendance.rating)).where(*base_conditions)).one()
+    all_total, rated_total = int(counts[0] or 0), int(counts[1] or 0)
+    unrated_total = max(0, all_total - rated_total)
+    conditions = list(base_conditions)
+    if rating_filter == "rated":
+        conditions.append(DADMTallosAttendance.rating.between(1, 10)); total = rated_total
+    elif rating_filter == "unrated":
+        conditions.append(DADMTallosAttendance.rating.is_(None)); total = unrated_total
     else:
-        filters["department"] = entity_id
+        total = all_total
 
-    conditions = _conditions(
-        directorate_id,
-        start_date,
-        end_date,
-        allowed_departments=allowed_departments,
-        **filters,
-    )
-    conditions.append(DADMTallosAttendance.rating.between(1, 10))
-
-    total = int(db.scalar(select(func.count(DADMTallosAttendance.id)).where(*conditions)) or 0)
-    if order == "lowest":
-        ordering = (
-            DADMTallosAttendance.rating.asc(),
-            DADMTallosAttendance.reference_at.desc(),
-            DADMTallosAttendance.id.desc(),
-        )
-    elif order == "highest":
-        ordering = (
-            DADMTallosAttendance.rating.desc(),
-            DADMTallosAttendance.reference_at.desc(),
-            DADMTallosAttendance.id.desc(),
-        )
+    if order == "oldest":
+        ordering = (DADMTallosAttendance.reference_at.asc(), DADMTallosAttendance.id.asc())
+    elif order == "tme_high":
+        ordering = (func.coalesce(DADMTallosAttendance.tme_seconds, -1).desc(), DADMTallosAttendance.reference_at.desc(), DADMTallosAttendance.id.desc())
+    elif order == "tma_high":
+        ordering = (func.coalesce(DADMTallosAttendance.tma_seconds, -1).desc(), DADMTallosAttendance.reference_at.desc(), DADMTallosAttendance.id.desc())
+    elif order == "lowest_rating":
+        ordering = (func.coalesce(DADMTallosAttendance.rating, 999).asc(), DADMTallosAttendance.reference_at.desc(), DADMTallosAttendance.id.desc())
+    elif order == "highest_rating":
+        ordering = (func.coalesce(DADMTallosAttendance.rating, -1).desc(), DADMTallosAttendance.reference_at.desc(), DADMTallosAttendance.id.desc())
     else:
-        ordering = (
-            DADMTallosAttendance.reference_at.desc(),
-            DADMTallosAttendance.id.desc(),
-        )
+        ordering = (DADMTallosAttendance.reference_at.desc(), DADMTallosAttendance.id.desc())
 
-    rows = db.execute(
-        select(
-            DADMTallosAttendance.source_id,
-            DADMTallosAttendance.protocol,
-            DADMTallosAttendance.reference_at,
-            DADMTallosAttendance.reference_date,
-            DADMTallosAttendance.rating,
-            DADMTallosAttendance.tme_seconds,
-            DADMTallosAttendance.tma_seconds,
-            DADMTallosAttendance.channel,
-            DADMTallosAttendance.tabulation,
-            DADMTallosAttendance.status,
-            DADMTallosAttendance.employee_id,
-            DADMTallosAttendance.employee_name,
-            DADMTallosAttendance.department_key,
-            DADMTallosAttendance.department_name,
-        )
-        .where(*conditions)
-        .order_by(*ordering)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    ).all()
-
-    items = [
-        {
-            "source_id": str(row.source_id),
-            "protocol": row.protocol,
-            "reference_at": row.reference_at.isoformat() if row.reference_at else None,
-            "reference_date": row.reference_date.isoformat() if row.reference_date else None,
-            "rating": int(row.rating),
-            "tme_seconds": _float(row.tme_seconds),
-            "tma_seconds": _float(row.tma_seconds),
-            "channel": row.channel,
-            "tabulation": row.tabulation,
-            "status": row.status,
-            "employee_id": row.employee_id,
-            "employee_name": row.employee_name,
-            "department_key": row.department_key,
-            "department_name": row.department_name,
-        }
-        for row in rows
-    ]
+    rows = db.execute(select(
+        DADMTallosAttendance.source_id, DADMTallosAttendance.protocol,
+        DADMTallosAttendance.reference_at, DADMTallosAttendance.reference_date,
+        DADMTallosAttendance.rating, DADMTallosAttendance.tme_seconds,
+        DADMTallosAttendance.tma_seconds, DADMTallosAttendance.channel,
+        DADMTallosAttendance.tabulation, DADMTallosAttendance.status,
+        DADMTallosAttendance.employee_id, DADMTallosAttendance.employee_name,
+        DADMTallosAttendance.department_key, DADMTallosAttendance.department_name,
+    ).where(*conditions).order_by(*ordering).offset((page - 1) * page_size).limit(page_size)).all()
+    items = [{
+        "source_id": str(r.source_id), "protocol": r.protocol,
+        "reference_at": r.reference_at.isoformat() if r.reference_at else None,
+        "reference_date": r.reference_date.isoformat() if r.reference_date else None,
+        "rating": int(r.rating) if r.rating is not None else None,
+        "tme_seconds": _float(r.tme_seconds), "tma_seconds": _float(r.tma_seconds),
+        "channel": r.channel, "tabulation": r.tabulation, "status": r.status,
+        "employee_id": r.employee_id, "employee_name": r.employee_name,
+        "department_key": r.department_key, "department_name": r.department_name,
+    } for r in rows]
     pages = (total + page_size - 1) // page_size if total else 0
     return {
         "period": {"from_month": start_month, "to_month": end_month},
-        "entity": {"kind": kind, "id": entity_id},
-        "pagination": {
-            "page": page,
-            "page_size": page_size,
-            "total": total,
-            "pages": pages,
-            "has_previous": page > 1,
-            "has_next": page * page_size < total,
-        },
-        "order": order,
-        "items": items,
+        "entity": {"kind": kind, "id": entity_id}, "rating_filter": rating_filter,
+        "counts": {"all": all_total, "rated": rated_total, "unrated": unrated_total},
+        "pagination": {"page": page, "page_size": page_size, "total": total, "pages": pages,
+                       "has_previous": page > 1 and total > 0, "has_next": page * page_size < total},
+        "order": order, "items": items,
     }
 
+
+def entity_evaluations_payload(
+    db: Session, directorate_id: int, kind: str, entity_id: str,
+    from_month: str | None = None, to_month: str | None = None, *,
+    department: str | None = None, employee: str | None = None, channel: str | None = None,
+    status: str | None = None, tabulation: str | None = None, page: int = 1, page_size: int = 20,
+    order: str = "newest", allowed_departments: tuple[str, ...] | None = None,
+) -> dict[str, Any]:
+    """Compatibility wrapper for the rated-only v0.9.6.10 endpoint."""
+    mapping = {"newest": "newest", "lowest": "lowest_rating", "highest": "highest_rating"}
+    order = str(order or "newest").strip().lower()
+    if order not in mapping:
+        raise ValueError("Ordenação inválida.")
+    payload = entity_attendances_payload(
+        db, directorate_id, kind, entity_id, from_month, to_month, department=department,
+        employee=employee, channel=channel, status=status, tabulation=tabulation, page=page,
+        page_size=page_size, rating_filter="rated", order=mapping[order], allowed_departments=allowed_departments,
+    )
+    payload["order"] = order
+    return payload
 
 def experience_breakdown(
     db: Session,

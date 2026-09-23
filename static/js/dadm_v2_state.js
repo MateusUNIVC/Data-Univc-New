@@ -36,7 +36,7 @@ window.DADMV2 = window.DADMV2 || {};
       sort: 'attendances-desc',
       profile: null,
       profileId: params.get('entity_id') || '',
-      evaluations: { data: null, page: 1, pageSize: 20, order: 'newest', loading: false },
+      attendances: { data: null, page: 1, pageSize: 20, order: 'newest', ratingFilter: 'all', loading: false },
     },
     experienceDimension: 'employee',
     comparison: {

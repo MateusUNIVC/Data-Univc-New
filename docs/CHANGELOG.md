@@ -1,3 +1,11 @@
+## v0.9.6.11 - DADM Full Attendance Explorer
+
+- Pessoas & Setores lista todos os atendimentos Tallos.
+- Filtro Todos / Com avaliacao / Sem avaliacao.
+- Ordenacao por maior TME e maior TMA para investigar outliers operacionais.
+- Endpoint /api/dadm/v2/entity/attendances adicionado; endpoint rated-only preservado.
+- Sem migration nova; schema 33 permanece canonico.
+
 ## v0.9.6.10 — Supabase Secret Key & Production Provisioning
 
 ### Supabase atual
