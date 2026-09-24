@@ -1,3 +1,11 @@
+## v0.9.6.12 — DPE Reactivation & Mobile Navigation
+
+- Reativa a DPE no produto: `HIDDEN_DIRECTORATE_CODES` passa a vir vazio no runtime e no Blueprint do Render. O fallback de segurança também deixa de ocultar DPE quando a variável não existe.
+- Padroniza o menu mobile de DTNH, DCS, DM e DPE com botão explícito de fechar, backdrop, fechamento por toque externo, `Esc`, navegação e bloqueio do scroll de fundo.
+- Mantém o DADM V2 e acrescenta botão explícito de fechar, foco/ARIA e bloqueio de scroll no drawer mobile.
+- Reitoria ganha sidebar mobile funcional, com hamburger, drawer, backdrop, `Esc`, fechamento por navegação e linguagem visual alinhada às demais diretorias.
+- Sem migration nova: schema `33` permanece canônico.
+
 ## v0.9.6.11 - DADM Full Attendance Explorer
 
 Pessoas & Setores agora permite investigar todos os atendimentos, filtrar sessoes com/sem avaliacao e ordenar por maior TME/TMA. Mantem schema 33, o fluxo Tallos atual e nao adiciona Cron Job.

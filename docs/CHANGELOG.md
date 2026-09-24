@@ -1,3 +1,18 @@
+## v0.9.6.12 — DPE Reactivation & Mobile Navigation
+
+### DPE
+- DPE volta a ficar visível por padrão em autenticação, seletores, Reitoria e rota `/dpe`;
+- `HIDDEN_DIRECTORATE_CODES` continua existindo como feature flag, mas o valor padrão agora é vazio;
+- `render.yaml` publica `HIDDEN_DIRECTORATE_CODES=""`, evitando que a ausência da variável volte a esconder DPE.
+
+### Responsividade
+- DTNH/DCS/DM/DPE recebem o mesmo contrato mobile de sidebar: abrir/fechar, backdrop, toque externo, `Esc`, fechamento ao navegar e bloqueio do scroll atrás do drawer;
+- DADM V2 recebe botão explícito de fechamento e estado ARIA consistente;
+- Reitoria deixa de ocultar a navegação no mobile e passa a usar drawer lateral alinhado ao padrão institucional.
+
+### Schema
+- sem migration nova; schema `33` permanece canônico.
+
 ## v0.9.6.11 - DADM Full Attendance Explorer
 
 - Pessoas & Setores lista todos os atendimentos Tallos.

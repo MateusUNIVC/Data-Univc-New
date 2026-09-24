@@ -903,7 +903,6 @@ function bindEvents() {
   $$('.nav-item[data-section]').forEach(button=>button.addEventListener('click',()=>navigate(button.dataset.section)));
   $$('[data-section-target]').forEach(button=>button.addEventListener('click',()=>navigate(button.dataset.sectionTarget)));
   $('#directorateSelect')?.addEventListener('change',event=>switchDirectorate(event.target.value));
-  $('#menuToggle')?.addEventListener('click',()=>$('.sidebar').classList.toggle('open'));
   $('#applyFilters')?.addEventListener('click',loadDashboard);
   $('#dashboardCourse')?.addEventListener('change',()=>updateDashboardDisciplineOptions(false));
   const academicReference=$('#dashboardReference');

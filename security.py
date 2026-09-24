@@ -64,7 +64,7 @@ OPERATING_DIRECTORATE_CODES: tuple[str, ...] = ("DTNH", "DCS", "DADM", "DPE", "D
 
 
 def hidden_directorate_codes() -> tuple[str, ...]:
-    raw = os.getenv("HIDDEN_DIRECTORATE_CODES", "DPE")
+    raw = os.getenv("HIDDEN_DIRECTORATE_CODES", "")
     hidden = []
     for item in str(raw or "").split(","):
         code = item.strip().upper()

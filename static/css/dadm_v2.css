@@ -540,3 +540,18 @@ body.dadm-v2:not(.v2-is-loading) .v2-loading{opacity:0}
 .v2-attendances-table td{font-variant-numeric:tabular-nums}
 .v2-rating-missing{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:2px 7px;border:1px solid var(--v2-line);border-radius:999px;color:var(--v2-ink-500);background:#f7f8f8;font-size:8px;white-space:nowrap}
 @media (max-width:760px){.v2-attendance-controls{width:100%;justify-content:stretch}.v2-attendance-controls select{flex:1;min-width:135px}}
+
+/* --- v0.9.6.12 · explicit mobile sidebar close ---------------------------- */
+.v2-sidebar-mobile-close{display:none}
+@media (max-width:850px){
+  body.v2-mobile-nav-open{overflow:hidden}
+  .v2-sidebar-mobile-close{
+    position:absolute;top:18px;right:14px;z-index:4;width:36px;height:36px;
+    display:grid;place-items:center;padding:0;color:rgba(255,255,255,.86);
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);
+    border-radius:10px;cursor:pointer
+  }
+  .v2-sidebar-mobile-close:hover,.v2-sidebar-mobile-close:focus-visible{color:#fff;background:rgba(255,255,255,.14)}
+  .v2-sidebar-mobile-close svg{width:18px;height:18px}
+  .v2-brand{padding-right:48px}
+}

@@ -54,7 +54,7 @@ services:
       - key: SUPABASE_AVATAR_BUCKET
         value: data-univc-avatars
       - key: HIDDEN_DIRECTORATE_CODES
-        value: DPE
+        value: ""
       # TALLOS/RD Station Conversas - usado pela sincronizacao manual do DADM.
       # Nao ha Cron Job nesta release. O usuario dispara a sincronizacao pela interface.
       - key: TALLOS_API_TOKEN

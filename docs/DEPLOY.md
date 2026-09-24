@@ -1,3 +1,26 @@
+## v0.9.6.12 — DPE Reactivation & Mobile Navigation
+
+Deploy incremental sobre a v0.9.6.11. Não existe migration nova: mantenha o mesmo banco Supabase/PostgreSQL no schema 33.
+
+### Variável de visibilidade das diretorias
+
+A DPE está ativa nesta release. O Blueprint publica:
+
+```text
+HIDDEN_DIRECTORATE_CODES=
+```
+
+Se o serviço Render já possuir `HIDDEN_DIRECTORATE_CODES=DPE` configurado manualmente fora do Blueprint, altere o valor para vazio antes de validar o deploy. A variável continua disponível para ocultação emergencial futura de diretorias, mas não oculta nenhuma por padrão.
+
+### Homologação pós-deploy
+
+1. confirme `/api/health/live` com versão `0.9.6.12`;
+2. confirme `/api/health/ready` com schema expected/current `33`;
+3. entre como Reitoria e confirme DTNH, DCS, DADM, DPE e DM em Diretorias disponíveis;
+4. abra `/dpe?diretoria=DPE` e valide dashboard, leitura e permissões já existentes;
+5. em viewport mobile, valide abrir e fechar a sidebar de DTNH, DCS, DADM, DPE e DM por botão, backdrop e `Esc`;
+6. em `/reitoria`, valide hamburger, drawer lateral, backdrop e fechamento ao escolher uma seção/diretoria.
+
 ## v0.9.6.11 - DADM Full Attendance Explorer
 
 Deploy incremental sobre a v0.9.6.10. Nao existe migration nova: mantenha o mesmo banco Supabase/PostgreSQL no schema 33 e o mesmo servico Render. Esta release nao adiciona Cron Job.

@@ -11,11 +11,14 @@
 </head>
 <body>
   <div class="reitoria-shell">
-    <aside class="reitoria-sidebar">
+    <aside class="reitoria-sidebar" id="reitoriaSidebar" aria-label="Navegação da Reitoria">
       <a class="reitoria-brand" href="/reitoria" aria-label="Data UNIVC — Reitoria">
         <img src="/static/img/univc-logo.png" alt="UNIVC">
         <span><strong>Data UNIVC</strong><small>Área da Reitoria</small></span>
       </a>
+      <button id="reitoriaSidebarClose" class="reitoria-sidebar-close" type="button" aria-label="Fechar menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
 
       <nav class="reitoria-nav" aria-label="Navegação da Reitoria">
         <span class="nav-caption">Administração</span>
@@ -32,13 +35,19 @@
         <button id="reitoriaLogout" type="button" class="logout-button" title="Encerrar sessão" aria-label="Encerrar sessão">Sair</button>
       </div>
     </aside>
+    <div id="reitoriaSidebarBackdrop" class="reitoria-sidebar-backdrop" aria-hidden="true"></div>
 
     <main class="reitoria-main">
       <header class="reitoria-topbar">
-        <div>
-          <span class="eyebrow">DATA UNIVC · ADMINISTRAÇÃO INSTITUCIONAL</span>
-          <h1>Área da Reitoria</h1>
-          <p>Gerencie identidades, permissões e acessos institucionais em um único lugar.</p>
+        <div class="reitoria-topbar-lead">
+          <button id="reitoriaMobileMenu" class="reitoria-mobile-menu" type="button" aria-label="Abrir menu" aria-controls="reitoriaSidebar" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <div>
+            <span class="eyebrow">DATA UNIVC · ADMINISTRAÇÃO INSTITUCIONAL</span>
+            <h1>Área da Reitoria</h1>
+            <p>Gerencie identidades, permissões e acessos institucionais em um único lugar.</p>
+          </div>
         </div>
         <button id="newUserButton" class="button primary" type="button">+ Novo usuário</button>
       </header>

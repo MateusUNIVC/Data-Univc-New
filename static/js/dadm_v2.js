@@ -1426,12 +1426,24 @@ window.DADMV2 = window.DADMV2 || {};
   }
 
   function openSidebar() {
+    if (window.innerWidth > 850) return;
     $('#v2Sidebar').classList.add('open');
+    document.body.classList.add('v2-mobile-nav-open');
+    $('#v2MobileMenu')?.setAttribute('aria-expanded', 'true');
+    $('#v2MobileMenu')?.setAttribute('aria-label', 'Fechar menu');
     showLayer($('#v2SidebarBackdrop'));
+    window.setTimeout(() => $('#v2SidebarMobileClose')?.focus({ preventScroll: true }), 0);
   }
-  function closeSidebar() {
-    $('#v2Sidebar').classList.remove('open');
+  function closeSidebar({ restoreFocus = false } = {}) {
+    const wasOpen = $('#v2Sidebar')?.classList.contains('open');
+    $('#v2Sidebar')?.classList.remove('open');
+    document.body.classList.remove('v2-mobile-nav-open');
+    $('#v2MobileMenu')?.setAttribute('aria-expanded', 'false');
+    $('#v2MobileMenu')?.setAttribute('aria-label', 'Abrir menu');
     hideLayer($('#v2SidebarBackdrop'), 220);
+    if (restoreFocus && wasOpen && window.innerWidth <= 850) {
+      window.setTimeout(() => $('#v2MobileMenu')?.focus({ preventScroll: true }), 0);
+    }
   }
 
   function bindEvents() {
@@ -1536,8 +1548,15 @@ window.DADMV2 = window.DADMV2 || {};
 
     $('#v2Logout')?.addEventListener('click', async () => { await window.DataUnivcAuth.logout(); location.assign('/'); });
 
-    $('#v2MobileMenu').addEventListener('click', openSidebar);
-    $('#v2SidebarBackdrop').addEventListener('click', closeSidebar);
+    $('#v2MobileMenu').addEventListener('click', () => {
+      if ($('#v2Sidebar').classList.contains('open')) closeSidebar({ restoreFocus: true });
+      else openSidebar();
+    });
+    $('#v2SidebarMobileClose')?.addEventListener('click', () => closeSidebar({ restoreFocus: true }));
+    $('#v2SidebarBackdrop').addEventListener('click', () => closeSidebar({ restoreFocus: true }));
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 850) closeSidebar();
+    });
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') {
         closePeriodPicker();

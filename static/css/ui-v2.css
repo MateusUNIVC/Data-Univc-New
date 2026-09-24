@@ -1054,3 +1054,49 @@
 @media(max-width:1280px){.ui-v2 #section-alunos .dm-student-filter{grid-template-columns:minmax(280px,1.4fr) repeat(2,minmax(160px,1fr))}.ui-v2 #section-alunos .dm-student-filter .student-search-filter{grid-column:span 2}}
 @media(max-width:980px){.ui-v2 #section-alunos .dm-student-filter{grid-template-columns:repeat(2,minmax(150px,1fr))}.ui-v2 #section-alunos .dm-student-filter .student-search-filter{grid-column:1/-1}}
 @media(max-width:620px){.ui-v2 #section-alunos .dm-student-filter{grid-template-columns:1fr}.ui-v2 #section-alunos .dm-student-filter .student-search-filter{grid-column:auto}}
+
+/* --- v0.9.6.12 · unified mobile sidebar behavior -------------------------- */
+.ui-v2 .ui-sidebar-mobile-close,
+.ui-v2 .ui-sidebar-backdrop { display: none; }
+
+@media (max-width: 980px) {
+  .ui-v2.ui-mobile-nav-open { overflow: hidden; }
+  .ui-v2 .sidebar { z-index: 40; }
+  .ui-v2 .ui-sidebar-mobile-close {
+    position: absolute;
+    top: 18px;
+    right: 14px;
+    z-index: 4;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: rgba(255,255,255,.86);
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .ui-v2 .ui-sidebar-mobile-close:hover,
+  .ui-v2 .ui-sidebar-mobile-close:focus-visible {
+    color: #fff;
+    background: rgba(255,255,255,.14);
+  }
+  .ui-v2 .ui-sidebar-mobile-close svg { width: 18px; height: 18px; }
+  .ui-v2 .ui-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    display: block;
+    background: rgba(6,31,22,.48);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .22s var(--ui-ease);
+  }
+  .ui-v2 .ui-sidebar-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .ui-v2 .sidebar .brand { padding-right: 48px; }
+}

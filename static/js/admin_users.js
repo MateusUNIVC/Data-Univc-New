@@ -338,6 +338,40 @@
       document.querySelectorAll('[data-admin-nav]').forEach(item => item.classList.toggle('active', item === link));
     }));
   }
+  function bindMobileSidebar() {
+    const sidebar = $('#reitoriaSidebar');
+    const menu = $('#reitoriaMobileMenu');
+    const closeButton = $('#reitoriaSidebarClose');
+    const backdrop = $('#reitoriaSidebarBackdrop');
+    if (!sidebar || !menu || !closeButton || !backdrop) return;
+
+    const setOpen = (open, {restoreFocus = false} = {}) => {
+      const shouldOpen = Boolean(open && window.innerWidth <= 760);
+      sidebar.classList.toggle('open', shouldOpen);
+      backdrop.classList.toggle('open', shouldOpen);
+      document.body.classList.toggle('reitoria-mobile-nav-open', shouldOpen);
+      menu.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+      menu.setAttribute('aria-label', shouldOpen ? 'Fechar menu' : 'Abrir menu');
+      if (shouldOpen) {
+        window.setTimeout(() => closeButton.focus({preventScroll:true}), 0);
+      } else if (restoreFocus && window.innerWidth <= 760) {
+        window.setTimeout(() => menu.focus({preventScroll:true}), 0);
+      }
+    };
+
+    menu.addEventListener('click', () => setOpen(!sidebar.classList.contains('open')));
+    closeButton.addEventListener('click', () => setOpen(false, {restoreFocus:true}));
+    backdrop.addEventListener('click', () => setOpen(false, {restoreFocus:true}));
+    sidebar.addEventListener('click', event => {
+      if (window.innerWidth <= 760 && event.target.closest('a[href]')) setOpen(false);
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && sidebar.classList.contains('open')) setOpen(false, {restoreFocus:true});
+    });
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 760) setOpen(false);
+    });
+  }
   async function start() {
     state.identity = await window.DataUnivcIdentity.load();
     if (!state.identity?.globalAccess) {
@@ -388,6 +422,7 @@
     searchTimer = setTimeout(() => loadUsers().catch(error => toast(error.message)), 260);
   });
   bindNav();
+  bindMobileSidebar();
   start().catch(error => {
     console.error(error);
     toast(error.message || 'Não foi possível carregar a Área da Reitoria.');

@@ -1,10 +1,10 @@
 {
   "artifact_profile": "production",
-  "created_at_utc": "2026-09-11T13:32:22.141052+00:00",
-  "app_version": "0.9.6.10",
-  "build_fingerprint": "fa75bd3e6294",
+  "created_at_utc": "2026-09-24T15:01:06.779388+00:00",
+  "app_version": "0.9.6.12",
+  "build_fingerprint": "8418bdbf8134",
   "schema_expected": 33,
-  "file_count": 211,
+  "file_count": 212,
   "files": [
     {
       "path": ".dockerignore",
@@ -13,13 +13,13 @@
     },
     {
       "path": ".env.example",
-      "bytes": 3287,
-      "sha256": "308d95dbcd97c8d088c159d219e77c76f36ed5d066fe9d34e4d2675e93370afd"
+      "bytes": 3284,
+      "sha256": "0dd26b185cdbccc1fb062395ac438cdfdcc5c6d83e16a9799903ec23e463b4e4"
     },
     {
       "path": "BUILD_INFO.txt",
-      "bytes": 99,
-      "sha256": "559e58fe0bff4978a0c788fd64af63d4ea6e1c1d8a4e6811602bdac1ce3dffd9"
+      "bytes": 90,
+      "sha256": "308395bc8b0024634975b652bdf32d6672db825b0da6da59a1adaaf5bcc756b7"
     },
     {
       "path": "Dockerfile",
@@ -28,8 +28,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 44706,
-      "sha256": "be3f5edb9518f7d55c9d8f85f86e00fee1387bc79d9020cea28023ccf971eed6"
+      "bytes": 45697,
+      "sha256": "086441f7abbb12fe2bf98ad11f910062824b8fc8c53e774dfb1d0b72c9a1c518"
     },
     {
       "path": "academic_analytics.py",
@@ -253,8 +253,8 @@
     },
     {
       "path": "dadm_v2_analytics.py",
-      "bytes": 22760,
-      "sha256": "682683ef03506308d63d4845530475d5a2001677ebcea0795ea3b299710c3dea"
+      "bytes": 24336,
+      "sha256": "1d50c1498d8577acb31e1bdbac8a9306ec473e5fd30addf84b21202bcf3bbb25"
     },
     {
       "path": "dadm_v2_management.py",
@@ -268,8 +268,13 @@
     },
     {
       "path": "dadm_v2_router.py",
-      "bytes": 12691,
-      "sha256": "8518168d65d527cc05c031211528085a6209ce5f9c998eb5ef5ea0fc4bb81778"
+      "bytes": 14093,
+      "sha256": "a97c2c01c1c3d836ca4689945d47e7a766467c8747a87bb3a84d4a77a62e40c2"
+    },
+    {
+      "path": "database.py",
+      "bytes": 920,
+      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
     },
     {
       "path": "database/001_init.sql",
@@ -422,11 +427,6 @@
       "sha256": "cda3f84e1832fffb40b7138aa03bddcb622b5e5b266e6d18ffa34be19997a8f7"
     },
     {
-      "path": "database.py",
-      "bytes": 920,
-      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
-    },
-    {
       "path": "demo_data.py",
       "bytes": 16057,
       "sha256": "fe612af12751832f9c7d8aa50c64cc8af019c1e5b33d13a02983642a1ac5715c"
@@ -543,8 +543,13 @@
     },
     {
       "path": "docs/CHANGELOG.md",
-      "bytes": 43118,
-      "sha256": "a93547307657923caf5cc47d6689a22268723a05374d019b8495978d434c1582"
+      "bytes": 44311,
+      "sha256": "568794d4625165acd0e741572b15a9406e459cea1238f508cd6b4fe8ecfe4e3f"
+    },
+    {
+      "path": "docs/DADM_FULL_ATTENDANCE_EXPLORER_v09611.md",
+      "bytes": 1028,
+      "sha256": "d141a656d5e824e3769da12a3b430d97c631acb447a1044e36391c6e47617e5f"
     },
     {
       "path": "docs/DADM_INDIVIDUAL_EVALUATIONS_PROMPT2.md",
@@ -613,8 +618,8 @@
     },
     {
       "path": "docs/DEPLOY.md",
-      "bytes": 23032,
-      "sha256": "45e0345cc9b71d48de7c3ed3d70329299a111a6817edce37271bdb7d0e985057"
+      "bytes": 24415,
+      "sha256": "19b84dff6798ee60de2f99f07e7f58a706e09546575563a1e54f991d2fb05f7a"
     },
     {
       "path": "docs/DM_DOMAIN_SIMPLIFICATION_v08290.md",
@@ -758,13 +763,13 @@
     },
     {
       "path": "release_info.py",
-      "bytes": 220,
-      "sha256": "5e7894feabe4b85284ce0f8d029f37a730739604cf2f6c2fcdd06375152a3e58"
+      "bytes": 209,
+      "sha256": "afa4f906d22250c33eaa8a3783d56779c64a26c11fa37c5d2507f61335f07b34"
     },
     {
       "path": "render.yaml",
-      "bytes": 2067,
-      "sha256": "ac2f61bd836d686feb6014435382b38a42bf1e7defe899087dc2598ff31e7a2f"
+      "bytes": 2066,
+      "sha256": "b34ddd03a799873e9c9af4d8f1c6f59cb68e1f523c16a85eb31d3191d95acfb5"
     },
     {
       "path": "repository.py",
@@ -798,8 +803,8 @@
     },
     {
       "path": "security.py",
-      "bytes": 27819,
-      "sha256": "96e84bf3f970ed9457293e2512eeb48c9a049a2e2933685370a02dd62618c28f"
+      "bytes": 27816,
+      "sha256": "d40eb2d49fcdd3f92f5d831345bef51d60e48c75be20fd38a1dd2b9c56ceb0cc"
     },
     {
       "path": "sei_academic.py",
@@ -833,8 +838,8 @@
     },
     {
       "path": "static/css/dadm_v2.css",
-      "bytes": 51366,
-      "sha256": "2672235807f8aabc20269e54404c359166c4ff6294bcc332516bf46c919f08cb"
+      "bytes": 52754,
+      "sha256": "b9fdaee591c01b2e081230d9cc926b6cde198a74cc0fff8b897f2197b27698c0"
     },
     {
       "path": "static/css/data-univc-foundation.css",
@@ -858,13 +863,13 @@
     },
     {
       "path": "static/css/reitoria.css",
-      "bytes": 11373,
-      "sha256": "0ae1a2140a95e19c13096f021728a4a5bca4e524ecd0538029e3433b4aca4912"
+      "bytes": 13910,
+      "sha256": "52d60a9c81095d89282a35b15a30eed502173e55a111d3ab1284885758f60bbc"
     },
     {
       "path": "static/css/ui-v2.css",
-      "bytes": 40964,
-      "sha256": "42d50cae276fa25550616eaa7ef335991a8cfacd0de34776adee131f22826a49"
+      "bytes": 42197,
+      "sha256": "4ebcc5c0b1081efe7dbc4e5ed7509d3790b8424cf5f73d4649f4b26d4f9917a6"
     },
     {
       "path": "static/img/univc-logo.png",
@@ -873,13 +878,13 @@
     },
     {
       "path": "static/js/admin_users.js",
-      "bytes": 20933,
-      "sha256": "5497aab89674c01d984640ee023ff73171c323457c794fd8689a6c7a078f27cd"
+      "bytes": 22638,
+      "sha256": "5b6e746ebcaee09428eb32f2baaed6ee03b5e351e174483dc166abc6b7ec2cfa"
     },
     {
       "path": "static/js/app.js",
-      "bytes": 211398,
-      "sha256": "befc380c9df05be35def2ca8ec055d07f4f9903266228d8ac19ea0b22aa5f861"
+      "bytes": 211308,
+      "sha256": "d187b1e0ddd5731a417d2c33db9cd611d7b1a573c27a2a26f47de79fe6d49e13"
     },
     {
       "path": "static/js/dadm.js",
@@ -893,8 +898,8 @@
     },
     {
       "path": "static/js/dadm_v2.js",
-      "bytes": 94826,
-      "sha256": "751def1759c4601fc2a9183dbf0dbf0f2f3549c9888f45da47afd8bda4c3979f"
+      "bytes": 97233,
+      "sha256": "99075f8e6b4aae841f06df65261a97c819a79ffa15714ea6dbb71a0193159593"
     },
     {
       "path": "static/js/dadm_v2_api.js",
@@ -908,8 +913,8 @@
     },
     {
       "path": "static/js/dadm_v2_state.js",
-      "bytes": 4165,
-      "sha256": "ad11f258a6f82137c7ce844072eb9dc42f93e221fd4a38dcc5c38ec99601bca2"
+      "bytes": 4186,
+      "sha256": "daa819b06c8e818ea185c475091cf93e662b447c1e3e6a5d433861025f544567"
     },
     {
       "path": "static/js/data-univc-auth.js",
@@ -948,8 +953,8 @@
     },
     {
       "path": "static/js/ui-v2.js",
-      "bytes": 7991,
-      "sha256": "5b901eb81aa0dcd5ebab395ce453f4628ba20d4782bb6b7c0706192cebd2698c"
+      "bytes": 10341,
+      "sha256": "3a5ac7c218759d4ce24fed050d47facd376edaed0114279c1da751c9f70d29cf"
     },
     {
       "path": "survey_archive.py",
@@ -1028,8 +1033,8 @@
     },
     {
       "path": "templates/dadm_v2.html",
-      "bytes": 24199,
-      "sha256": "71a328d4aed67c3d47f47eda0b7dd30b090c7334fe60af4ad3d5e0332964eaf4"
+      "bytes": 24564,
+      "sha256": "fbeca59dc9b546b1e074da7a3c6f094cb1d36de5e25654023908769c1d1a268b"
     },
     {
       "path": "templates/dm.html",
@@ -1053,8 +1058,8 @@
     },
     {
       "path": "templates/reitoria.html",
-      "bytes": 8709,
-      "sha256": "89db250190e2cd87c73b72dc8b580c0eba2ed36bd6a51900c4ebc0b887068f19"
+      "bytes": 9605,
+      "sha256": "62d2f3365491e2ef3c548ebd953a064ee48881554f18627e7318abca71c03c69"
     },
     {
       "path": "upload_utils.py",

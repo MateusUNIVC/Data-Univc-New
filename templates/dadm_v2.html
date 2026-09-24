@@ -20,6 +20,9 @@
       <button type="button" class="v2-sidebar-collapse" id="v2SidebarCollapse" aria-label="Recolher menu lateral" title="Recolher menu lateral">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
+      <button type="button" class="v2-sidebar-mobile-close" id="v2SidebarMobileClose" aria-label="Fechar menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
 
       <nav class="v2-nav" aria-label="Áreas da DADM">
         <button type="button" class="v2-nav-item active" data-view="overview">
@@ -62,7 +65,7 @@
 
     <main class="v2-main">
       <header class="v2-topbar">
-        <button type="button" class="v2-mobile-menu" id="v2MobileMenu" aria-label="Abrir menu">
+        <button type="button" class="v2-mobile-menu" id="v2MobileMenu" aria-label="Abrir menu" aria-controls="v2Sidebar" aria-expanded="false">
           <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
         <div class="v2-topbar-title"><span>DADM · Diretoria Administrativa</span><h1 id="v2PageTitle">Visão geral</h1></div>
