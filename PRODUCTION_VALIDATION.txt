@@ -1,37 +1,29 @@
 Data UNIVC v0.13.0 - Production Validation
 
 Base academica: v0.11.6.7
-Schema: 48
+Schema: 49
+Migration obrigatoria acumulada: 049_academic_faculty_context_scopes_v0130.sql
 
-Pre-package checks:
+Patch Parte 4 (2026-09-29):
+- graficos comparativos por curso preservam nomes completos, sem limite fixo de duas linhas;
+- altura de cada linha cresce de forma dinamica conforme o rotulo;
+- margem esquerda responsiva reduz colisao entre rotulos e barras;
+- nome integral permanece disponivel no SVG <title> e no tooltip;
+- renderer compartilhado beneficia NPS e outros comparativos por curso;
+- nenhuma mudanca de API, calculo, banco ou schema nesta etapa.
+
+Patch Parte 3 acumulado:
+- Avaliacao Docente: Ano + Semestre no frontend, contrato interno AAAA-SEM1/2 preservado.
+- Turmas compartilhadas: multiplos cursos por contexto sem duplicacao de respostas.
+- Analytics global deduplica contexto/agregados; filtros por curso enxergam todos os escopos associados.
+- NPS/SEI: Educacao Fisica atual -> Licenciatura somente no adapter SEI.
+- Upload manual ambiguo: resolucao explicita de curso obrigatoria.
+- Migration 049 faz backfill de todos os contextos docentes historicos como escopo primario.
+
+Checks finais:
 - Python compile: OK
-- DPE JavaScript syntax: OK
-- Pytest: 164 passed
-- DPE legacy lockout checks: OK
-
-Production-mode smoke:
-- ENVIRONMENT=production: OK
-- AUTH_DISABLED=false: OK
-- COOKIE_SECURE=true: OK
-- REQUIRE_SCHEMA_VERSION=true: OK
-- LOGIN_RATE_LIMIT_ENABLED=true: OK
-- GET /api/health/ready: 200
-- GET /api/dpe/domain without session: 401
-- GET /docs: 404
-
-Docker Compose file included for app-only VPS deployment.
-Docker CLI was not available in the build environment, so `docker compose config -q`
-was not executed here. The application itself was started with uvicorn under the
-production environment and passed the smoke checks above.
-
-Final stripped-package checks:
-- Python compile: OK
-- DPE JavaScript syntax: OK
-- Pytest: 163 passed, 2 skipped (inclui regressão Educação Física - Licenciatura)
+- JavaScript syntax (data-univc-ui.js, app.js, faculty-evaluation.js): OK
+- Pytest: 179 passed, 2 skipped
 - Release checks: OK
 
-Patch Parte 1 (2026-09-29):
-- static/js/app.js: node --check OK
-- static/js/faculty-evaluation.js: node --check OK
-- academic_excel_parser.py: py_compile OK
-- UI diagnostics removidos conforme escopo; regras de backend preservadas.
+Antes do deploy em producao, se a migration 049 ainda nao tiver sido aplicada, aplique-a no PostgreSQL antes de iniciar/recriar a aplicacao com REQUIRE_SCHEMA_VERSION=true.

@@ -41,7 +41,7 @@ def test_release_preserves_dev11_management_contract_without_schema_bump():
     assert release_info.APP_VERSION.startswith("0.13.0")
     if release_info.APP_VERSION != "0.13.0":
         assert int(release_info.APP_VERSION.rsplit(".", 1)[-1]) >= 11
-    assert release_info.SCHEMA_VERSION == 48
+    assert release_info.SCHEMA_VERSION >= 48
 
 
 def test_canonical_management_catalog_uses_runtime_metrics_and_hides_historical_new_entries():

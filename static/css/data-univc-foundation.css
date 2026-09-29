@@ -79,3 +79,26 @@
 .du-enter{animation:du-enter .2s var(--du-ease)}
 @keyframes du-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.du-enter,.du-operation-progress.is-indeterminate .du-progress-fill{animation:none!important}.du-progress-fill{transition:none!important}}
+
+
+/* Shared searchable select — DTNH/DCS filters and faculty analytics. */
+.du-combobox-native-hidden{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important;opacity:0!important;pointer-events:none!important}
+.du-combobox{position:relative;width:100%;min-width:0}
+.du-combobox-control{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;min-height:38px;border:1px solid var(--du-line,#cbd8d1);border-radius:9px;background:#fff;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.du-combobox:focus-within .du-combobox-control,.du-combobox.open .du-combobox-control{border-color:var(--du-brand-700,#0e8058);box-shadow:0 0 0 3px rgba(14,128,88,.09)}
+.du-combobox-input{width:100%;min-width:0;height:36px;padding:0 5px 0 10px;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;color:var(--du-ink-800,#263d33);font:inherit;font-size:10px}
+.du-combobox-input::placeholder{color:var(--du-ink-500,#83918a);opacity:1}
+.du-combobox-clear,.du-combobox-toggle{display:flex;align-items:center;justify-content:center;width:31px;height:31px;padding:0;border:0;background:transparent;color:var(--du-ink-500,#66756e);font-size:15px;cursor:pointer}
+.du-combobox-clear:hover,.du-combobox-toggle:hover{color:var(--du-brand-900,#07563a);background:var(--du-brand-50,#eef8f4);border-radius:8px}
+.du-combobox-clear[hidden]{display:none}
+.du-combobox-menu{position:absolute;z-index:190;top:calc(100% + 5px);left:0;right:0;max-height:min(300px,42vh);overflow:auto;padding:5px;border:1px solid var(--du-line,#cbd8d1);border-radius:10px;background:#fff;box-shadow:0 14px 34px rgba(15,52,36,.16);overscroll-behavior:contain}
+.du-combobox-option{display:block;width:100%;padding:9px 10px;border:0;border-radius:8px;background:transparent;color:var(--du-ink-800,#263d33);text-align:left;font:inherit;font-size:10.5px;line-height:1.35;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
+.du-combobox-option:hover,.du-combobox-option.active{background:var(--du-brand-50,#eef8f4);color:var(--du-brand-950,#06452f)}
+.du-combobox-option.selected{font-weight:800;color:var(--du-brand-900,#07563a)}
+.du-combobox-empty{padding:12px 10px;color:var(--du-ink-500,#66756e);font-size:10px;text-align:center}
+.du-combobox.disabled .du-combobox-control{background:#f5f7f6;border-color:var(--du-line,#d9e2dd);box-shadow:none}
+.du-combobox.disabled .du-combobox-input,.du-combobox.disabled .du-combobox-toggle,.du-combobox.disabled .du-combobox-clear{color:var(--du-ink-500,#83918a);cursor:not-allowed}
+.faculty-filter-grid .du-combobox-control{min-height:40px;border-radius:10px}.faculty-filter-grid .du-combobox-input{height:38px;font-size:inherit}.faculty-filter-grid .du-combobox-menu{z-index:210}
+.table-filter .du-combobox-control{min-height:34px;height:34px;border-radius:6px}.table-filter .du-combobox-input{height:32px;padding-left:9px;font-size:10px}.table-filter .du-combobox-clear,.table-filter .du-combobox-toggle{width:27px;height:27px;font-size:14px}
+.analysis-bar .du-combobox-control{min-height:36px}.analysis-bar .du-combobox-input{height:34px}
+@media(max-width:760px){.du-combobox-menu{max-height:38vh}.du-combobox-option{padding:10px;font-size:11px}}

@@ -1,3 +1,16 @@
+# v0.13.0 — Patch operacional Parte 3 (29/09/2026)
+
+- Avaliação Docente passa a aceitar turmas vinculadas a múltiplos cursos sem duplicação de respostas;
+- adiciona `faculty_evaluation_context_scopes` e migration 049 com backfill do vínculo primário histórico;
+- importação docente usa ano + semestre em campos humanos;
+- analytics por curso respeita os novos escopos e a visão global deduplica agregados;
+- NPS do SEI atual resolve `Educação Física` como Licenciatura apenas no contexto da fonte;
+- uploads manuais ambíguos passam a aceitar resolução explícita do curso;
+- schema esperado: 49;
+- regressão completa: 176 testes aprovados, 2 ignorados.
+
+---
+
 # v0.13.0 — Production
 
 - promove a árvore reconciliada v0.13.0-dev.15 para produção sem novas mudanças de domínio;

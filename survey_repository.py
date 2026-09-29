@@ -18,6 +18,7 @@ from models import (
     Directorate,
     Discipline,
     FacultyEvaluationContext,
+    FacultyEvaluationContextScope,
     FacultyRawResponse,
     FacultyResponseAggregate,
     NpsInstitution,
@@ -132,6 +133,59 @@ class SurveyRepository:
         return list(self.db.scalars(
             select(Course).where(Course.directorate_id == self.directorate_id).order_by(Course.name)
         ).all())
+
+    def course_options(self) -> list[dict[str, Any]]:
+        """Cursos ativos da diretoria disponíveis para escopos compartilhados."""
+        return [self._course_payload(course) for course in self._course_candidates() if bool(course.active)]
+
+    def match_course_for_source(
+        self,
+        name: str,
+        modality: str | None = None,
+        *,
+        origin: str = "manual",
+    ) -> dict[str, Any]:
+        """Resolve aliases que pertencem ao contrato de uma fonte específica.
+
+        O SEI atual passou a expor a Licenciatura de Educação Física simplesmente
+        como ``Educação Física`` enquanto o Bacharelado continua identificado como
+        ``Educação Física (Bac. Presencial)``. Essa regra não vira alias global:
+        uploads manuais/legados continuam exigindo resolução explícita.
+        """
+        if (
+            str(origin or "").casefold() == "sei"
+            and self.directorate_code == "DCS"
+            and normalize_key(name) == normalize_key("Educação Física")
+        ):
+            target = next(
+                (course for course in self._course_candidates()
+                 if normalize_key(course.name) == normalize_key("Educação Física - Licenciatura")),
+                None,
+            )
+            if target is not None:
+                modality_norm = normalize_key(modality or "")
+                if modality_norm and normalize_key(target.modality or "") != modality_norm:
+                    return {
+                        "matched": False,
+                        "reason": (
+                            f"Educação Física foi reconhecida como Licenciatura pelo SEI atual, "
+                            f"mas a modalidade do relatório ({modality or 'não informada'}) não corresponde ao catálogo."
+                        ),
+                        "candidates": [target.name],
+                        "candidate_ids": [int(target.id)],
+                        "candidate_courses": [self._course_payload(target)],
+                        "resolution_required": False,
+                    }
+                return {
+                    "matched": True,
+                    "course_id": int(target.id),
+                    "course_name": target.name,
+                    "modality": target.modality or "Presencial",
+                    "match_type": "source_alias",
+                    "resolution_source": "sei_current_label",
+                    "raw_course_name": clean_identity_display(name),
+                }
+        return self.match_course(name, modality)
 
     def _find_faculty_run_by_identity(
         self,
@@ -384,6 +438,7 @@ class SurveyRepository:
         modality: str | None = None,
         *,
         explicit_course_id: int | None = None,
+        origin: str = "manual",
     ) -> dict[str, Any]:
         """Aplica uma resolução manual somente quando o preview a autoriza.
 
@@ -392,7 +447,7 @@ class SurveyRepository:
         transforme qualquer curso desconhecido em outro curso arbitrário.
         """
 
-        automatic = self.match_course(name, modality)
+        automatic = self.match_course_for_source(name, modality, origin=origin)
         if explicit_course_id is None:
             return automatic
 
@@ -444,10 +499,16 @@ class SurveyRepository:
             "candidate_ids": sorted(candidate_ids),
         }
 
-    def inspect_entries(self, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def inspect_entries(
+        self, entries: list[dict[str, Any]], *, origin: str = "manual"
+    ) -> list[dict[str, Any]]:
         enriched = []
         for item in entries:
-            match = self.match_course(str(item.get("course_name") or ""), str(item.get("modality") or ""))
+            match = self.match_course_for_source(
+                str(item.get("course_name") or ""),
+                str(item.get("modality") or ""),
+                origin=origin,
+            )
             enriched.append({**item, "course_match": match})
         return enriched
 
@@ -510,10 +571,12 @@ class SurveyRepository:
         semester_override: str | None = None,
         origin: str = "manual",
         metadata: dict | None = None,
+        course_resolutions: dict[str, int] | None = None,
     ) -> dict[str, Any]:
         if not workbooks:
             raise SurveyIntegrationError("Nenhum relatório foi selecionado para importação.")
         metadata = metadata or {}
+        course_resolutions = {str(key): int(value) for key, value in (course_resolutions or {}).items()}
         first = workbooks[0]
         semester = _semester_to_data_univc(semester_override or first.semester_suggested)
         if not semester:
@@ -574,7 +637,12 @@ class SurveyRepository:
         skipped: list[str] = []
         unmapped: list[dict[str, str]] = []
         for parsed in workbooks:
-            match = self.match_course(parsed.course_name, parsed.modality)
+            match = self.resolve_course(
+                parsed.course_name,
+                parsed.modality,
+                explicit_course_id=course_resolutions.get(parsed.source_path),
+                origin=origin,
+            )
             if not match.get("matched"):
                 unmapped.append({"source_path": parsed.source_path, "course": parsed.course_name, "reason": match.get("reason") or "Não mapeado"})
                 continue
@@ -622,6 +690,7 @@ class SurveyRepository:
             "imported": len(imported),
             "skipped": len(skipped),
             "unmapped": len(unmapped),
+            "course_resolutions_applied": len(course_resolutions),
         })
         self.db.commit()
         return {
@@ -631,6 +700,7 @@ class SurveyRepository:
             "imported_files": imported,
             "skipped_files": skipped,
             "unmapped": unmapped,
+            "course_resolutions_applied": len(course_resolutions),
         }
 
     def list_nps_candidates(self, run_id: int) -> list[dict[str, Any]]:
@@ -1694,6 +1764,7 @@ class SurveyRepository:
         origin: str = "sei",
         metadata: dict | None = None,
         course_resolutions: dict[str, int] | None = None,
+        shared_course_scopes: dict[str, list[int]] | None = None,
     ) -> dict[str, Any]:
         """Persiste os contextos normalizados do relatório docente do SEI.
 
@@ -1706,6 +1777,10 @@ class SurveyRepository:
             raise SurveyIntegrationError("Nenhum contexto docente foi informado.")
         metadata = metadata or {}
         course_resolutions = {str(key): int(value) for key, value in (course_resolutions or {}).items()}
+        shared_course_scopes = {
+            str(key): sorted({int(value) for value in (values or [])})
+            for key, values in (shared_course_scopes or {}).items()
+        }
         first = contexts[0]
         semester = _semester_to_data_univc(semester_override or first.semester_suggested)
         if not semester:
@@ -1793,6 +1868,7 @@ class SurveyRepository:
                 parsed.course_name,
                 parsed.modality,
                 explicit_course_id=explicit_course_id,
+                origin=origin,
             )
             if not match.get("matched"):
                 unmapped.append({
@@ -1804,48 +1880,105 @@ class SurveyRepository:
                     "candidate_courses": match.get("candidate_courses") or [],
                 })
                 continue
-            course_id = int(match["course_id"])
+
+            primary_course_id = int(match["course_id"])
+            requested_extra_ids = [
+                int(value) for value in shared_course_scopes.get(parsed.source_path, [])
+                if int(value) != primary_course_id
+            ]
+            scope_courses: list[Course] = []
+            for scope_course_id in [primary_course_id, *requested_extra_ids]:
+                course = self.db.scalar(select(Course).where(
+                    Course.id == int(scope_course_id),
+                    Course.directorate_id == self.directorate_id,
+                    Course.active.is_(True),
+                ))
+                if not course:
+                    raise SurveyIntegrationError(
+                        f"{parsed.source_path}: um dos cursos da turma compartilhada não pertence à diretoria ou está inativo."
+                    )
+                if not any(int(existing.id) == int(course.id) for existing in scope_courses):
+                    scope_courses.append(course)
+
             if match.get("match_type") == "manual_resolution":
                 applied_resolutions.append({
                     "source_path": parsed.source_path,
                     "source_key": parsed.source_key,
                     "raw_course_name": parsed.course_name,
-                    "course_id": course_id,
+                    "course_id": primary_course_id,
                     "course_name": match.get("course_name"),
+                    "resolution_type": "primary_course",
                 })
-            discipline = self._get_or_create_discipline(course_id, parsed.discipline_name, semester)
+
             teacher = self._get_or_create_teacher(parsed.teacher_name, parsed.teacher_external_id)
-            offering = self._get_or_create_offering(
-                period=semester,
-                course_id=course_id,
-                discipline_id=discipline.id,
-                class_group=parsed.class_code or "",
-                external_id=parsed.offering_external_id,
+            assignments: list[tuple[Course, TeachingAssignment]] = []
+            for scope_course in scope_courses:
+                discipline = self._get_or_create_discipline(int(scope_course.id), parsed.discipline_name, semester)
+                offering = self._get_or_create_offering(
+                    period=semester,
+                    course_id=int(scope_course.id),
+                    discipline_id=discipline.id,
+                    class_group=parsed.class_code or "",
+                    external_id=parsed.offering_external_id if int(scope_course.id) == primary_course_id else None,
+                )
+                assignment = self._get_or_create_assignment(
+                    offering_id=offering.id,
+                    teacher_id=teacher.id,
+                    external_id=parsed.assignment_external_id if int(scope_course.id) == primary_course_id else None,
+                )
+                assignments.append((scope_course, assignment))
+
+            primary_assignment = next(
+                assignment for course, assignment in assignments if int(course.id) == primary_course_id
             )
-            assignment = self._get_or_create_assignment(
-                offering_id=offering.id,
-                teacher_id=teacher.id,
-                external_id=parsed.assignment_external_id,
-            )
-            # Um survey run só deve possuir um contexto por atribuição docente.
-            # O ID do XLSX no SEI pode mudar em uma nova exportação; por isso a
-            # idempotência não depende mais do source_key/report_id.
+            # O vínculo principal permanece para compatibilidade. Os demais cursos
+            # ficam em faculty_evaluation_context_scopes e não duplicam respostas.
             existing = self.db.scalar(select(FacultyEvaluationContext).where(
                 FacultyEvaluationContext.run_id == run.id,
-                FacultyEvaluationContext.teaching_assignment_id == assignment.id,
+                FacultyEvaluationContext.teaching_assignment_id == primary_assignment.id,
             ).order_by(FacultyEvaluationContext.id))
             if existing:
+                for scope_course, assignment in assignments:
+                    scope_row = self.db.scalar(select(FacultyEvaluationContextScope).where(
+                        FacultyEvaluationContextScope.context_id == existing.id,
+                        FacultyEvaluationContextScope.teaching_assignment_id == assignment.id,
+                    ))
+                    if not scope_row:
+                        self.db.add(FacultyEvaluationContextScope(
+                            context_id=existing.id,
+                            teaching_assignment_id=assignment.id,
+                            is_primary=int(assignment.id) == int(primary_assignment.id),
+                            resolution_source=(
+                                match.get("resolution_source") or "catalog"
+                                if int(assignment.id) == int(primary_assignment.id)
+                                else "shared_course_user"
+                            ),
+                            created_by=self.user.email,
+                        ))
                 skipped.append(parsed.source_key)
                 continue
+
             context = FacultyEvaluationContext(
                 run_id=run.id,
-                teaching_assignment_id=assignment.id,
+                teaching_assignment_id=primary_assignment.id,
                 source_key=parsed.source_key,
                 source_path=parsed.source_path,
                 respondent_count=max(0, int(parsed.respondent_count or 0)),
             )
             self.db.add(context)
             self.db.flush()
+            for scope_course, assignment in assignments:
+                self.db.add(FacultyEvaluationContextScope(
+                    context_id=context.id,
+                    teaching_assignment_id=assignment.id,
+                    is_primary=int(assignment.id) == int(primary_assignment.id),
+                    resolution_source=(
+                        (match.get("resolution_source") or "catalog")
+                        if int(assignment.id) == int(primary_assignment.id)
+                        else "shared_course_user"
+                    ),
+                    created_by=self.user.email,
+                ))
             for question in parsed.questions:
                 qrow = self._get_or_create_question(run.questionnaire_id, question)
                 for option in question.options:
@@ -1865,6 +1998,15 @@ class SurveyRepository:
                         response_text=response_text,
                         response_key=normalize_key(response_text),
                     ))
+            if len(scope_courses) > 1:
+                applied_resolutions.append({
+                    "source_path": parsed.source_path,
+                    "source_key": parsed.source_key,
+                    "primary_course_id": primary_course_id,
+                    "course_ids": [int(course.id) for course in scope_courses],
+                    "course_names": [course.name for course in scope_courses],
+                    "resolution_type": "shared_course_scope",
+                })
             imported.append(parsed.source_key)
 
         if applied_resolutions:
@@ -1879,6 +2021,7 @@ class SurveyRepository:
             "skipped": len(skipped),
             "unmapped": len(unmapped),
             "course_resolutions_applied": len(applied_resolutions),
+            "shared_course_contexts": sum(1 for item in applied_resolutions if item.get("resolution_type") == "shared_course_scope"),
         })
         self.db.commit()
         return {
@@ -1889,6 +2032,9 @@ class SurveyRepository:
             "skipped_contexts": skipped,
             "unmapped": unmapped,
             "course_resolutions_applied": applied_resolutions,
+            "shared_course_contexts": [
+                item for item in applied_resolutions if item.get("resolution_type") == "shared_course_scope"
+            ],
         }
 
     def faculty_import_history(self) -> dict[str, Any]:
@@ -2026,8 +2172,11 @@ class SurveyRepository:
                 Teacher.id,
                 Teacher.display_name,
                 Teacher.external_id,
+                FacultyEvaluationContextScope.is_primary,
+                FacultyEvaluationContextScope.resolution_source,
             )
-            .join(TeachingAssignment, TeachingAssignment.id == FacultyEvaluationContext.teaching_assignment_id)
+            .join(FacultyEvaluationContextScope, FacultyEvaluationContextScope.context_id == FacultyEvaluationContext.id)
+            .join(TeachingAssignment, TeachingAssignment.id == FacultyEvaluationContextScope.teaching_assignment_id)
             .join(AcademicOffering, AcademicOffering.id == TeachingAssignment.offering_id)
             .join(Course, Course.id == AcademicOffering.course_id)
             .join(Discipline, Discipline.id == AcademicOffering.discipline_id)
@@ -2051,6 +2200,7 @@ class SurveyRepository:
                 assignment_id, offering_id, period, class_group,
                 course_id, course_name, modality, discipline_id, discipline_name,
                 teacher_id, teacher_name, teacher_external_id,
+                is_primary_scope, scope_resolution_source,
             ) = row
             items.append({
                 "context_id": int(context_id),
@@ -2066,6 +2216,8 @@ class SurveyRepository:
                 "teacher_id": int(teacher_id),
                 "teacher_name": teacher_name,
                 "teacher_external_id": teacher_external_id,
+                "is_primary_scope": bool(is_primary_scope),
+                "scope_resolution_source": scope_resolution_source,
                 "class_group": class_group or "",
                 "respondent_count": int(respondent_count or 0),
                 "source_key": source_key,
@@ -2211,10 +2363,13 @@ class SurveyRepository:
                 FacultyResponseAggregate.context_id.label("context_id"),
                 FacultyResponseAggregate.question_id.label("question_id"),
                 FacultyResponseAggregate.option_label.label("option_label"),
+                FacultyResponseAggregate.numeric_value.label("numeric_value"),
                 FacultyResponseAggregate.response_count.label("response_count"),
                 FacultyEvaluationContext.run_id.label("run_id"),
                 FacultyEvaluationContext.respondent_count.label("respondent_count"),
                 TeachingAssignment.id.label("assignment_id"),
+                FacultyEvaluationContextScope.is_primary.label("is_primary_scope"),
+                FacultyEvaluationContextScope.resolution_source.label("scope_resolution_source"),
                 Teacher.id.label("teacher_id"),
                 Teacher.display_name.label("teacher_name"),
                 AcademicOffering.id.label("offering_id"),
@@ -2230,7 +2385,8 @@ class SurveyRepository:
             )
             .join(FacultyEvaluationContext, FacultyEvaluationContext.id == FacultyResponseAggregate.context_id)
             .join(SurveyRun, SurveyRun.id == FacultyEvaluationContext.run_id)
-            .join(TeachingAssignment, TeachingAssignment.id == FacultyEvaluationContext.teaching_assignment_id)
+            .join(FacultyEvaluationContextScope, FacultyEvaluationContextScope.context_id == FacultyEvaluationContext.id)
+            .join(TeachingAssignment, TeachingAssignment.id == FacultyEvaluationContextScope.teaching_assignment_id)
             .join(Teacher, Teacher.id == TeachingAssignment.teacher_id)
             .join(AcademicOffering, AcademicOffering.id == TeachingAssignment.offering_id)
             .join(Course, Course.id == AcademicOffering.course_id)
@@ -2265,7 +2421,28 @@ class SurveyRepository:
         return [dict(row._mapping) for row in self.db.execute(stmt).all()]
 
     @staticmethod
+    def _dedupe_faculty_aggregate_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Remove expansão por múltiplos cursos quando o cálculo é global.
+
+        O mesmo aggregate_id pode aparecer uma vez por escopo de curso. Dentro
+        de um recorte de curso isso não duplica; em visões gerais/por docente,
+        a resposta precisa ser contada uma única vez.
+        """
+        seen: set[int] = set()
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            key = int(row.get("aggregate_id") or 0)
+            if key and key in seen:
+                continue
+            if key:
+                seen.add(key)
+            out.append(row)
+        return out
+
+    @staticmethod
     def _faculty_analytics_summary_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        scope_rows = list(rows)
+        rows = SurveyRepository._dedupe_faculty_aggregate_rows(scope_rows)
         contexts: dict[int, dict[str, Any]] = {}
         for row in rows:
             contexts.setdefault(int(row["context_id"]), row)
@@ -2283,10 +2460,10 @@ class SurveyRepository:
         return {
             "contexts": len(contexts),
             "semesters": len({row["semester"] for row in contexts.values()}),
-            "courses": len({int(row["course_id"]) for row in contexts.values()}),
-            "disciplines": len({int(row["discipline_id"]) for row in contexts.values()}),
-            "teachers": len({int(row["teacher_id"]) for row in contexts.values()}),
-            "offerings": len({int(row["offering_id"]) for row in contexts.values()}),
+            "courses": len({int(row["course_id"]) for row in scope_rows}),
+            "disciplines": len({int(row["discipline_id"]) for row in scope_rows}),
+            "teachers": len({int(row["teacher_id"]) for row in scope_rows}),
+            "offerings": len({int(row["offering_id"]) for row in scope_rows}),
             "questions": len({int(row["question_id"]) for row in rows}),
             "teacher_questions": len(teacher_question_ids),
             "contextual_questions": len(contextual_question_ids),
@@ -2704,6 +2881,7 @@ class SurveyRepository:
             grouped.setdefault(int(row["question_id"]), []).append(row)
         items: list[dict[str, Any]] = []
         for question_id, qrows in grouped.items():
+            qrows = self._dedupe_faculty_aggregate_rows(qrows)
             first = qrows[0]
             items.append({
                 "question_id": question_id,
@@ -2951,33 +3129,15 @@ class SurveyRepository:
         teacher_id: int | None = None,
         offering_id: int | None = None,
     ) -> dict[str, Any]:
-        q = (
-            select(
-                FacultyResponseAggregate.option_label,
-                FacultyResponseAggregate.numeric_value,
-                func.sum(FacultyResponseAggregate.response_count).label("response_count"),
-            )
-            .join(FacultyEvaluationContext, FacultyEvaluationContext.id == FacultyResponseAggregate.context_id)
-            .join(TeachingAssignment, TeachingAssignment.id == FacultyEvaluationContext.teaching_assignment_id)
-            .join(AcademicOffering, AcademicOffering.id == TeachingAssignment.offering_id)
-            .join(Course, Course.id == AcademicOffering.course_id)
-            .where(
-                FacultyResponseAggregate.question_id == question_id,
-                Course.directorate_id == self.directorate_id,
-            )
+        rows = self._faculty_analytics_rows(
+            semester=semester,
+            course_id=course_id,
+            discipline_id=discipline_id,
+            teacher_id=teacher_id,
+            offering_id=offering_id,
+            question_id=question_id,
         )
-        if semester:
-            q = q.where(AcademicOffering.period == _semester_to_data_univc(semester))
-        if course_id is not None:
-            q = q.where(AcademicOffering.course_id == course_id)
-        if discipline_id is not None:
-            q = q.where(AcademicOffering.discipline_id == discipline_id)
-        if teacher_id is not None:
-            q = q.where(TeachingAssignment.teacher_id == teacher_id)
-        if offering_id is not None:
-            q = q.where(AcademicOffering.id == offering_id)
-        q = q.group_by(FacultyResponseAggregate.option_label, FacultyResponseAggregate.numeric_value)
-        rows = [dict(row._mapping) for row in self.db.execute(q).all()]
+        rows = self._dedupe_faculty_aggregate_rows(rows)
         question = self.db.get(SurveyQuestion, question_id)
         if not question:
             raise SurveyIntegrationError("Pergunta docente não encontrada.")

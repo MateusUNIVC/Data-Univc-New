@@ -114,7 +114,8 @@ class FacultyStudentV01163Tests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         html = (root / "templates" / "index.html").read_text(encoding="utf-8")
         js = (root / "static" / "js" / "faculty-evaluation.js").read_text(encoding="utf-8")
-        css = (root / "static" / "css" / "faculty-evaluation.css").read_text(encoding="utf-8")
+        shared_js = (root / "static" / "js" / "data-univc-ui.js").read_text(encoding="utf-8")
+        shared_css = (root / "static" / "css" / "data-univc-foundation.css").read_text(encoding="utf-8")
 
         for field, placeholder in (
             ("facultyCourseFilter", "Buscar curso..."),
@@ -123,12 +124,14 @@ class FacultyStudentV01163Tests(unittest.TestCase):
         ):
             self.assertIn(f'id="{field}" data-combobox-placeholder="{placeholder}"', html)
         self.assertIn("function enhanceFacultyCombobox(select)", js)
-        self.assertIn("normalizeComboboxText", js)
+        self.assertIn("DataUNIVC?.searchableSelect?.attach", js)
+        self.assertIn("root.searchableSelect", shared_js)
+        self.assertIn("const normalize = value", shared_js)
         self.assertIn("enhanceFacultyCombobox(course)", js)
         self.assertIn("enhanceFacultyCombobox(discipline)", js)
         self.assertIn("enhanceFacultyCombobox(teacher)", js)
-        self.assertIn("faculty-combobox-menu", css)
-        self.assertIn("faculty-combobox-option", css)
+        self.assertIn("du-combobox-menu", shared_css)
+        self.assertIn("du-combobox-option", shared_css)
 
     def test_generate_loading_copy_mentions_two_sei_stages(self):
         root = Path(__file__).resolve().parents[1]

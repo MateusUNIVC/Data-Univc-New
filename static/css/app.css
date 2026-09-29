@@ -1900,3 +1900,5 @@ th.numeric, td.numeric {
   .results-active-filter { width: 100%; border-radius: 8px; flex-wrap: wrap; }
 }
 
+/* v0.13.0 Parte 3 — resolução explícita de curso no NPS */
+.sei-course-resolution-select{width:100%;margin-top:7px;min-height:36px;border:1px solid var(--line,#d5ddd8);border-radius:8px;background:#fff;padding:0 8px;font-size:11px}.sei-course-option.survey-resolvable{border-style:dashed;background:#fffdf6}.sei-course-option.survey-resolvable:has(input:checked){border-style:solid;border-color:#c9a85a}

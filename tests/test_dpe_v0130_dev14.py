@@ -11,7 +11,7 @@ def test_release_preserves_dev14_contract_without_schema_regression():
     assert release_info.APP_VERSION.startswith("0.13.0")
     if release_info.APP_VERSION != "0.13.0":
         assert int(release_info.APP_VERSION.rsplit(".", 1)[-1]) >= 14
-    assert release_info.SCHEMA_VERSION == 48
+    assert release_info.SCHEMA_VERSION >= 48
 
 
 def test_legacy_dpe_excel_import_runtime_is_removed():

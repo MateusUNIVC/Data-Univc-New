@@ -295,6 +295,45 @@ def migrate_local_dpe_teacher_profiles(connection: Connection) -> None:
     ))
 
 
+def migrate_local_faculty_context_scopes(connection: Connection) -> None:
+    """Create/backfill shared-course scopes for local SQLite databases."""
+    if connection.dialect.name != "sqlite":
+        return
+    inspector = inspect(connection)
+    tables = set(inspector.get_table_names())
+    if not {"faculty_evaluation_contexts", "teaching_assignments"}.issubset(tables):
+        return
+    connection.execute(text(
+        "CREATE TABLE IF NOT EXISTS faculty_evaluation_context_scopes ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "context_id INTEGER NOT NULL REFERENCES faculty_evaluation_contexts(id) ON DELETE CASCADE, "
+        "teaching_assignment_id INTEGER NOT NULL REFERENCES teaching_assignments(id) ON DELETE CASCADE, "
+        "is_primary BOOLEAN NOT NULL DEFAULT 0, "
+        "resolution_source VARCHAR(40) NOT NULL DEFAULT 'catalog', "
+        "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, "
+        "created_by VARCHAR(255), "
+        "UNIQUE(context_id, teaching_assignment_id))"
+    ))
+    connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_faculty_context_scope_context "
+        "ON faculty_evaluation_context_scopes(context_id)"
+    ))
+    connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_faculty_context_scope_assignment "
+        "ON faculty_evaluation_context_scopes(teaching_assignment_id)"
+    ))
+    connection.execute(text(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_faculty_context_scope_primary "
+        "ON faculty_evaluation_context_scopes(context_id) WHERE is_primary=1"
+    ))
+    connection.execute(text(
+        "INSERT OR IGNORE INTO faculty_evaluation_context_scopes "
+        "(context_id, teaching_assignment_id, is_primary, resolution_source, created_by) "
+        "SELECT id, teaching_assignment_id, 1, 'legacy_primary', 'migration:049-local' "
+        "FROM faculty_evaluation_contexts"
+    ))
+
+
 @dataclass(frozen=True)
 class SchemaStatus:
     expected: int
@@ -368,6 +407,7 @@ def ensure_local_schema_version(connection: Connection) -> None:
     migrate_local_dpe_revenue_ledger(connection)
     migrate_local_dpe_expense_scope(connection)
     migrate_local_dpe_teacher_profiles(connection)
+    migrate_local_faculty_context_scopes(connection)
     connection.execute(
         text(
             f"CREATE TABLE IF NOT EXISTS {SCHEMA_TABLE} ("

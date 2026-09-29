@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_reconciled_release_metadata():
     assert release_info.APP_VERSION == "0.13.0"
-    assert release_info.SCHEMA_VERSION == 48
+    assert release_info.SCHEMA_VERSION >= 48
 
 
 def test_academic_v01167_student_classification_is_present():

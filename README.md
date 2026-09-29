@@ -1,8 +1,30 @@
+## Patch operacional 29/09/2026 — Parte 3
+
+- Avaliação Docente passa a usar Ano letivo + Semestre na importação, preservando internamente `AAAA-SEM1/2`;
+- turmas compartilhadas podem ser vinculadas a dois ou mais cursos sem duplicar respostas ou participantes;
+- nova tabela `faculty_evaluation_context_scopes` preserva o vínculo principal e adiciona escopos acadêmicos;
+- analytics por curso enxerga o contexto em cada curso associado, enquanto a visão global deduplica o mesmo contexto/resposta;
+- NPS vindo diretamente do SEI atual interpreta `Educação Física` como Licenciatura somente no adapter da fonte;
+- uploads manuais/legados com `Educação Física` continuam ambíguos e exigem resolução explícita;
+- schema esperado passa a 49 com `049_academic_faculty_context_scopes_v0130.sql`.
+
+Detalhes: `docs/PART3_ACADEMIC_IDENTITY_SHARED_CLASSES_2026-09-29.md`.
+
+## Patch operacional 29/09/2026 — Parte 2
+
+- filtros de disciplina pesquisáveis na Visão Geral e em Aprovações e Notas;
+- componente compartilhado `DataUNIVC.searchableSelect`, também usado pela Avaliação Docente;
+- pesquisa tolerante a acentos e navegação por teclado;
+- cache busting de CSS/JS usando o fingerprint real do build;
+- mantém o hotfix do SEI para Educação Física - Licenciatura.
+
+Detalhes: `docs/PART2_SEARCHABLE_DISCIPLINE_FILTERS_2026-09-29.md`.
+
 ## v0.13.0 — Production
 
 Release de produção consolidada do Data UNIVC, baseada na árvore acadêmica v0.11.6.7 e na DPE v0.13 reestruturada.
 
-- schema esperado: 48;
+- schema esperado: 49;
 - DPE moderna consolidada e legado operacional DPE-01/02/03 bloqueado;
 - base acadêmica v0.11.6.7 integrada;
 - autenticação obrigatória em produção;
@@ -1375,3 +1397,11 @@ Para homologar a DPE no Windows, use `TESTAR_DPE_DEMO.bat`. Para apagar as alter
 ## v0.11.6.1 — BATs locais de todas as diretorias e Reitoria
 
 Foram adicionados launchers Windows independentes para `DTNH`, `DCS`, `DADM`, `DPE`, `DM` e `REITORIA`. Cada perfil usa porta própria e todos compartilham o SQLite local `univc_local_all.db`, sem tocar Supabase/produção. A Reitoria ganhou em `AUTH_DISABLED` um modo global estritamente local (`LOCAL_REITORIA_MODE=true`) para homologação. O schema permanece 40 e não há migration nova. Consulte `docs/LOCAL_DIRECTORATE_LAUNCHERS_v01161.md`.
+
+## Patch operacional — Parte 4 (2026-09-29)
+
+- Comparativos por curso passam a preservar nomes longos integralmente no grafico.
+- Os rotulos podem ocupar multiplas linhas e cada barra recebe altura dinamica.
+- O tooltip e o SVG `title` mantem o nome completo do curso.
+- Nenhuma regra de NPS, API ou schema foi alterada.
+- Detalhes: `docs/PART4_NPS_LONG_COURSE_LABELS_2026-09-29.md`.

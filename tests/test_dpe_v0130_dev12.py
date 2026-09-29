@@ -11,7 +11,7 @@ def test_release_preserves_dev12_without_schema_bump():
     assert release_info.APP_VERSION.startswith("0.13.0")
     if release_info.APP_VERSION != "0.13.0":
         assert int(release_info.APP_VERSION.rsplit(".", 1)[-1]) >= 12
-    assert release_info.SCHEMA_VERSION == 48
+    assert release_info.SCHEMA_VERSION >= 48
 
 
 def test_sidebar_separates_month_flow_results_and_configuration():

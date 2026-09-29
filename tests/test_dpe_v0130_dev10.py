@@ -70,7 +70,7 @@ def test_release_preserves_dev10_consolidated_results_contract():
     assert release_info.APP_VERSION.startswith("0.13.0")
     if release_info.APP_VERSION != "0.13.0":
         assert int(release_info.APP_VERSION.rsplit(".", 1)[-1]) >= 10
-    assert release_info.SCHEMA_VERSION == 48
+    assert release_info.SCHEMA_VERSION >= 48
 
 
 def test_economics_model_no_longer_maps_legacy_revenue_columns():

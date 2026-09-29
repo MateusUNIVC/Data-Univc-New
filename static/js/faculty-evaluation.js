@@ -28,153 +28,8 @@
   const safeId = value => value === '' || value === null || value === undefined ? '' : String(value);
 
 
-  function normalizeComboboxText(value) {
-    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
-  }
-
-  function comboboxOptionButtons(select, query = '') {
-    const needle = normalizeComboboxText(query);
-    const options = Array.from(select.options || []);
-    return options.filter((item, index) => {
-      if (!needle) return true;
-      if (index === 0 && !item.value) return false;
-      return normalizeComboboxText(item.textContent).includes(needle);
-    });
-  }
-
-  function closeFacultyCombobox(shell, { restore = true } = {}) {
-    if (!shell) return;
-    const menu = shell.querySelector('.faculty-combobox-menu');
-    const input = shell.querySelector('.faculty-combobox-input');
-    shell.classList.remove('open');
-    input?.setAttribute('aria-expanded', 'false');
-    if (menu) menu.hidden = true;
-    shell.dataset.activeIndex = '-1';
-    if (restore) {
-      const select = byId(shell.dataset.selectId || '');
-      if (select && input) {
-        const selected = select.options[select.selectedIndex];
-        input.value = selected && selected.value ? selected.textContent : '';
-      }
-    }
-  }
-
-  function renderFacultyComboboxMenu(select, shell, query = '') {
-    const menu = shell?.querySelector('.faculty-combobox-menu');
-    if (!menu) return;
-    const matches = comboboxOptionButtons(select, query);
-    if (!matches.length) {
-      menu.innerHTML = '<div class="faculty-combobox-empty">Nenhuma opção encontrada.</div>';
-      shell.dataset.activeIndex = '-1';
-      return;
-    }
-    menu.innerHTML = matches.map((item, index) => `
-      <button type="button" class="faculty-combobox-option${String(item.value) === String(select.value) ? ' selected' : ''}" role="option" aria-selected="${String(item.value) === String(select.value) ? 'true' : 'false'}" data-combobox-value="${escapeHtml(item.value)}" data-combobox-index="${index}">
-        ${escapeHtml(item.textContent || '')}
-      </button>`).join('');
-    menu.querySelectorAll('.faculty-combobox-option').forEach(button => {
-      button.addEventListener('mousedown', event => event.preventDefault());
-      button.addEventListener('click', () => {
-        select.value = button.dataset.comboboxValue || '';
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        closeFacultyCombobox(shell);
-      });
-    });
-  }
-
-  function openFacultyCombobox(select, shell, query = '') {
-    const menu = shell?.querySelector('.faculty-combobox-menu');
-    const input = shell?.querySelector('.faculty-combobox-input');
-    if (!menu || !input) return;
-    renderFacultyComboboxMenu(select, shell, query);
-    menu.hidden = false;
-    shell.classList.add('open');
-    input.setAttribute('aria-expanded', 'true');
-  }
-
-  function setComboboxActive(shell, delta) {
-    const buttons = Array.from(shell?.querySelectorAll('.faculty-combobox-option') || []);
-    if (!buttons.length) return;
-    let current = Number(shell.dataset.activeIndex || -1);
-    current = Math.max(0, Math.min(buttons.length - 1, current + delta));
-    shell.dataset.activeIndex = String(current);
-    buttons.forEach((button, index) => button.classList.toggle('active', index === current));
-    buttons[current]?.scrollIntoView({ block: 'nearest' });
-  }
-
-  function syncFacultyCombobox(select) {
-    if (!select) return;
-    let shell = select.nextElementSibling;
-    if (!shell || !shell.classList.contains('faculty-combobox')) return;
-    const input = shell.querySelector('.faculty-combobox-input');
-    const clear = shell.querySelector('.faculty-combobox-clear');
-    const selected = select.options[select.selectedIndex];
-    if (input && document.activeElement !== input) input.value = selected && selected.value ? selected.textContent : '';
-    if (clear) clear.hidden = !select.value;
-    if (shell.classList.contains('open')) renderFacultyComboboxMenu(select, shell, input?.value || '');
-  }
-
   function enhanceFacultyCombobox(select) {
-    if (!select) return;
-    let shell = select.nextElementSibling;
-    if (!shell || !shell.classList.contains('faculty-combobox')) {
-      shell = document.createElement('div');
-      shell.className = 'faculty-combobox';
-      shell.dataset.selectId = select.id;
-      shell.dataset.activeIndex = '-1';
-      shell.innerHTML = `
-        <div class="faculty-combobox-control">
-          <input class="faculty-combobox-input" type="search" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="${escapeHtml(select.dataset.comboboxPlaceholder || 'Buscar...')}">
-          <button class="faculty-combobox-clear" type="button" aria-label="Limpar seleção" title="Limpar seleção">×</button>
-          <button class="faculty-combobox-toggle" type="button" aria-label="Abrir opções" title="Abrir opções">⌄</button>
-        </div>
-        <div class="faculty-combobox-menu" role="listbox" hidden></div>`;
-      select.insertAdjacentElement('afterend', shell);
-      select.classList.add('faculty-combobox-native-hidden');
-
-      const input = shell.querySelector('.faculty-combobox-input');
-      const toggle = shell.querySelector('.faculty-combobox-toggle');
-      const clear = shell.querySelector('.faculty-combobox-clear');
-      input?.addEventListener('focus', () => { input.select(); openFacultyCombobox(select, shell, ''); });
-      input?.addEventListener('input', () => openFacultyCombobox(select, shell, input.value));
-      input?.addEventListener('keydown', event => {
-        if (event.key === 'ArrowDown') {
-          event.preventDefault();
-          if (!shell.classList.contains('open')) openFacultyCombobox(select, shell, input.value);
-          setComboboxActive(shell, 1);
-        } else if (event.key === 'ArrowUp') {
-          event.preventDefault();
-          if (!shell.classList.contains('open')) openFacultyCombobox(select, shell, input.value);
-          setComboboxActive(shell, -1);
-        } else if (event.key === 'Enter' && shell.classList.contains('open')) {
-          const active = shell.querySelector('.faculty-combobox-option.active');
-          if (active) {
-            event.preventDefault();
-            active.click();
-          }
-        } else if (event.key === 'Escape') {
-          event.preventDefault();
-          closeFacultyCombobox(shell);
-        }
-      });
-      input?.addEventListener('blur', () => setTimeout(() => closeFacultyCombobox(shell), 100));
-      toggle?.addEventListener('mousedown', event => event.preventDefault());
-      toggle?.addEventListener('click', () => {
-        if (shell.classList.contains('open')) closeFacultyCombobox(shell, { restore: false });
-        else {
-          input?.focus();
-          openFacultyCombobox(select, shell, '');
-        }
-      });
-      clear?.addEventListener('mousedown', event => event.preventDefault());
-      clear?.addEventListener('click', () => {
-        select.value = '';
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        closeFacultyCombobox(shell);
-      });
-      select.addEventListener('change', () => syncFacultyCombobox(select));
-    }
-    syncFacultyCombobox(select);
+    return window.DataUNIVC?.searchableSelect?.attach(select);
   }
 
   function reset() {
@@ -777,57 +632,124 @@
 
   function candidateOptions(entry) {
     const candidates = entry.course_match?.candidate_courses || [];
-    return `<option value="">Não importar este relatório agora</option>${candidates.map(item => `<option value="${Number(item.course_id)}">${escapeHtml(item.course_name)}${item.modality ? ` · ${escapeHtml(item.modality)}` : ''}</option>`).join('')}`;
+    return `<option value="">Selecione o curso principal</option>${candidates.map(item => `<option value="${Number(item.course_id)}">${escapeHtml(item.course_name)}${item.modality ? ` · ${escapeHtml(item.modality)}` : ''}</option>`).join('')}`;
+  }
+
+  function facultySemesterParts(value = '') {
+    const match = String(value || '').trim().toUpperCase().match(/^(\d{4})-SEM([12])$/);
+    if (match) return { year: match[1], semester: match[2] };
+    const now = new Date();
+    return { year: String(now.getFullYear()), semester: now.getMonth() < 6 ? '1' : '2' };
+  }
+
+  function facultySemesterFields(value = '', hasSuggestion = false) {
+    const parsed = facultySemesterParts(value);
+    return `<div class="faculty-semester-fields">
+      <label class="field"><span>Ano letivo</span><input id="facultyImportYear" name="faculty_import_year" type="number" min="2000" max="2100" value="${escapeHtml(parsed.year)}" required></label>
+      <label class="field"><span>Semestre</span><select id="facultyImportSemesterPart" name="faculty_import_semester" required><option value="1" ${parsed.semester === '1' ? 'selected' : ''}>1º semestre</option><option value="2" ${parsed.semester === '2' ? 'selected' : ''}>2º semestre</option></select></label>
+      <small class="faculty-semester-help">${hasSuggestion ? `Período sugerido pela fonte: ${escapeHtml(formatMonth(value, true))}. Confirme antes de importar.` : 'Confirme o ano e o semestre letivo. A data da avaliação não será usada para adivinhar o período.'}</small>
+    </div>`;
+  }
+
+  function facultySemesterValue() {
+    const year = String(byId('facultyImportYear')?.value || '').trim();
+    const semester = String(byId('facultyImportSemesterPart')?.value || '').trim();
+    if (!/^\d{4}$/.test(year) || !['1', '2'].includes(semester)) return '';
+    return `${year}-SEM${semester}`;
+  }
+
+  function sharedScopeHtml(entry, preview) {
+    const path = String(entry.resolution_key || entry.internal_path || '');
+    const courses = preview.available_courses || [];
+    const primaryId = entry.course_match?.matched ? Number(entry.course_match?.course_id || 0) : 0;
+    const primaryName = entry.course_match?.matched
+      ? entry.course_match?.course_name
+      : 'Defina o curso principal acima';
+    const options = courses.filter(item => Number(item.course_id) !== primaryId);
+    if (!options.length) return '';
+    return `<details class="faculty-shared-scope" data-shared-scope-row="${escapeHtml(path)}">
+      <summary><span>Turma compartilhada</span><small>Principal: ${escapeHtml(primaryName || '—')} · adicionar outro curso</small></summary>
+      <div class="faculty-shared-scope-body">
+        <p>Marque apenas cursos que realmente recebem a <strong>mesma turma</strong>. As respostas continuam armazenadas uma única vez e não serão multiplicadas na visão geral.</p>
+        <div class="faculty-shared-course-grid">${options.map(item => `<label class="faculty-shared-course-option"><input type="checkbox" data-shared-course-path="${escapeHtml(path)}" value="${Number(item.course_id)}"><span><strong>${escapeHtml(item.course_name)}</strong>${item.modality ? `<small>${escapeHtml(item.modality)}</small>` : ''}</span></label>`).join('')}</div>
+      </div>
+    </details>`;
+  }
+
+  function syncSharedScopePrimary(path, primaryCourseId) {
+    const normalizedPath = String(path || '');
+    const primary = Number(primaryCourseId || 0);
+    document.querySelectorAll('[data-shared-course-path]').forEach(input => {
+      if (input.dataset.sharedCoursePath !== normalizedPath) return;
+      const isPrimary = primary > 0 && Number(input.value) === primary;
+      input.disabled = isPrimary;
+      if (isPrimary) input.checked = false;
+    });
   }
 
   function openImportPreview(preview) {
     const summary = preview.summary || {};
     const unresolved = (preview.entries || []).filter(item => item.scope_status === 'course_resolution_required');
+    const importableEntries = (preview.entries || []).filter(item => ['eligible', 'course_resolution_required'].includes(item.scope_status));
     const semester = preview.suggested_semester || '';
     const importable = Number(summary.eligible || 0) + Number(summary.resolvable || 0);
     const warningHtml = (preview.warnings || []).map(text => `<div class="faculty-import-warning">${escapeHtml(text)}</div>`).join('');
-    const resolutionsHtml = unresolved.length ? `<div><span class="eyebrow">Cursos que exigem decisão</span><p>Esses relatórios não serão importados até que uma habilitação seja escolhida. Deixar em “Não importar agora” é seguro e não altera os demais.</p><div class="faculty-resolution-list">${unresolved.map(entry => `<label class="faculty-resolution-row"><div><strong>${escapeHtml(entry.teacher_name || 'Docente')} · ${escapeHtml(entry.discipline_name || 'Disciplina')}</strong><small>${escapeHtml(entry.course_name || '')} · ${escapeHtml(entry.internal_path || '')}</small></div><select data-course-resolution="${escapeHtml(entry.resolution_key || entry.internal_path || '')}">${candidateOptions(entry)}</select></label>`).join('')}</div></div>` : '';
+    const resolutionsHtml = unresolved.length ? `<div><span class="eyebrow">Curso principal a confirmar</span><p>Quando o relatório não identifica o curso de forma inequívoca, escolha o curso principal. Se a mesma turma atender mais cursos, use “Turma compartilhada” logo abaixo.</p><div class="faculty-resolution-list">${unresolved.map(entry => `<label class="faculty-resolution-row"><div><strong>${escapeHtml(entry.teacher_name || 'Docente')} · ${escapeHtml(entry.discipline_name || 'Disciplina')}</strong><small>${escapeHtml(entry.course_name || '')} · ${escapeHtml(entry.internal_path || '')}</small></div><select data-course-resolution="${escapeHtml(entry.resolution_key || entry.internal_path || '')}">${candidateOptions(entry)}</select></label>`).join('')}</div></div>` : '';
+    const sharedHtml = importableEntries.length ? `<div class="faculty-shared-section"><span class="eyebrow">Turmas compartilhadas · opcional</span><p>Abra somente os contextos em que a mesma turma atende dois ou mais cursos.</p>${importableEntries.map(entry => sharedScopeHtml(entry, preview)).join('')}</div>` : '';
     const body = `<form id="facultyImportConfirmForm" class="faculty-import-preview">
       <div class="faculty-import-note"><strong>${escapeHtml(preview.filename || 'Relatório')}</strong><br>Esta etapa é apenas uma prévia. Nenhum dado foi gravado no banco.</div>
       <div class="faculty-import-summary"><div class="faculty-import-stat"><strong>${number(summary.total_reports || 0)}</strong><span>relatórios encontrados</span></div><div class="faculty-import-stat"><strong>${number(summary.eligible || 0)}</strong><span>prontos para importar</span></div><div class="faculty-import-stat"><strong>${number(summary.already_imported || 0)}</strong><span>já importados</span></div><div class="faculty-import-stat"><strong>${number(summary.course_resolution_required || 0)}</strong><span>exigem decisão de curso</span></div></div>
       ${warningHtml}
-      <label class="field"><span>Semestre letivo</span><input id="facultyImportSemester" type="text" value="${escapeHtml(semester)}" placeholder="Ex.: 2026-SEM1" pattern="[0-9]{4}-SEM[12]" required><small>${semester ? `Sugestão explícita encontrada na fonte: ${escapeHtml(formatMonth(semester, true))}. Confirme antes de importar.` : 'O SEI não informou o semestre de forma inequívoca. Digite AAAA-SEM1 ou AAAA-SEM2; a data da avaliação não será usada para adivinhar.'}</small></label>
+      ${facultySemesterFields(semester, Boolean(semester))}
       ${resolutionsHtml}
+      ${sharedHtml}
       <div class="faculty-import-summary"><div class="faculty-import-stat"><strong>${number(summary.outside_unit || 0)}</strong><span>fora da unidade</span></div><div class="faculty-import-stat"><strong>${number(summary.course_out_of_scope || 0)}</strong><span>fora do escopo da diretoria</span></div><div class="faculty-import-stat"><strong>${number(summary.wrong_questionnaire || 0)}</strong><span>questionário incompatível</span></div><div class="faculty-import-stat"><strong>${number(summary.invalid_report || 0)}</strong><span>relatório inválido</span></div></div>
       <div class="modal-form-footer"><button class="button secondary" type="button" id="facultyCancelImport">Cancelar</button><button class="button primary" type="submit" ${importable ? '' : 'disabled'}>Confirmar importação</button></div>
     </form>`;
     openModal('Avaliação Docente · Importação', 'Revisar antes de gravar', body);
     state.modalContext = { type: 'faculty-student-import', preview };
     byId('facultyCancelImport')?.addEventListener('click', closeModal);
+    document.querySelectorAll('[data-course-resolution]').forEach(select => {
+      const path = select.dataset.courseResolution || '';
+      select.addEventListener('change', () => syncSharedScopePrimary(path, select.value));
+      syncSharedScopePrimary(path, select.value);
+    });
     byId('facultyImportConfirmForm')?.addEventListener('submit', event => processImport(event, preview));
   }
 
   async function processImport(event, preview) {
     event.preventDefault();
-    const semester = String(byId('facultyImportSemester')?.value || '').trim().toUpperCase();
-    if (!/^\d{4}-SEM[12]$/.test(semester)) {
-      toast('Confirme o semestre', 'Use o formato AAAA-SEM1 ou AAAA-SEM2.', 'warning');
-      byId('facultyImportSemester')?.focus();
+    const semester = facultySemesterValue();
+    if (!semester) {
+      toast('Confirme o período', 'Informe um ano de quatro dígitos e escolha o 1º ou 2º semestre.', 'warning');
+      byId('facultyImportYear')?.focus();
       return;
     }
-    const selected = [...(preview.eligible_paths || [])];
+    const selected = new Set(preview.eligible_paths || []);
     const resolutions = {};
     document.querySelectorAll('[data-course-resolution]').forEach(select => {
       if (!select.value) return;
       const path = select.dataset.courseResolution;
       resolutions[path] = Number(select.value);
-      selected.push(path);
+      selected.add(path);
     });
-    if (!selected.length) {
+    const sharedScopes = {};
+    document.querySelectorAll('[data-shared-course-path]:checked').forEach(input => {
+      const path = input.dataset.sharedCoursePath;
+      if (!selected.has(path)) return;
+      if (!sharedScopes[path]) sharedScopes[path] = [];
+      sharedScopes[path].push(Number(input.value));
+    });
+    if (!selected.size) {
       toast('Nada para importar', 'Não há relatórios elegíveis ou resoluções selecionadas neste lote.', 'warning');
       return;
     }
     try {
       const result = await api(`${API_BASE}/import/process`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: preview.token, selected_paths: selected, semester_override: semester, course_resolutions: resolutions }),
+        body: JSON.stringify({ token: preview.token, selected_paths: [...selected], semester_override: semester, course_resolutions: resolutions, shared_course_scopes: sharedScopes }),
         loadingTitle: 'Importando Avaliação Docente',
-        loadingMessage: 'Persistindo professor, curso, disciplina, semestre e distribuições originais das respostas.'
+        loadingMessage: 'Persistindo o contexto uma única vez e vinculando todos os cursos atendidos pela turma.'
       });
       closeModal();
       reset();
@@ -838,7 +760,8 @@
       await loadCurrentView(true);
       const imported = (result.imported_contexts || []).length;
       const skipped = (result.skipped_contexts || []).length;
-      toast('Avaliação Docente importada', `${imported} contexto(s) novo(s) · ${skipped} já existente(s).`, 'success');
+      const shared = (result.shared_course_contexts || []).length;
+      toast('Avaliação Docente importada', `${imported} contexto(s) novo(s) · ${skipped} já existente(s)${shared ? ` · ${shared} turma(s) compartilhada(s)` : ''}.`, 'success');
       await loadDashboard();
     } catch (error) { toast('Não foi possível concluir a importação', error.message, 'error'); }
   }

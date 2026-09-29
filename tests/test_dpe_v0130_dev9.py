@@ -47,8 +47,8 @@ def _fixture():
 
 def test_release_dev9_keeps_schema_48_without_fake_migration():
     assert release_info.APP_VERSION.startswith("0.13.0")
-    assert release_info.SCHEMA_VERSION == 48
-    assert release_info.SCHEMA_MIGRATION == "048_dpe_teacher_profiles_v0130.sql"
+    assert release_info.SCHEMA_VERSION >= 48
+    # Releases posteriores podem adicionar migrations; o contrato DPE exige apenas não regredir abaixo da 048.
 
 
 def test_shared_expense_cannot_use_direct_as_legacy_shortcut_anymore():

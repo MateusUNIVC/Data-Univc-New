@@ -4,8 +4,8 @@
 
 - Aplicação: `0.13.0`
 - Base acadêmica: `0.11.6.7`
-- Schema esperado: `48`
-- Migration registrada: `048_dpe_teacher_profiles_v0130.sql`
+- Schema esperado: `49`
+- Migration registrada: `049_academic_faculty_context_scopes_v0130.sql`
 
 ## Variáveis obrigatórias
 
@@ -28,7 +28,7 @@ Defina no servidor, sem gravar segredos no repositório:
 ## Antes do deploy
 
 1. Fazer backup completo do PostgreSQL/Supabase.
-2. Confirmar que todas as migrations até schema 48 foram aplicadas.
+2. Confirmar que todas as migrations até schema 49 foram aplicadas.
 3. Confirmar `AUTH_DISABLED=false`.
 4. Confirmar HTTPS/Nginx e `COOKIE_SECURE=true`.
 5. Confirmar segredos fortes fora do ZIP.

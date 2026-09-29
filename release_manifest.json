@@ -1,15 +1,21 @@
 {
-  "artifact_profile": "production-vps-v0130-part1-ux-eflic",
-  "created_at_utc": "2026-09-29T17:31:16.242855+00:00",
+  "artifact_profile": "production-vps-v0130-part4-nps-long-course-labels",
+  "created_at_utc": "2026-09-29T19:13:13.685318+00:00",
   "app_version": "0.13.0",
-  "release_name": "Data UNIVC 0.13.0 - Production - Part 1 UX + EF Licenciatura",
+  "release_name": "Data UNIVC 0.13.0 - Production - Part 4 NPS Long Course Labels",
   "academic_base_version": "0.11.6.7",
-  "schema_expected": 48,
-  "schema_migration": "048_dpe_teacher_profiles_v0130.sql",
+  "schema_expected": 49,
+  "schema_migration": "049_academic_faculty_context_scopes_v0130.sql",
   "patch_scope": [
-    "academic-results-non-actionable-warning-removal",
-    "faculty-evaluation-diagnostic-ui-cleanup",
-    "educacao-fisica-licenciatura-streaming-validation-compatibility"
+    "part1-non-actionable-warning-cleanup",
+    "educacao-fisica-licenciatura-sei-current-label-compatibility",
+    "part2-shared-searchable-discipline-selects",
+    "faculty-human-year-semester-input",
+    "faculty-shared-course-context-scopes",
+    "faculty-global-analytics-deduplication",
+    "nps-sei-current-educacao-fisica-licenciatura-resolution",
+    "nps-manual-ambiguous-course-resolution",
+    "part4-nps-full-long-course-labels"
   ],
   "production_hardening": {
     "environment": "production",
@@ -20,7 +26,8 @@
     "login_rate_limit_enabled": true
   },
   "validation": {
-    "full_test_suite": "163 passed, 2 skipped",
+    "full_test_suite": "179 passed, 2 skipped",
+    "data_univc_ui_js_node_check": "ok",
     "app_js_node_check": "ok",
     "faculty_evaluation_js_node_check": "ok",
     "python_compile": "ok",
@@ -29,7 +36,7 @@
   "local_demo_database_included": false,
   "local_windows_launchers_included": false,
   "docker_compose_app_only_included": true,
-  "file_count": 545,
+  "file_count": 364,
   "files": [
     {
       "path": ".dockerignore",
@@ -47,499 +54,34 @@
       "sha256": "d2f29961e2c1123cb6f8f4e9201b72099578f19985df9691b7487f5051596148"
     },
     {
-      "path": ".pytest_cache/.gitignore",
-      "bytes": 37,
-      "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd"
+      "path": "BUILD_INFO.txt",
+      "bytes": 13290,
+      "sha256": "6c9fd0e7c605583b0fcb3e0f040e75bc7277a33fb6e682c6a9e15e5aac514e86"
     },
     {
-      "path": ".pytest_cache/CACHEDIR.TAG",
-      "bytes": 191,
-      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4"
+      "path": "Dockerfile",
+      "bytes": 610,
+      "sha256": "844053d1b53bf48184432c93992f6da795e14d91a3a62cb3e29ff089f489aa99"
     },
     {
-      "path": ".pytest_cache/README.md",
-      "bytes": 302,
-      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad"
+      "path": "PATCH_V01251_INSTRUCTIONS.txt",
+      "bytes": 886,
+      "sha256": "b01570ec019b8f8ce0034c7c3f77b45f02addbfa39d01b1449f8fb54f19a9b19"
     },
     {
-      "path": ".pytest_cache/v/cache/lastfailed",
-      "bytes": 2,
-      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      "path": "PATCH_V0125_INSTRUCTIONS.txt",
+      "bytes": 2642,
+      "sha256": "ad48a8146268c5ffc1362f29e88b55e6bdc887592f38c1d10f254388b2aae37e"
     },
     {
-      "path": ".pytest_cache/v/cache/nodeids",
-      "bytes": 17748,
-      "sha256": "fb035ce688c833cf3937fae46ffe4c6a0f926c8a6552629937f163e279370c4d"
+      "path": "PRODUCTION_VALIDATION.txt",
+      "bytes": 1494,
+      "sha256": "f34ceaa95d338572d00f7573ba19132ebd4e1c9c16dd35abec443b57dd4f0f9b"
     },
     {
-      "path": "__pycache__/academic_analytics.cpython-313.pyc",
-      "bytes": 62132,
-      "sha256": "3f9ea990651f5de0dcb5b795bccaf8fb38d424e6bc47b196e2bc2bbdeea51730"
-    },
-    {
-      "path": "__pycache__/academic_catalog.cpython-313.pyc",
-      "bytes": 5723,
-      "sha256": "4ef65a9e235d386e4181fbbb9c9bb5a06edf64589dde33dc803d4e5b2d61534f"
-    },
-    {
-      "path": "__pycache__/academic_excel_builder.cpython-313.pyc",
-      "bytes": 145269,
-      "sha256": "74392ac4fd0b1d638ca1d15e4e0e9dd76788864170d13c4215e28e90eb48d0f9"
-    },
-    {
-      "path": "__pycache__/academic_excel_parser.cpython-313.pyc",
-      "bytes": 25862,
-      "sha256": "922bfd9eb629694a0b4cd6b10022f378cbc31692759c0a53cb0de503339cddbc"
-    },
-    {
-      "path": "__pycache__/academic_excel_v2_builder.cpython-313.pyc",
-      "bytes": 84442,
-      "sha256": "7ab365b8a869298f76abc50670e332b270f210be15736a664a8b53b7d76a4700"
-    },
-    {
-      "path": "__pycache__/academic_excel_v3_builder.cpython-313.pyc",
-      "bytes": 84070,
-      "sha256": "ef9c8e0c2923cdd109b6ea5adbf961b957de292a8140b6afc0d80cb17916f43e"
-    },
-    {
-      "path": "__pycache__/admin_router.cpython-313.pyc",
-      "bytes": 39018,
-      "sha256": "cd3329579a0c7f2d63fd6f8df9a28be171cfeb983e906a88ed8ba1af9a8f4b6f"
-    },
-    {
-      "path": "__pycache__/analytics.cpython-313.pyc",
-      "bytes": 37352,
-      "sha256": "f63498f5f2d6a27f2455e6c4d77bf5ff3cf3c04572a7fd3dba291f778a21124d"
-    },
-    {
-      "path": "__pycache__/app.cpython-313.pyc",
-      "bytes": 67342,
-      "sha256": "e7b284fa5316a81b569ce6b17b78285dce0f4d7ff0371c0e10fabbf23be2ce7a"
-    },
-    {
-      "path": "__pycache__/dadm_analytics.cpython-313.pyc",
-      "bytes": 43719,
-      "sha256": "70f03869dbd61c6842d05ed6c21101c3d5c7d7ad2e1a346c2d74e6775dc15aa0"
-    },
-    {
-      "path": "__pycache__/dadm_excel_builder.cpython-313.pyc",
-      "bytes": 5634,
-      "sha256": "5601f7dfe4789c71a0d1cd9fc3a60d04fd9263d15985846002eddfed81a2a3c0"
-    },
-    {
-      "path": "__pycache__/dadm_excel_parser.cpython-313.pyc",
-      "bytes": 14050,
-      "sha256": "bc7350cb21584e23ce0a1cb9b42e2527b610fe5859b09ba4256d4b86c650ec9e"
-    },
-    {
-      "path": "__pycache__/dadm_router.cpython-313.pyc",
-      "bytes": 21832,
-      "sha256": "59989fe75096b37039fc9ab2cc228e2234143f639331a81d2c43ed8c093684df"
-    },
-    {
-      "path": "__pycache__/dadm_tallos_analytics.cpython-313.pyc",
-      "bytes": 49039,
-      "sha256": "a1b02fc79c05aed9e43b481cf8a0462f44bf029ed89aa021be8612f147ba5493"
-    },
-    {
-      "path": "__pycache__/dadm_tallos_client.cpython-313.pyc",
-      "bytes": 11182,
-      "sha256": "d92fc3968a6abbef64d5a4176b96cd0fb3c007820e4dae6eb1039b1905cbbadb"
-    },
-    {
-      "path": "__pycache__/dadm_tallos_local_config.cpython-313.pyc",
-      "bytes": 6154,
-      "sha256": "f003f80077be1221bc5e6aa8731efa4cbf202575642a12e02823b15ca37071c6"
-    },
-    {
-      "path": "__pycache__/dadm_tallos_normalization.cpython-313.pyc",
-      "bytes": 17774,
-      "sha256": "e7911e8dbe070888287875dfaf691d11d3a767aa233faf99951cedc167c2b55e"
-    },
-    {
-      "path": "__pycache__/dadm_tallos_repository.cpython-313.pyc",
-      "bytes": 19397,
-      "sha256": "c5449c3f5bc988e7ba8ea5ccaeab02d810649c0e3054f29a1776defa3859a5aa"
-    },
-    {
-      "path": "__pycache__/dadm_tallos_router.cpython-313.pyc",
-      "bytes": 22986,
-      "sha256": "4f8c94ada5e6270e010388ea60526ba348dd47c815ed16380a88ceaf6b0460be"
-    },
-    {
-      "path": "__pycache__/dadm_tallos_service.cpython-313.pyc",
-      "bytes": 6169,
-      "sha256": "2b067699cb9e2cd0978a1c541b67548d9c6711d3f50c2e6184c1adb1109007d6"
-    },
-    {
-      "path": "__pycache__/dadm_v2_analytics.cpython-313.pyc",
-      "bytes": 32208,
-      "sha256": "5b9ec579df5c3f71a4ead3c0eed9c86ce7d49d38999b6cc466aadd5b91907c61"
-    },
-    {
-      "path": "__pycache__/dadm_v2_management.cpython-313.pyc",
-      "bytes": 25538,
-      "sha256": "7666ce040506b36651bbe2b013cfc429d3f114fa8b5e222bde028668260d6b5b"
-    },
-    {
-      "path": "__pycache__/dadm_v2_report.cpython-313.pyc",
-      "bytes": 46018,
-      "sha256": "4d578afb58152d5fd8dab60d28df189ddb44cd1f7aa99c749e1c913f6337aa23"
-    },
-    {
-      "path": "__pycache__/dadm_v2_router.cpython-313.pyc",
-      "bytes": 17904,
-      "sha256": "96357ae150292727a13a1c2917bbbd2df5681b257ea7556d1c16d8b7fc2d3b54"
-    },
-    {
-      "path": "__pycache__/database.cpython-313.pyc",
-      "bytes": 1828,
-      "sha256": "a504b4d56a23dd52db00b150c0d85d805f5e994a272c03e5e5660add891a9536"
-    },
-    {
-      "path": "__pycache__/demo_data.cpython-313.pyc",
-      "bytes": 11940,
-      "sha256": "12f6cb15701842179945db84b11c05deac0f3621c6b0a18f486bf33bf2988905"
-    },
-    {
-      "path": "__pycache__/demo_seed.cpython-313.pyc",
-      "bytes": 4342,
-      "sha256": "b182f7fb92c63b74af45fbbd98780b56125d5c2cc852c3567c12081c43583b39"
-    },
-    {
-      "path": "__pycache__/dm_analytics.cpython-313.pyc",
-      "bytes": 18518,
-      "sha256": "91a82bc515ea37bb0c76a96a6e76d17d3497f0b90b9adea085464a5d16d73aa6"
-    },
-    {
-      "path": "__pycache__/dm_catalog.cpython-313.pyc",
-      "bytes": 16519,
-      "sha256": "1a17706606648166553f87bf1bf07a6c1e08ddcabf3c5edadf54bc82ac8590e1"
-    },
-    {
-      "path": "__pycache__/dm_demo.cpython-313.pyc",
-      "bytes": 6389,
-      "sha256": "69681c5a39e56f7de0d1a0eca80f74724b0e1421eda076222fdd513716188185"
-    },
-    {
-      "path": "__pycache__/dm_excel_builder.cpython-313.pyc",
-      "bytes": 72618,
-      "sha256": "272b14ca0478e4c0f16bb8e5ea1c64535a48492dc197efa3c5721785ac366c3f"
-    },
-    {
-      "path": "__pycache__/dm_excel_parser.cpython-313.pyc",
-      "bytes": 11527,
-      "sha256": "32e7aaa16aa9b903463ac71672d6e457ada3f012cbde639411258695c178303d"
-    },
-    {
-      "path": "__pycache__/dm_excel_v2_builder.cpython-313.pyc",
-      "bytes": 68284,
-      "sha256": "f98b4426802dbaf7ef9f39a04b95be6c44906e18e6e6c3204c7d6503ba1e9bc8"
-    },
-    {
-      "path": "__pycache__/dm_excel_v3_builder.cpython-313.pyc",
-      "bytes": 88928,
-      "sha256": "e1b35c447ebea52e54cd216da3e86a4d32963cb378ab9015cc00ac82cb6d5c4f"
-    },
-    {
-      "path": "__pycache__/dm_repository.cpython-313.pyc",
-      "bytes": 92685,
-      "sha256": "0b5cd283578c5c45c88f2ebeee3a508cd7f7f9a9d1169ea4621a345b096600cf"
-    },
-    {
-      "path": "__pycache__/dm_router.cpython-313.pyc",
-      "bytes": 42726,
-      "sha256": "7e7fb9afae6614471da235c2a36f5c1eedbbf1eba3eef72c6592586ae0f5bbc0"
-    },
-    {
-      "path": "__pycache__/dm_sei_parser.cpython-313.pyc",
-      "bytes": 30483,
-      "sha256": "7ef2368fdcda1e30cc32e725b02667c25526336eb1a6dac5d1b55b3668c26821"
-    },
-    {
-      "path": "__pycache__/dpe_audit.cpython-313.pyc",
-      "bytes": 6784,
-      "sha256": "6c2ebf5dfb3bf95ec1a1f2f1a932afc8eabc8d890b17f221383a2f6fd9777a41"
-    },
-    {
-      "path": "__pycache__/dpe_cost_allocation.cpython-313.pyc",
-      "bytes": 107042,
-      "sha256": "9d85a6b0b576fc122e91f9f3058b710bcbce8425eb152b4a40d4b374e93057ac"
-    },
-    {
-      "path": "__pycache__/dpe_cost_analytics.cpython-313.pyc",
-      "bytes": 32239,
-      "sha256": "f8703f9b67c0aca9f2043bdc48a312d9ade495170533f1b08d6c7909d332c81e"
-    },
-    {
-      "path": "__pycache__/dpe_cost_catalog.cpython-313.pyc",
-      "bytes": 48776,
-      "sha256": "dffc96cb009187fa89cd43885bdecef5254a328324c1c54efa48a337ecba1c76"
-    },
-    {
-      "path": "__pycache__/dpe_cost_closure.cpython-313.pyc",
-      "bytes": 42192,
-      "sha256": "86a501f26a0a0afff41c38ec9e2c4c2a1f4219308c346646a331ad503a97c78b"
-    },
-    {
-      "path": "__pycache__/dpe_cost_economics.cpython-313.pyc",
-      "bytes": 31846,
-      "sha256": "2de8d70c493c18c064254754a61c80edd0ab625e1925ef5f733323cc38f1b6c0"
-    },
-    {
-      "path": "__pycache__/dpe_cost_excel.cpython-313.pyc",
-      "bytes": 8444,
-      "sha256": "5c8f53714721e48664f202e494e849f66e6ecacc5f749e44bf0716fd57036921"
-    },
-    {
-      "path": "__pycache__/dpe_cost_expenses.cpython-313.pyc",
-      "bytes": 90804,
-      "sha256": "f7a1d9a5511e26cf90b316a5009e4fac13cb293dd938f6898d363bee41ab137d"
-    },
-    {
-      "path": "__pycache__/dpe_cost_foundation.cpython-313.pyc",
-      "bytes": 9727,
-      "sha256": "3beefc84b7a5c52c32f4d2bf731bb8e2784f59242e24804f3e950a24074037cb"
-    },
-    {
-      "path": "__pycache__/dpe_cost_productivity.cpython-313.pyc",
-      "bytes": 33603,
-      "sha256": "b2f72603ea75fc89bd705126205fb0666d27202502f37372aa0e84a7ca6a939a"
-    },
-    {
-      "path": "__pycache__/dpe_cost_teaching.cpython-313.pyc",
-      "bytes": 69261,
-      "sha256": "56e516fc9071612931627cd9660c93cfcdffa31c8670a1a70ae9a9ef74c62fb5"
-    },
-    {
-      "path": "__pycache__/dpe_cost_v2.cpython-313.pyc",
-      "bytes": 20513,
-      "sha256": "216d576425a3d941128d7b1e3bfd3af9ac9c54a1f057b9dbd68e5553e1491367"
-    },
-    {
-      "path": "__pycache__/dpe_course_context.cpython-313.pyc",
-      "bytes": 6067,
-      "sha256": "f8692be7b1958426be493f88fb4e4ef2a0dd2b6c917690af04b7c3984a8829c7"
-    },
-    {
-      "path": "__pycache__/dpe_domain.cpython-313.pyc",
-      "bytes": 5488,
-      "sha256": "b0308525ad3d5e1abc1c9a5b2fcc4fa62ae422a0bed4bcd7801db7c26d76602d"
-    },
-    {
-      "path": "__pycache__/dpe_excel_export.cpython-313.pyc",
-      "bytes": 8047,
-      "sha256": "46a0444984c030f9d222a30e939d3fa7903d926ac04f4ce77f60d82c46e95400"
-    },
-    {
-      "path": "__pycache__/dpe_excel_modern.cpython-313.pyc",
-      "bytes": 63185,
-      "sha256": "5ea61d425ad67d4161c649d80a367fbb9918c07255f609291aaf7b02a03ddfbd"
-    },
-    {
-      "path": "__pycache__/dpe_management.cpython-313.pyc",
-      "bytes": 21960,
-      "sha256": "bdb377fe63a8e51c2e3af67554c157310f8f12e710fd32f01ccca0790333075c"
-    },
-    {
-      "path": "__pycache__/dpe_revenue_facts.cpython-313.pyc",
-      "bytes": 4784,
-      "sha256": "8f954da2f8a863a909987abcfdd26899314564539e4497dfa69caa3b183a51b6"
-    },
-    {
-      "path": "__pycache__/dpe_revenues.cpython-313.pyc",
-      "bytes": 23605,
-      "sha256": "0e7e95bd156f41e558a4110b0fc2eae37d1697f12901a24718db1522866c834d"
-    },
-    {
-      "path": "__pycache__/dpe_router.cpython-313.pyc",
-      "bytes": 81018,
-      "sha256": "ee572499bceb739cfe8a677de835e1a026fb16a2471bcda2efcf185dccf62fb0"
-    },
-    {
-      "path": "__pycache__/excel_errors.cpython-313.pyc",
-      "bytes": 634,
-      "sha256": "2d3b33cc0a7e1b4e777c7a9a1464db0e073905211fbb5a897dd81e73a5134ab6"
-    },
-    {
-      "path": "__pycache__/excel_service.cpython-313.pyc",
-      "bytes": 56705,
-      "sha256": "7412bd42ebfd0bd8bb6a5f7d84aed792825bbf59a3c7ccafe584ef05dc473c18"
-    },
-    {
-      "path": "__pycache__/management_catalog.cpython-313.pyc",
-      "bytes": 12784,
-      "sha256": "88fc9017ad0413c2e43001ff130f8e062af92663067242473630427c721ee96d"
-    },
-    {
-      "path": "__pycache__/management_excel_builder.cpython-313.pyc",
-      "bytes": 76462,
-      "sha256": "b49c83512da7c0ed3a777f7193940934e16ab0d2f66984778e0dee225fc5398c"
-    },
-    {
-      "path": "__pycache__/management_repository.cpython-313.pyc",
-      "bytes": 35074,
-      "sha256": "cb1c269ae71f4fd07c8f8897a7debfb9a3c01bf0fe432755dbb50a1eacbce08b"
-    },
-    {
-      "path": "__pycache__/management_router.cpython-313.pyc",
-      "bytes": 15392,
-      "sha256": "02a275950422e5846aedfcc001982e8c412b276ad0ca56f6ec0742f147804dfc"
-    },
-    {
-      "path": "__pycache__/management_service.cpython-313.pyc",
-      "bytes": 34689,
-      "sha256": "1b27dd7a5d8d34939f47e863b0cc6865ad4cfb0284718be2f3d22b0cd18e2d85"
-    },
-    {
-      "path": "__pycache__/models.cpython-313.pyc",
-      "bytes": 123784,
-      "sha256": "b5eb7767a52d0b7be86c91306b7b5abe92211660df5998b7e109284eae4351e4"
-    },
-    {
-      "path": "__pycache__/observability.cpython-313.pyc",
-      "bytes": 3403,
-      "sha256": "e25957f1d7d3122e8c233fc0f809319c76087f98a8f5e83dd74ab17a57a260d2"
-    },
-    {
-      "path": "__pycache__/release_info.cpython-313.pyc",
-      "bytes": 340,
-      "sha256": "7102d8aa9223f1f911876dbe3ca9e4a7a3fc349d3cf07564c8f583ac48637d18"
-    },
-    {
-      "path": "__pycache__/repository.cpython-313.pyc",
-      "bytes": 207002,
-      "sha256": "3451030e2bad432b33a3bbebf074d06e8aeaf2dd801f12e88658cdc6c3983cbf"
-    },
-    {
-      "path": "__pycache__/schedule_service.cpython-313.pyc",
-      "bytes": 2871,
-      "sha256": "353ff9192fec12a6da3459d589b3bb2a78f5332f9e59948f26c6415757e3851e"
-    },
-    {
-      "path": "__pycache__/schema_version.cpython-313.pyc",
-      "bytes": 21657,
-      "sha256": "04d78b79ee078b02a32cbde7c8d66696011a08df115d1d335cbf130c2d9447c9"
-    },
-    {
-      "path": "__pycache__/schemas.cpython-313.pyc",
-      "bytes": 10932,
-      "sha256": "1062b658669839b72840c08baf3fd67824117dc51fb91c193ee941ba1ab6c981"
-    },
-    {
-      "path": "__pycache__/security.cpython-313.pyc",
-      "bytes": 38409,
-      "sha256": "1dcce3f8a55820a254fd93a20caca7b8e5b8c812fa7f2e25b3d78c87f879f5a4"
-    },
-    {
-      "path": "__pycache__/sei_academic.cpython-313.pyc",
-      "bytes": 64738,
-      "sha256": "b621e7c5f890792510ffa42f176486f0dc43a4c201cc0ecb75f83f944060205f"
-    },
-    {
-      "path": "__pycache__/sei_stricto.cpython-313.pyc",
-      "bytes": 33488,
-      "sha256": "d9313dd248d40642737049a299baf7772c731b8b63fff790e79bf078b6304355"
-    },
-    {
-      "path": "__pycache__/sei_student_dates.cpython-313.pyc",
-      "bytes": 30922,
-      "sha256": "1714f1f14fb68b80441fe38d3988a331fa9cb79bfe46185c58d3973a2a50e97e"
-    },
-    {
-      "path": "__pycache__/survey_archive.cpython-313.pyc",
-      "bytes": 11398,
-      "sha256": "15f0bffc7453bff0d5f40db2ce58c0809b3d96a491a9f5b1098e7dffa40392f5"
-    },
-    {
-      "path": "__pycache__/survey_faculty_adapter.cpython-313.pyc",
-      "bytes": 1216,
-      "sha256": "768b6ba0f5f28cda42300de64882857e576ca985dd1543dfa3169bba3e69dc30"
-    },
-    {
-      "path": "__pycache__/survey_faculty_analytics.cpython-313.pyc",
-      "bytes": 7247,
-      "sha256": "1466949a15c02de8828955caf2487fb0b02fcd814fd57e1a97341f335da56e2d"
-    },
-    {
-      "path": "__pycache__/survey_faculty_identity.cpython-313.pyc",
-      "bytes": 2261,
-      "sha256": "19c4a5238f2b47469a4957e2a233866c06ec015c1b6881f6a145dd6666c7ec22"
-    },
-    {
-      "path": "__pycache__/survey_faculty_institution_archive.cpython-313.pyc",
-      "bytes": 6195,
-      "sha256": "e3e36987f8a5d54860a7be3f73055f46fbfbf93d3889cede675584393e219aaf"
-    },
-    {
-      "path": "__pycache__/survey_faculty_institution_models.cpython-313.pyc",
-      "bytes": 2523,
-      "sha256": "56a29d439f4cfe6de87298afa11cfea0d23c20180af4221ac11ddc89294fcefa"
-    },
-    {
-      "path": "__pycache__/survey_faculty_institution_parser.cpython-313.pyc",
-      "bytes": 9105,
-      "sha256": "a0c17119ccc06358978c2d5fc2ffc296a685a74060a482cf45414e4f2ad9f57a"
-    },
-    {
-      "path": "__pycache__/survey_faculty_models.cpython-313.pyc",
-      "bytes": 1854,
-      "sha256": "b7548d15bdc54fcff9b4ba0edf5ae720692ff8e318f35d390ab3941dd387d12d"
-    },
-    {
-      "path": "__pycache__/survey_faculty_student.cpython-313.pyc",
-      "bytes": 4331,
-      "sha256": "a5c6a5d0371b367ce447bd75458e0c10a13d269723fceb3a972a58f4a62528f4"
-    },
-    {
-      "path": "__pycache__/survey_faculty_student_archive.cpython-313.pyc",
-      "bytes": 13740,
-      "sha256": "41f0cdee96765f459f9a2c142cedf0e790441cab7ae8b646fd88b7f3373a92dd"
-    },
-    {
-      "path": "__pycache__/survey_faculty_student_parser.cpython-313.pyc",
-      "bytes": 13380,
-      "sha256": "d901ed587c67953a179145b2336b39a1ccc534907fc067661d20979eb0e4c4b6"
-    },
-    {
-      "path": "__pycache__/survey_metrics.cpython-313.pyc",
-      "bytes": 3287,
-      "sha256": "c23e79046f2bb7247726209232abef45f8339b9da4e3c518b66059d909c2c0ef"
-    },
-    {
-      "path": "__pycache__/survey_models.cpython-313.pyc",
-      "bytes": 3586,
-      "sha256": "c56ab37ca91f9cc733cce224b59765ec004f9a7defb6a56aa3a52718aa5d4544"
-    },
-    {
-      "path": "__pycache__/survey_parser.cpython-313.pyc",
-      "bytes": 17150,
-      "sha256": "3319412818d99b3bd4b4dfc87e797d72abd8649336eed718d7efc9bb523ff9b9"
-    },
-    {
-      "path": "__pycache__/survey_repository.cpython-313.pyc",
-      "bytes": 162590,
-      "sha256": "d9101636acca3f5289c8b34cb07a87df398fc8fbfddf2b50d3d66fb97a08fe10"
-    },
-    {
-      "path": "__pycache__/survey_router.cpython-313.pyc",
-      "bytes": 67482,
-      "sha256": "d810aef213e2ddb09647afa901151ae4ad0bfe7a1067cc3638d70b6a71eda0f6"
-    },
-    {
-      "path": "__pycache__/survey_sei.cpython-313.pyc",
-      "bytes": 54690,
-      "sha256": "accb9ec2f265a4e6df07c0f9b9148bafb87b6f7269193b505a90ca3d58abf289"
-    },
-    {
-      "path": "__pycache__/survey_sessions.cpython-313.pyc",
-      "bytes": 4796,
-      "sha256": "12cce8b39175fcc5de7ec2bb0143c62e1c475076aade80e6b890a4142fccd38a"
-    },
-    {
-      "path": "__pycache__/upload_utils.cpython-313.pyc",
-      "bytes": 3960,
-      "sha256": "e66a202c110e43e8e06a42c2d74e800c54ec14c5669a8be052eddb49ac6808a6"
+      "path": "README.md",
+      "bytes": 102152,
+      "sha256": "12e74857ecf9f7ec9fe1be27eaa2d024e073dd625391892fd7e592f8cd89fca9"
     },
     {
       "path": "academic_analytics.py",
@@ -548,8 +90,8 @@
     },
     {
       "path": "academic_catalog.py",
-      "bytes": 6150,
-      "sha256": "9ac175721425a3aede2705dbdcef2a8bc672dc4aa8385632a5e1c99d299a8f8b"
+      "bytes": 7751,
+      "sha256": "2de80cea493b7f570d5f610ea052588ee54318b6dc6a13f56aa666fbe2a8445d"
     },
     {
       "path": "academic_excel_builder.py",
@@ -583,8 +125,8 @@
     },
     {
       "path": "app.py",
-      "bytes": 49199,
-      "sha256": "184adcf1fe5be89571ddfcc082f75a6901bf7e9ce41ec9920bd7fad8867d0307"
+      "bytes": 49254,
+      "sha256": "22c459a42124be9d051ea9d843f543dca4d16155cf8855e1d5bdc08118b1bcc0"
     },
     {
       "path": "assets/modelos/Modelo_Avaliacao_Docente.xlsx",
@@ -637,61 +179,6 @@
       "sha256": "4fe2ec4c1a5379a32e55b226b6afa538accad8836e9187ade5a7f40719e71518"
     },
     {
-      "path": "auth/__pycache__/__init__.cpython-313.pyc",
-      "bytes": 660,
-      "sha256": "2fc10b6f3647888fbeb17d70237e3e73945a6cc0a90840ccbd8bcf04224c5f9a"
-    },
-    {
-      "path": "auth/__pycache__/access.cpython-313.pyc",
-      "bytes": 6124,
-      "sha256": "db0f3eeab80732976603b454335aa69ab14f81ad0dee1968cb04e6e4e5e29b88"
-    },
-    {
-      "path": "auth/__pycache__/audit.cpython-313.pyc",
-      "bytes": 6584,
-      "sha256": "b8186a13b404090627ad2b6adcdc2a019bee523222c6c885663eff97f3b9379d"
-    },
-    {
-      "path": "auth/__pycache__/data_scopes.cpython-313.pyc",
-      "bytes": 4766,
-      "sha256": "6886d5ed28b4fec6263f3b3b0ee39323bfc30bbd1b8fdd6419013598c2349ffa"
-    },
-    {
-      "path": "auth/__pycache__/identity_admin.cpython-313.pyc",
-      "bytes": 11720,
-      "sha256": "7db84f4cffca5e42078fdd6d6148c399b23fc3dabb21ffbd9dd0f7fa4c3a32b5"
-    },
-    {
-      "path": "auth/__pycache__/identity_provider.cpython-313.pyc",
-      "bytes": 4698,
-      "sha256": "82937ba50b3c3fd40dec83cbd52d90d62a083a28eee7ef154352a9d356b07569"
-    },
-    {
-      "path": "auth/__pycache__/objects.cpython-313.pyc",
-      "bytes": 11862,
-      "sha256": "d31b286a8eab8b0a91c2525150123bccf5fcc622e3cd88dfc0eac4ac7d306f24"
-    },
-    {
-      "path": "auth/__pycache__/sessions.cpython-313.pyc",
-      "bytes": 13442,
-      "sha256": "bd1cbacb5d1c5d4fd761a3eff1be03be358e93b8bbb0b825814a4ea1c71aa3de"
-    },
-    {
-      "path": "auth/__pycache__/test_accounts.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 4610,
-      "sha256": "bf5c7e34a51f8982d76e289e8fc0f46b75f6e25675ff10b08f741f8c8a1c8532"
-    },
-    {
-      "path": "auth/__pycache__/test_accounts.cpython-313.pyc",
-      "bytes": 4429,
-      "sha256": "7264638abcf04b0bcae80aa88ff60994590d619545d41bd1c09a0837b99d3b77"
-    },
-    {
-      "path": "auth/__pycache__/tokens.cpython-313.pyc",
-      "bytes": 10058,
-      "sha256": "8e5471db14f26314ab6b9d4b5fbbae5a5f6b6273bdf10b89dc414eb24a413099"
-    },
-    {
       "path": "auth/access.py",
       "bytes": 3975,
       "sha256": "b19d77595a102bc699472f3e28f5e848749dc85da8170973883117a1b82809e3"
@@ -735,11 +222,6 @@
       "path": "auth/tokens.py",
       "bytes": 6715,
       "sha256": "28ccf0e9087f947648923910a62e1c82ce200aec697178ee56869df6af88b1b3"
-    },
-    {
-      "path": "BUILD_INFO.txt",
-      "bytes": 11239,
-      "sha256": "b3309031e30d4549144f1f7f64d955a2f59e6b8799c796d44d5e344fa7e7abd9"
     },
     {
       "path": "config/management_indicators.json",
@@ -820,11 +302,6 @@
       "path": "dadm_v2_router.py",
       "bytes": 14093,
       "sha256": "a97c2c01c1c3d836ca4689945d47e7a766467c8747a87bb3a84d4a77a62e40c2"
-    },
-    {
-      "path": "database.py",
-      "bytes": 920,
-      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
     },
     {
       "path": "database/001_init.sql",
@@ -1052,6 +529,16 @@
       "sha256": "4d87ec68f7f489452ef83e40f8d8f988f53cdc3d220ccdcbdd92621105846514"
     },
     {
+      "path": "database/049_academic_faculty_context_scopes_v0130.sql",
+      "bytes": 1954,
+      "sha256": "6dee5e034419a39cc15bbf79a1afd197db87e00090b2f55549e593daa66fa657"
+    },
+    {
+      "path": "database.py",
+      "bytes": 920,
+      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
+    },
+    {
       "path": "demo_data.py",
       "bytes": 10931,
       "sha256": "6d69d292ea3f064ed3db9481a3785cd4a4682ca6329dc27b415f422e5f47b57b"
@@ -1115,11 +602,6 @@
       "path": "docker-compose.production.yml",
       "bytes": 710,
       "sha256": "8a493031da8e517a5fdf4f4321b37cc0fb548d7a227512c3d0e00ff3836e19cc"
-    },
-    {
-      "path": "Dockerfile",
-      "bytes": 610,
-      "sha256": "844053d1b53bf48184432c93992f6da795e14d91a3a62cb3e29ff089f489aa99"
     },
     {
       "path": "docs/ACADEMIC_EXCEL_V2_v08280.md",
@@ -1203,8 +685,8 @@
     },
     {
       "path": "docs/CHANGELOG.md",
-      "bytes": 74658,
-      "sha256": "010266867eb99afd7c3d3f634a4f710bda3743e2836f36d3afb029bdbfaa48ce"
+      "bytes": 75337,
+      "sha256": "722fe6baaca82bfd256a2fbe06668f21828d07ea6e27e049744898fc3a8232b9"
     },
     {
       "path": "docs/DADM_FULL_ATTENDANCE_EXPLORER_v09611.md",
@@ -1278,8 +760,8 @@
     },
     {
       "path": "docs/DEPLOY.md",
-      "bytes": 29975,
-      "sha256": "7732ace489fd3643037f0812ce464494745770126c5b2df12029b4ef075f3584"
+      "bytes": 29996,
+      "sha256": "00784961937daf4a86d540be9e5875fbe4493101734b678b169f96ced94b3d3e"
     },
     {
       "path": "docs/DM_DOMAIN_SIMPLIFICATION_v08290.md",
@@ -1553,8 +1035,23 @@
     },
     {
       "path": "docs/PART1_UX_CLEANUP_EF_LIC_2026-09-29.md",
-      "bytes": 2791,
-      "sha256": "43160902a4e6e64095b20868609ecc2a76a5a00638a05a176e1f3c8884be30e6"
+      "bytes": 3743,
+      "sha256": "84ab539d2b97df9a5bdc69f3a484568f4c28b2a977c452826cf0e9af7ab7121b"
+    },
+    {
+      "path": "docs/PART2_SEARCHABLE_DISCIPLINE_FILTERS_2026-09-29.md",
+      "bytes": 1332,
+      "sha256": "a8fdcf17f7b3d60db4ff6f713b751f39ec2c8bac20171915cad3b8506dd947d1"
+    },
+    {
+      "path": "docs/PART3_ACADEMIC_IDENTITY_SHARED_CLASSES_2026-09-29.md",
+      "bytes": 2259,
+      "sha256": "b8a4f7143a9f1283309e7835aeafa1edab4e9645eb6fbba5fa8046129dbdd737"
+    },
+    {
+      "path": "docs/PART4_NPS_LONG_COURSE_LABELS_2026-09-29.md",
+      "bytes": 1620,
+      "sha256": "a8210923de9eb75bf7713b5fbc0e6a6dde5648c621bb866d5ce93ebbf57bb029"
     },
     {
       "path": "docs/PERFORMANCE_v08170.md",
@@ -1568,8 +1065,8 @@
     },
     {
       "path": "docs/PRODUCTION_RELEASE_v0130.md",
-      "bytes": 2221,
-      "sha256": "656b9d0d65a28c540ff3482372c9dc47d7814f9bee7e58660e1a76e471c477a1"
+      "bytes": 2232,
+      "sha256": "ab40fa75a44a2947fe5d5c968ba5613f7672cff16d31284086ec1c779d0ae29d"
     },
     {
       "path": "docs/REITORIA_ADMIN_VISIBILITY_v0969.md",
@@ -1718,8 +1215,8 @@
     },
     {
       "path": "models.py",
-      "bytes": 113787,
-      "sha256": "3e436144897a6f449ec6c940567f2aa6224b414ce54602e68fcc6d64c1152221"
+      "bytes": 115337,
+      "sha256": "f0b7766be7c7deb18ebee0b5826cc8289c739dedff97d7c57f184b06cf4ea756"
     },
     {
       "path": "observability.py",
@@ -1727,29 +1224,9 @@
       "sha256": "c0839ab6ce67844af29e75b549d8330f0406b4bdf8d62a1f02cb5bd3751e8bb3"
     },
     {
-      "path": "PATCH_V01251_INSTRUCTIONS.txt",
-      "bytes": 886,
-      "sha256": "b01570ec019b8f8ce0034c7c3f77b45f02addbfa39d01b1449f8fb54f19a9b19"
-    },
-    {
-      "path": "PATCH_V0125_INSTRUCTIONS.txt",
-      "bytes": 2642,
-      "sha256": "ad48a8146268c5ffc1362f29e88b55e6bdc887592f38c1d10f254388b2aae37e"
-    },
-    {
-      "path": "PRODUCTION_VALIDATION.txt",
-      "bytes": 1171,
-      "sha256": "ff0c99880a09f81449ad235e5ef7e058e7f6f4c169eac89a9916f833ac7ddd79"
-    },
-    {
-      "path": "README.md",
-      "bytes": 100160,
-      "sha256": "c71a598f8821825f4a7855335e605809a99d8597903c5dc1504ff12fd97b57a6"
-    },
-    {
       "path": "release_info.py",
-      "bytes": 183,
-      "sha256": "d3631f00e2d367dbc9763dc8551bbb0d01585091a04f4b2c56e008c4c389570a"
+      "bytes": 194,
+      "sha256": "cd19c560f4d210fd10bccb02f15828b4d549fabd6a79116ccb8e5f6b6a3e21f9"
     },
     {
       "path": "render.yaml",
@@ -1758,8 +1235,8 @@
     },
     {
       "path": "repository.py",
-      "bytes": 154948,
-      "sha256": "a8a38a42f1f50056b423a8066af1c054781819cc8a0b03f7818bd602b6ce5f1a"
+      "bytes": 155694,
+      "sha256": "bb625f9a4b2114a8bc86565dc84c5e33503ebce9f2f1d2436bf8aa1f3d723865"
     },
     {
       "path": "requirements-local.txt",
@@ -1778,78 +1255,13 @@
     },
     {
       "path": "schema_version.py",
-      "bytes": 18296,
-      "sha256": "78fc9eb9ca451f430b9bf1f714e19a322c5890d515927b1be1b9fc1ffa3a39ce"
+      "bytes": 20238,
+      "sha256": "9b70568c6c25953b6305b8bb18e3f7a93bb5b9d1e9f3505b43668cb140fd2030"
     },
     {
       "path": "schemas.py",
       "bytes": 16041,
       "sha256": "8d27a8684f76fe2ae8e0a32d6be2ff753c4bd369489673fb8d24a3cfb90c7e6e"
-    },
-    {
-      "path": "scripts/__pycache__/ensure_local_launcher.cpython-313.pyc",
-      "bytes": 7093,
-      "sha256": "dc38f504f8ad95696188f4468f429faaf58dfbc2d2c878516b1f1e889b8af709"
-    },
-    {
-      "path": "scripts/__pycache__/run_release_checks.cpython-313.pyc",
-      "bytes": 3346,
-      "sha256": "cf2fe6ec8d6f579938a64ca02c472d8d820aa3770889887ccf6906d6b782f642"
-    },
-    {
-      "path": "scripts/__pycache__/seed_dpe_demo.cpython-313.pyc",
-      "bytes": 24526,
-      "sha256": "9268bd071729a31d9fb96d1cc5b0a82d296f27c8898c852e2546e9b4e64af4ba"
-    },
-    {
-      "path": "scripts/__pycache__/verify_academic_results_v01164.cpython-313.pyc",
-      "bytes": 5230,
-      "sha256": "456a034edf5685f76110e62abf9dca07f1f83d97a6e093585c6a3f5b26230f74"
-    },
-    {
-      "path": "scripts/__pycache__/verify_academic_results_v01165.cpython-313.pyc",
-      "bytes": 1078,
-      "sha256": "8e41c2a146e3c50777301c5c5ec50c6294bd423773f86aed941e012c5f395a46"
-    },
-    {
-      "path": "scripts/__pycache__/verify_academic_results_v01166.cpython-313.pyc",
-      "bytes": 3530,
-      "sha256": "9320b2168e5c21a2f935c71b0564fbe2db9d7326442cefdd0069cb473f79f9e4"
-    },
-    {
-      "path": "scripts/__pycache__/verify_academic_results_v01167.cpython-313.pyc",
-      "bytes": 4211,
-      "sha256": "3f501a6e58de93d79b1f56238554b46726489ced9fb099a45dd1c5e81b596a10"
-    },
-    {
-      "path": "scripts/__pycache__/verify_faculty_student_v0111.cpython-313.pyc",
-      "bytes": 3320,
-      "sha256": "f27551d4e982983dd4b8a09d8a598403515363747309065ecc507ffbac02fd92"
-    },
-    {
-      "path": "scripts/__pycache__/verify_faculty_student_v0112.cpython-313.pyc",
-      "bytes": 4898,
-      "sha256": "90fc8dd18b630ffeddd8709ab6910086ed3f44b1af7321ca347e6d2905c73d0e"
-    },
-    {
-      "path": "scripts/__pycache__/verify_faculty_student_v0113.cpython-313.pyc",
-      "bytes": 5973,
-      "sha256": "ea55ab83a3b451ba7c4f5a60e8c1a6579a5985c8220cdd58d45bfc8627bc4342"
-    },
-    {
-      "path": "scripts/__pycache__/verify_faculty_student_v0114.cpython-313.pyc",
-      "bytes": 8160,
-      "sha256": "31e455992cc75125ea1155895c27d2186b90e20db25b5b786a93d04a2ec192e3"
-    },
-    {
-      "path": "scripts/__pycache__/verify_faculty_student_v0115.cpython-313.pyc",
-      "bytes": 3394,
-      "sha256": "6c5cf66b9fd84183a97fc67e4b11fb0459e6027a0447575a42f3d30f96b04915"
-    },
-    {
-      "path": "scripts/__pycache__/verify_faculty_student_v0116.cpython-313.pyc",
-      "bytes": 8350,
-      "sha256": "a9ae2b05bd328c1e094b3bb9c752bde2821b64a5fbff58b050f896f1edf1127f"
     },
     {
       "path": "scripts/ensure_local_launcher.py",
@@ -1923,8 +1335,8 @@
     },
     {
       "path": "sei_academic.py",
-      "bytes": 60443,
-      "sha256": "3102df372e0a32f7ec9f5585f19036a873ad37e634e398e02c61031ce121c22a"
+      "bytes": 60549,
+      "sha256": "c69ba9b113453acf8950f1605b9f235849c15fb347b7f6e8288827015816d48f"
     },
     {
       "path": "sei_stricto.py",
@@ -1938,8 +1350,8 @@
     },
     {
       "path": "static/css/app.css",
-      "bytes": 73036,
-      "sha256": "46fb2eb9c178e8b704e88ad4bcd73f301b1f5c86fcdb33dcfa96f458e1a425e1"
+      "bytes": 73446,
+      "sha256": "615fbecc4795eeb26b13ba904fa37a8ce5c77dbebec724946aa4b71c93574ca1"
     },
     {
       "path": "static/css/dadm.css",
@@ -1958,8 +1370,8 @@
     },
     {
       "path": "static/css/data-univc-foundation.css",
-      "bytes": 5632,
-      "sha256": "40cb40527f5769644bf60a219426e9e406605204554a3e011c76967f7e2ec088"
+      "bytes": 9052,
+      "sha256": "2391d111fae71bde7a80d8894bb1fa6cfa6f49997f38e294e0e278bcf92262dd"
     },
     {
       "path": "static/css/dm.css",
@@ -1973,8 +1385,8 @@
     },
     {
       "path": "static/css/faculty-evaluation.css",
-      "bytes": 14133,
-      "sha256": "0545b214d63dbe83b3173424399db968719c3f353c01c2f518fc007d4e30a26a"
+      "bytes": 13720,
+      "sha256": "1019b34c3f5ea91f32126c845cf2b1116691553fa6bee3f632910012e72a002c"
     },
     {
       "path": "static/css/management.css",
@@ -2003,8 +1415,8 @@
     },
     {
       "path": "static/js/app.js",
-      "bytes": 219572,
-      "sha256": "ed29ac1a5a463964504d0a1e93bd1b1827fa003e215852184edab7a54091dec0"
+      "bytes": 222268,
+      "sha256": "cc7bbb5ae4f95f1a274db76dd09c9dbe3bcf770b0391d6d838b642f93a4ecd9f"
     },
     {
       "path": "static/js/dadm.js",
@@ -2048,8 +1460,8 @@
     },
     {
       "path": "static/js/data-univc-ui.js",
-      "bytes": 7283,
-      "sha256": "0e6c2a47790620aaa6527dfad451a0953d619906b61e962d43bb2608cdd33c47"
+      "bytes": 15797,
+      "sha256": "152bdd94c25e204ab0b09c8294d898ed6a53974f5dd3a355af4ada8462b64c0e"
     },
     {
       "path": "static/js/dm.js",
@@ -2113,8 +1525,8 @@
     },
     {
       "path": "static/js/faculty-evaluation.js",
-      "bytes": 56397,
-      "sha256": "49df3a5e57d9605e6fb0851fcab9bf40ea62b8bf0a1380bc992586e436a6f782"
+      "bytes": 53608,
+      "sha256": "41ed19d6c622e9edc5e6ae65ff561ba6b11cbf3212cd532afbfd9aa12ea34285"
     },
     {
       "path": "static/js/management.js",
@@ -2198,13 +1610,13 @@
     },
     {
       "path": "survey_repository.py",
-      "bytes": 139433,
-      "sha256": "dba3ad17e428933421376deb68ce35bb671445c3bfae99c721e81dfd96a2bdd5"
+      "bytes": 147406,
+      "sha256": "5e7263e4d9bc10a5e3ac527867ba81b61024bf5e51c64eb3f06473f8853ec3fd"
     },
     {
       "path": "survey_router.py",
-      "bytes": 52734,
-      "sha256": "3e71331973bcf9717f8cf1317d759084f437a7fc97754211ca4de5cc3cf3cd29"
+      "bytes": 56084,
+      "sha256": "bb42085552a90bed805f1fc33acf84a594164fa1e94baba574fd1f17c3c1d99d"
     },
     {
       "path": "survey_sei.py",
@@ -2243,8 +1655,8 @@
     },
     {
       "path": "templates/index.html",
-      "bytes": 48600,
-      "sha256": "1c6795728bb20583bde2fd6855a7fedfe9697dc3eecfa527e1abc6fdb4622cd9"
+      "bytes": 48789,
+      "sha256": "562d4f57513311d8330e4ec462db17f2b9e13d41cbaaec475384b56486dc1f3c"
     },
     {
       "path": "templates/management.html",
@@ -2257,334 +1669,9 @@
       "sha256": "62d2f3365491e2ef3c548ebd953a064ee48881554f18627e7318abca71c03c69"
     },
     {
-      "path": "tests/__pycache__/test_academic_results_v01164.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 10945,
-      "sha256": "99e7b5666126afc9a53588d736415f46d468be2d396345c16342f74af66874d2"
-    },
-    {
-      "path": "tests/__pycache__/test_academic_results_v01164.cpython-313.pyc",
-      "bytes": 10764,
-      "sha256": "42c6dbafdc21ac55be820e9a3716a4eb3a383e17bd93cffa1f6e54b7a50ffb17"
-    },
-    {
-      "path": "tests/__pycache__/test_academic_results_v01165.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 11506,
-      "sha256": "98bf1a4e1d40ab0fb9d283fb148e757222c8fc4219a1e1b8d5194f562d690eab"
-    },
-    {
-      "path": "tests/__pycache__/test_academic_results_v01165.cpython-313.pyc",
-      "bytes": 11325,
-      "sha256": "211f5fcd6e0b032a3ec8c67274225fb8d9f0238557fe940da3b1f7917503b7da"
-    },
-    {
-      "path": "tests/__pycache__/test_academic_results_v01166.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 13099,
-      "sha256": "0cff1e82514c349c402a19c45a39b2d59df1aa17a0ddb8014f5d824f05b3b559"
-    },
-    {
-      "path": "tests/__pycache__/test_academic_results_v01166.cpython-313.pyc",
-      "bytes": 12941,
-      "sha256": "4efc1c4f2e301b6afc6e23ee290ff6568edc9e7dbba57e391946dda815027ed3"
-    },
-    {
-      "path": "tests/__pycache__/test_academic_results_v01167.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 6902,
-      "sha256": "ed346c6f03cda7d203f09d477b645b600ae543c16e7444de90ae491dde617e4e"
-    },
-    {
-      "path": "tests/__pycache__/test_academic_results_v01167.cpython-313.pyc",
-      "bytes": 6744,
-      "sha256": "6c756a70c45aab4cecf29224df69cf83507b8c108d9bd5ed12b54c2761daa3d4"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0120.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 15373,
-      "sha256": "ccc832bcf5b4d2f21f7d5fb70501363718b0d3738597ea6fca8d56e78495ec01"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0120.cpython-313.pyc",
-      "bytes": 15192,
-      "sha256": "ca90b09787a45b356befb910693711183556ef54b6572c385bcfe63663c78e7a"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0121.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 20654,
-      "sha256": "2fa44b1a21be7993f7deb31a1ab6054d5111ac14892df9f08f9cdb8725d0a2a0"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0121.cpython-313.pyc",
-      "bytes": 20473,
-      "sha256": "117cc223244a951234aeb2348d6e871e81fc91c88b75e78fd487dcb8a67bac2d"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0122.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 22613,
-      "sha256": "a76f93452b5e0568b139e827283a248b0476c020a0c03263e479052b69831c16"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0122.cpython-313.pyc",
-      "bytes": 22432,
-      "sha256": "6465c6159cc7335317d34bc6f2f3ec16d1d1a1df76d294d0567ed280c4e30a1c"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0123.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 18580,
-      "sha256": "36cc484f5320fac228b8bb291bc611442a9cce9ba6e43aec46ed824e536974c0"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0123.cpython-313.pyc",
-      "bytes": 18399,
-      "sha256": "9ee81a19b0dd06c8837e90a42032ceb9ece0d5a6012eb811dac3e41e26a85072"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0124.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 13192,
-      "sha256": "059e0bc3e0fd343bedece8a57cb9d445cd0503cf87aee795fb1a729bb11f903d"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0124.cpython-313.pyc",
-      "bytes": 13011,
-      "sha256": "f610d050a4ac9d3d2829acf2f1d9eaca9cacaf51853b3512e6066f3417ccabd4"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0125.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 27463,
-      "sha256": "3b9b0d2193adb839c2235f0d3016b8369330e4cf1aa83c2ba69528f38cb56952"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0125.cpython-313.pyc",
-      "bytes": 6286,
-      "sha256": "e0da7235e05f92b5bbd57f41bbcc46cd7e513458cce1f8ab82968c3f544482b9"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v01251.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 11834,
-      "sha256": "6dca26069318d633f8849c79d9a0038798d99c8bc2ec235e23c55eb456e322ee"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v01251.cpython-313.pyc",
-      "bytes": 3488,
-      "sha256": "4617951fb9daf57aba8c6619c1481be770c308edfa6b71f81f08962e3108b38f"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev10.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 16804,
-      "sha256": "b1cc9eacc910adfcdc55ab8d2d4d939ac62a9f00ef587fca7b74ea37e70d0b87"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev10.cpython-313.pyc",
-      "bytes": 7261,
-      "sha256": "6541d8062411f4c9bd03cf2078d9064f9211d197e92a4dec3037a7e2fbcc18b3"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev11.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 17629,
-      "sha256": "45ba8df19983010bf3322880661031542508bf1a6aded81de2655ef3ff54e64e"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev11.cpython-313.pyc",
-      "bytes": 7522,
-      "sha256": "fc40ddd1fbb29484a572e40ef383266d3a172c53946abcbd84f280003a4d4077"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev12.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 17711,
-      "sha256": "e3175a20482325286a3112886f52ee4f8fffc0ace7e2d1c79cb234142035cc50"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev12.cpython-313.pyc",
-      "bytes": 4262,
-      "sha256": "51a3df69641963d5bf6d74653c56a62edb4f480c683b1a1742380f2dc41049de"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev13.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 16339,
-      "sha256": "df74080bafbdc254ffdc39b52db33429cb7ac6bc5025783367c8a08291f2f3ef"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev13.cpython-313.pyc",
-      "bytes": 6128,
-      "sha256": "efcb0d37944fd034ae7451d91e3dede2d73b98c33145b5ea02f7cfbda440bdca"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev14.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 12388,
-      "sha256": "331d6d1de9cb874932de1264ca4754bec3dc598d17259fd45ebdaf3ab1bab544"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev14.cpython-313.pyc",
-      "bytes": 4180,
-      "sha256": "f9c73e82d79543f6378d9feda1f880be4e81d7cfd4643b963ebda2512f1823d1"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev3.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 23426,
-      "sha256": "b963d3a8334d119b89fa32938082a48787b4a3f95882ac9f60e153e371513322"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev3.cpython-313.pyc",
-      "bytes": 7653,
-      "sha256": "e8a890bafb29bdc95e5165c8c01a23971fa0c14352daeab2620090ef578ad6bb"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev4.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 21091,
-      "sha256": "ba7fbea7d1a956bb5c309cb57a3d9be9d61e6b418e36b3d3406c1df5a63fdf37"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev4.cpython-313.pyc",
-      "bytes": 7390,
-      "sha256": "a90db3f4e88d82d963061564e1de320808d904e78e51d54a8814b62074d4584b"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev5.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 32877,
-      "sha256": "52be3c1f5f2c3f0cfcf909075cef874f567892932613730991344ee0aa17ff0f"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev5.cpython-313.pyc",
-      "bytes": 12046,
-      "sha256": "9151cd2e29e1a8568b05cb166adaf9114631cda23192b3645bb817908683a0fb"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev6.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 19065,
-      "sha256": "0f23f80da8be158c0e76c4e6c48083d76536efa20665cfec838abbe1863700fb"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev6.cpython-313.pyc",
-      "bytes": 7488,
-      "sha256": "45c1055307c1aa834bde43c9bce4f1e0e6c09d6ff07ddab6da156b0cd8dff106"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev7.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 27351,
-      "sha256": "b9379c860ed58bd0bceb2f585ca6b1981d958d1c564668aa1f3718ba3d76ccce"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev7.cpython-313.pyc",
-      "bytes": 11071,
-      "sha256": "d1ec0c99b6b96ad724e160ee13558088500a5e1714c08cf869190e971b9725fa"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev8.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 25870,
-      "sha256": "501797a6188e9e27c1d68a21713f30232a3ed687b1c9a8dab28853e992fc442f"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev8.cpython-313.pyc",
-      "bytes": 10460,
-      "sha256": "9e17bd950151f8df59da0ff184d2f6eb68a00fcd3c5286a2f3d5a22ec56e6855"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev9.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 16882,
-      "sha256": "f4c2a843491e16ed940ea98c2b5785275678352faafae9f7c89b063ed15a5781"
-    },
-    {
-      "path": "tests/__pycache__/test_dpe_v0130_dev9.cpython-313.pyc",
-      "bytes": 7402,
-      "sha256": "d2a14833f2f154d29a1dc483d424774cb455ee59f639052c6bcf31bcda2157ce"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0111.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 7463,
-      "sha256": "3820af6f0b5f8a37833508337cbbb511b4a976f95d7eacedb28cbf98fec12160"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0111.cpython-313.pyc",
-      "bytes": 7282,
-      "sha256": "90977e22c6a116f6c230778ed10b1404be4dbb5b7a3529109042bb332f47985a"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0112.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 14496,
-      "sha256": "d4fd2f90c84b06783a7531c2efbf3698cac66b01bd104514949ef00bd0c80a44"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0112.cpython-313.pyc",
-      "bytes": 14315,
-      "sha256": "95a4d3bbf317387bbb9292f749c0c5d7d0a8e788927b2730e409e8ae42896e01"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0113.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 15475,
-      "sha256": "6d8763473613fac25ee7c29c209b911d1ab1f2c1ff46464ce3f553f0ef9f278a"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0113.cpython-313.pyc",
-      "bytes": 15294,
-      "sha256": "26a72d628a5c50e5556f48dcf21a8707e6e2a3c3237a08cacb46e694bcfe53fd"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0114.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 6961,
-      "sha256": "e26323eadc707ca570f257b6e3178d24e964cbe82f6b82c9cd4a8bbccfbdd777"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0114.cpython-313.pyc",
-      "bytes": 6780,
-      "sha256": "f97edf5aa1e2432e4c43c2fc9e2b4bdff35565c0a04304d3bc88c85fdabe26de"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0115.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 12430,
-      "sha256": "07aca4cfc0b9383c0f2bbdbde175331cb470b92586c564065230262d30993aa5"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0115.cpython-313.pyc",
-      "bytes": 12249,
-      "sha256": "f84d8a034e7cbed6c1a0c61e4e1978ba7a2e211785d656a7cd8dfbc545f2f9ba"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0116.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 9445,
-      "sha256": "dcf0ce641d4a196151cbf57d3453964ed56b9fdaa95ae31975f65622923fdaf7"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v0116.cpython-313.pyc",
-      "bytes": 9287,
-      "sha256": "6b181639e3dcc446bf6ea7fd8eb838be005d7221ed5e56253ddb01a9aabb56b6"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v01162.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 6676,
-      "sha256": "02912d22b64977b7b358808cb954cb5e7549972f0830a4f000cbd2d1602bb91f"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v01162.cpython-313.pyc",
-      "bytes": 6495,
-      "sha256": "020a50901ddd2143d0f8b93bdb70d5aebc18d6d13a8b2132f4b63e5bf08e1936"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v01163.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 10338,
-      "sha256": "7c6e88c7370f81da8c9293096308e5b28dba3687cf9dbf6eec838a5bb6d05538"
-    },
-    {
-      "path": "tests/__pycache__/test_faculty_student_v01163.cpython-313.pyc",
-      "bytes": 10157,
-      "sha256": "7353311646748b17ec96f5684453fb82624834642c69d7bdcf256ec88e2fc0cc"
-    },
-    {
-      "path": "tests/__pycache__/test_release_production_v0130.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 6921,
-      "sha256": "81c9280edd01bac0d0f96265d4e3e34658662f00353dde8a1d1912cc739427a1"
-    },
-    {
-      "path": "tests/__pycache__/test_release_production_v0130.cpython-313.pyc",
-      "bytes": 1608,
-      "sha256": "7fd77f8828c60890615026535f0b94393ebc7f16b976f0cb0ada4da2f62a6ae9"
-    },
-    {
-      "path": "tests/__pycache__/test_release_reconciliation_v0130_dev15.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 8014,
-      "sha256": "0e5b6f4f9b98daa46b1f09b9e128cabe10d31148b88e0e2befea3f25c57ac823"
-    },
-    {
-      "path": "tests/__pycache__/test_release_reconciliation_v0130_dev15.cpython-313.pyc",
-      "bytes": 2313,
-      "sha256": "29d7e0f9e385356e36cf6c0d8d80928fe50e4466ce95dcd6cbf1b18c388d824b"
+      "path": "tests/test_academic_part3_v0130.py",
+      "bytes": 8887,
+      "sha256": "51d7fcdbac273f33b23a94b4304e32a3ae46ca27b6c7e29e9f6378f6c4ad8a48"
     },
     {
       "path": "tests/test_academic_results_v01164.py",
@@ -2605,6 +1692,11 @@
       "path": "tests/test_academic_results_v01167.py",
       "bytes": 3653,
       "sha256": "fbdbfad528c3750ae7382088410ccf12f4658f44c2992584ac9b4e06fa27279b"
+    },
+    {
+      "path": "tests/test_academic_searchable_select_part2.py",
+      "bytes": 2478,
+      "sha256": "6f35d5546bb6fb3107d2faecf5ab0fe7d2b2b349106ceb07301f245bb6726761"
     },
     {
       "path": "tests/test_dpe_v0120.py",
@@ -2644,17 +1736,17 @@
     {
       "path": "tests/test_dpe_v0130_dev10.py",
       "bytes": 4919,
-      "sha256": "2e6ce3038267969cf745cd85b1769f5ccb46bb171980d9635730625588b393a9"
+      "sha256": "496775b0109f04c637fea590f42165d0dbc87c3a165f80761a311ccde735d49d"
     },
     {
       "path": "tests/test_dpe_v0130_dev11.py",
       "bytes": 5195,
-      "sha256": "f667e9f9cc938cfa5d88566837be17072619c2a0c7c134f70122affd07cddef1"
+      "sha256": "606cbbc6f148a5524190afc7b879a71a65edcc954274cf01006b6a72f06762ba"
     },
     {
       "path": "tests/test_dpe_v0130_dev12.py",
       "bytes": 2563,
-      "sha256": "5def9b27fb725ae51f71e4322560872fa631d27e30fb38f387df3c9e356d3eed"
+      "sha256": "e11a4ba67076978ba2786266ead34fdefe47edf18c36c707aa994aba19362034"
     },
     {
       "path": "tests/test_dpe_v0130_dev13.py",
@@ -2664,7 +1756,7 @@
     {
       "path": "tests/test_dpe_v0130_dev14.py",
       "bytes": 2804,
-      "sha256": "0c8010afc7272b2045440aa2c32e23331d95cd801e310b648a5bffd193310b5f"
+      "sha256": "c1066aa79709fd29d844be91c01f5d78915afaf0aa2d647a8a59a9cc9d8a6907"
     },
     {
       "path": "tests/test_dpe_v0130_dev3.py",
@@ -2698,8 +1790,13 @@
     },
     {
       "path": "tests/test_dpe_v0130_dev9.py",
-      "bytes": 5222,
-      "sha256": "dcf3f59e12fc893116d76d416b10b51d3479926267071cb56df20f12faef9bfb"
+      "bytes": 5253,
+      "sha256": "07585e2d06310d084ceea3e31bdf110c85bfe1397de46afffec11608442de6ac"
+    },
+    {
+      "path": "tests/test_educacao_fisica_sei_20260929.py",
+      "bytes": 7402,
+      "sha256": "c89ed4cd7fd683f497d85efed180367382b583fc0f195771d520e27fb4222d6b"
     },
     {
       "path": "tests/test_faculty_student_v0111.py",
@@ -2738,18 +1835,23 @@
     },
     {
       "path": "tests/test_faculty_student_v01163.py",
-      "bytes": 7546,
-      "sha256": "246a90a32d829d68602a57c979fb26c44df1f9bfc740a5374d624d93597555e4"
+      "bytes": 7786,
+      "sha256": "a48d85d7f855dbf93a9764138743c38d82793d03cc652a97f83bc753286b69ae"
+    },
+    {
+      "path": "tests/test_part4_nps_long_course_labels.py",
+      "bytes": 796,
+      "sha256": "ff604db9194e1a95442339d1c0ef0c6ef69275ca68bb45fb8856afbb7ffdfeb2"
     },
     {
       "path": "tests/test_release_production_v0130.py",
-      "bytes": 812,
-      "sha256": "3e76a8f59fad59c81ae6a26bac03f0f9a25729e6391ac5e978a50b37dc6cf5a4"
+      "bytes": 904,
+      "sha256": "a8ea63dd487133ed7716fbb9fc66f1e8060bdf92557d93c224ec9a9e667d077a"
     },
     {
       "path": "tests/test_release_reconciliation_v0130_dev15.py",
       "bytes": 1422,
-      "sha256": "fbe1a4aa8d717433e0e061a2dc3422a8423449e5205caf0062f016734bad454e"
+      "sha256": "5e0ea6a2182316bb1be74e3173ab63520d375a70ca47f7f3fa821e3feae1ee65"
     },
     {
       "path": "upload_utils.py",

@@ -740,6 +740,7 @@ function updateDashboardDisciplineOptions(preserve = false) {
   select.disabled=course==='(todos)';
   select.innerHTML=option('(todas)',current==='(todas)',course==='(todos)'?'Selecione um curso':'Todas as disciplinas')+disciplines.map(d=>option(d,d===current)).join('');
   if (![...select.options].some(opt=>opt.value===current)) select.value='(todas)';
+  window.DataUNIVC?.searchableSelect?.attach(select);
 }
 
 function fillResultFilters() {
@@ -768,6 +769,7 @@ function updateResultDisciplineOptions() {
   select.disabled=!course;
   select.innerHTML=option('',!current,course?'Todas as disciplinas':'Selecione um curso')+disciplines.map(d=>option(d,d===current)).join('');
   if (![...select.options].some(opt=>opt.value===current)) { state.resultFilters.disciplina=''; select.value=''; }
+  window.DataUNIVC?.searchableSelect?.attach(select);
 }
 
 function sortedUnique(values) {
@@ -1438,30 +1440,46 @@ function renderVariationChart(container, data, opts = {}) {
   });
 }
 
-function wrapChartLabel(value, maxChars = 28, maxLines = 2) {
+function wrapChartLabel(value, maxChars = 28, maxLines = Infinity) {
   const words = String(value || '').trim().split(/\s+/).filter(Boolean);
   if (!words.length) return ['—'];
   const lines = [];
   let current = '';
-  for (const word of words) {
+  const pushLongWord = word => {
+    let remaining = word;
+    while (remaining.length > maxChars) {
+      lines.push(remaining.slice(0, maxChars));
+      remaining = remaining.slice(maxChars);
+    }
+    return remaining;
+  };
+  for (const originalWord of words) {
+    let word = originalWord;
+    if (!current && word.length > maxChars) word = pushLongWord(word);
     const candidate = current ? `${current} ${word}` : word;
     if (candidate.length <= maxChars || !current) current = candidate;
-    else { lines.push(current); current = word; }
+    else {
+      lines.push(current);
+      current = word.length > maxChars ? pushLongWord(word) : word;
+    }
   }
   if (current) lines.push(current);
-  if (lines.length <= maxLines) return lines;
-  const kept = lines.slice(0, maxLines - 1);
-  let tail = lines.slice(maxLines - 1).join(' ');
-  if (tail.length > maxChars) tail = `${tail.slice(0, Math.max(1, maxChars - 1)).trimEnd()}…`;
-  kept.push(tail);
+  if (!Number.isFinite(maxLines) || lines.length <= maxLines) return lines;
+  const kept = lines.slice(0, Math.max(1, maxLines));
+  const tail = lines.slice(Math.max(1, maxLines) - 1).join(' ');
+  kept[kept.length - 1] = tail.length > maxChars
+    ? `${tail.slice(0, Math.max(1, maxChars - 1)).trimEnd()}…`
+    : tail;
   return kept;
 }
 
-function courseLabelSvg(item, index, x, y, maxChars = 28) {
-  const lines = wrapChartLabel(item?.curso, maxChars, 2);
-  const firstY = y + (lines.length === 1 ? 17 : 11);
-  const tspans = lines.map((line, lineIndex) => `<tspan x="${x}" ${lineIndex ? 'dy="12"' : ''}>${escapeHtml(line)}</tspan>`).join('');
-  return `<text class="course-bar-label" data-index="${index}" x="${x}" y="${firstY}" text-anchor="end" fill="#2b3d35" font-size="10">${tspans}</text>`;
+function courseLabelSvg(item, index, x, rowTop, rowHeight, lines) {
+  const safeLines = lines?.length ? lines : ['—'];
+  const lineHeight = 12;
+  const centerY = rowTop + rowHeight / 2;
+  const firstY = centerY - ((safeLines.length - 1) * lineHeight) / 2 + 3;
+  const tspans = safeLines.map((line, lineIndex) => `<tspan x="${x}" ${lineIndex ? `dy="${lineHeight}"` : ''}>${escapeHtml(line)}</tspan>`).join('');
+  return `<text class="course-bar-label" data-index="${index}" x="${x}" y="${firstY}" text-anchor="end" fill="#2b3d35" font-size="10"><title>${escapeHtml(item?.curso || '—')}</title>${tspans}</text>`;
 }
 
 function npsStatusLegendHtml() {
@@ -1475,16 +1493,23 @@ function renderBarChart(container, data, opts = {}) {
   const sorted = [...valid].sort((a, b) => Number(b.valor) - Number(a.valor));
   const width = Math.max(container.clientWidth || 760, 520);
   const wrapLabels = opts.wrapLabels !== false;
-  const rowH = wrapLabels ? 44 : 35;
-  const margin = { top: 10, right: 68, bottom: 10, left: Math.min(285, Math.max(175, width * .31)) };
-  const height = margin.top + margin.bottom + sorted.length * rowH;
+  const margin = { top: 10, right: 72, bottom: 10, left: Math.min(320, Math.max(190, width * .36)) };
+  const maxLabelChars = Math.max(22, Math.min(52, Math.floor((margin.left - 28) / 5.6)));
+  const labelLines = sorted.map(item => wrapLabels ? wrapChartLabel(item.curso, maxLabelChars) : [String(item.curso || '—')]);
+  const rowHeights = labelLines.map(lines => Math.max(38, lines.length * 12 + 18));
+  const rowTops = [];
+  let runningTop = margin.top;
+  rowHeights.forEach(rowHeight => { rowTops.push(runningTop); runningTop += rowHeight; });
+  const height = runningTop + margin.bottom;
   const min = Math.min(0, ...sorted.map(x => Number(x.valor)));
   const max = Math.max(1, ...sorted.map(x => Number(x.valor)));
-  const zeroX = margin.left + (0 - min) / (max - min) * (width - margin.left - margin.right);
-  const xVal = value => margin.left + (Number(value) - min) / (max - min) * (width - margin.left - margin.right);
-  const maxLabelChars = Math.max(18, Math.min(34, Math.floor((margin.left - 26) / 5.7)));
+  const range = max - min || 1;
+  const zeroX = margin.left + (0 - min) / range * (width - margin.left - margin.right);
+  const xVal = value => margin.left + (Number(value) - min) / range * (width - margin.left - margin.right);
   const rows = sorted.map((item, i) => {
-    const yy = margin.top + i * rowH + Math.max(5, (rowH - 22) / 2);
+    const rowTop = rowTops[i];
+    const rowHeight = rowHeights[i];
+    const yy = rowTop + (rowHeight - 22) / 2;
     const end = xVal(item.valor);
     const xPos = Math.min(zeroX, end);
     const barW = Math.max(2, Math.abs(end - zeroX));
@@ -1498,8 +1523,8 @@ function renderBarChart(container, data, opts = {}) {
       : cls === 'danger' ? '#b64a4a'
       : '#78958a';
     const label = wrapLabels
-      ? courseLabelSvg(item, i, margin.left - 10, yy, maxLabelChars)
-      : `<text class="course-bar-label" data-index="${i}" x="${margin.left - 10}" y="${yy + 17}" text-anchor="end" fill="#2b3d35" font-size="10">${escapeHtml(item.curso)}</text>`;
+      ? courseLabelSvg(item, i, margin.left - 10, rowTop, rowHeight, labelLines[i])
+      : `<text class="course-bar-label" data-index="${i}" x="${margin.left - 10}" y="${yy + 17}" text-anchor="end" fill="#2b3d35" font-size="10"><title>${escapeHtml(item.curso || '—')}</title>${escapeHtml(item.curso)}</text>`;
     return `${label}<rect class="interactive-bar" data-index="${i}" x="${xPos}" y="${yy}" width="${barW}" height="22" rx="5" fill="${fill}"/><text x="${end >= zeroX ? end + 7 : end - 7}" y="${yy + 15}" text-anchor="${end >= zeroX ? 'start' : 'end'}" fill="#5b6d64" font-size="10" font-weight="700">${escapeHtml(opts.prefix || '')}${formatNumber(item.valor, opts.decimals ?? 1)}${opts.suffix || ''}</text>`;
   }).join('');
   const hint = opts.clickFilter === false ? 'Passe o mouse para detalhes' : 'Passe o mouse para detalhes · clique em um curso para filtrar o painel';
@@ -2552,29 +2577,47 @@ function renderNpsSeiInspectionStep() {
     root.innerHTML=`<form id="npsSurveyImportForm" class="form-grid">
       <div class="tip-box span-2"><strong>Relatório docente recebido: ${escapeHtml(inspection.filename||'arquivo')}</strong><br>${entries.length} relatório(s) institucional(is) encontrado(s). Como os docentes são anônimos e o SEI não informa curso, todos os relatórios selecionados serão tratados como uma única população institucional no semestre.</div>
       ${academicSemesterFields('survey_import_semester', semester, {help:'Todos os arquivos selecionados precisam representar o mesmo semestre.'})}
-      <div class="field span-2"><span>Relatórios encontrados</span><div class="sei-course-actions"><button type="button" class="button subtle compact" id="surveySelectMapped">Selecionar todos</button><button type="button" class="button subtle compact" id="surveyClearEntries">Limpar</button></div><div class="sei-course-grid">${entries.map(entry=>`<label class="sei-course-option"><input type="checkbox" name="survey_path" value="${escapeHtml(entry.internal_path)}" checked><span class="sei-course-check">✓</span><span class="sei-course-copy"><strong>${escapeHtml(entry.survey_title||entry.questionnaire_name||entry.internal_path)}</strong><small>${escapeHtml(entry.questionnaire_name||'Questionário institucional')} · ${formatNumber(entry.respondent_count||0,0)} respondente(s) estimado(s) · ${formatNumber(entry.question_count||0,0)} pergunta(s) · ${formatNumber(entry.nps_candidate_count||0,0)} candidata(s) 0–10</small></span></label>`).join('')}</div><small>Nenhum vínculo com curso, disciplina ou professor será criado. A fonte permanece anônima.</small></div>
+      <div class="field span-2"><span>Relatórios encontrados</span><div class="sei-course-actions"><button type="button" class="button subtle compact" id="surveySelectMapped">Selecionar todos</button><button type="button" class="button subtle compact" id="surveyClearEntries">Limpar</button></div><div class="sei-course-grid">${entries.map(entry=>`<label class="sei-course-option"><input type="checkbox" name="survey_path" value="${escapeHtml(entry.internal_path)}" checked data-auto-select="1"><span class="sei-course-check">✓</span><span class="sei-course-copy"><strong>${escapeHtml(entry.survey_title||entry.questionnaire_name||entry.internal_path)}</strong><small>${escapeHtml(entry.questionnaire_name||'Questionário institucional')} · ${formatNumber(entry.respondent_count||0,0)} respondente(s) estimado(s) · ${formatNumber(entry.question_count||0,0)} pergunta(s) · ${formatNumber(entry.nps_candidate_count||0,0)} candidata(s) 0–10</small></span></label>`).join('')}</div><small>Nenhum vínculo com curso, disciplina ou professor será criado. A fonte permanece anônima.</small></div>
       <div id="npsSurveyImportResult" class="span-2"></div>
       <div class="modal-form-footer span-2"><button type="button" class="button secondary" id="surveyBackQuestionnaire">Voltar</button><button type="submit" class="button primary">Importar todos selecionados</button></div>
     </form>`;
   } else {
     root.innerHTML=`<form id="npsSurveyImportForm" class="form-grid">
-      <div class="tip-box span-2"><strong>Relatório recebido: ${escapeHtml(inspection.filename||'arquivo')}</strong><br>${entries.length} bloco(s) de curso encontrados. Marque somente os cursos desta diretoria que devem alimentar o Data UNIVC.</div>
+      <div class="tip-box span-2"><strong>Relatório recebido: ${escapeHtml(inspection.filename||'arquivo')}</strong><br>${entries.length} bloco(s) de curso encontrados. O Data UNIVC usa o mapeamento do catálogo e, quando o nome é ambíguo, permite uma confirmação explícita antes de importar.</div>
       ${academicSemesterFields('survey_import_semester', semester, {help:'Este é o período lógico usado no histórico do Data UNIVC.'})}
-      <div class="field span-2"><span>Cursos encontrados no relatório</span><div class="sei-course-actions"><button type="button" class="button subtle compact" id="surveySelectMapped">Selecionar mapeados</button><button type="button" class="button subtle compact" id="surveyClearEntries">Limpar</button></div><div class="sei-course-grid">${entries.map((entry,index)=>{const match=entry.course_match||{}; const checked=match.matched?'checked':''; const disabled=match.matched?'':'disabled'; const mapped=match.matched?`→ ${match.course_name}`:`Não mapeado: ${match.reason||'curso fora do catálogo'}`; return `<label class="sei-course-option ${match.matched?'':'survey-unmapped'}"><input type="checkbox" name="survey_path" value="${escapeHtml(entry.internal_path)}" ${checked} ${disabled}><span class="sei-course-check">✓</span><span class="sei-course-copy"><strong>${escapeHtml(entry.course_name||entry.internal_path)}</strong><small>${escapeHtml(mapped)} · ${escapeHtml(entry.respondent_count??0)} respondente(s) estimado(s)</small></span></label>`;}).join('')}</div><small>Cursos não mapeados não são criados silenciosamente; primeiro devem existir no catálogo acadêmico correto.</small></div>
+      <div class="field span-2"><span>Cursos encontrados no relatório</span><div class="sei-course-actions"><button type="button" class="button subtle compact" id="surveySelectMapped">Selecionar mapeados</button><button type="button" class="button subtle compact" id="surveyClearEntries">Limpar</button></div><div class="sei-course-grid">${entries.map(entry=>{
+        const match=entry.course_match||{};
+        const resolvable=Boolean(match.resolution_required && (match.candidate_courses||[]).length);
+        const checked=match.matched?'checked':'';
+        const disabled=(match.matched||resolvable)?'':'disabled';
+        const mapped=match.matched?`→ ${match.course_name}`:resolvable?'Identidade ambígua · confirme abaixo':`Não mapeado: ${match.reason||'curso fora do catálogo'}`;
+        const resolutionSelect=resolvable?`<select class="sei-course-resolution-select" data-nps-course-resolution="${escapeHtml(entry.internal_path)}"><option value="">Escolha a habilitação/curso</option>${(match.candidate_courses||[]).map(item=>`<option value="${Number(item.course_id)}">${escapeHtml(item.course_name)}${item.modality?` · ${escapeHtml(item.modality)}`:''}</option>`).join('')}</select>`:'';
+        return `<label class="sei-course-option ${match.matched?'':resolvable?'survey-resolvable':'survey-unmapped'}"><input type="checkbox" name="survey_path" value="${escapeHtml(entry.internal_path)}" ${checked} ${disabled} ${match.matched?'data-auto-select="1"':''}><span class="sei-course-check">✓</span><span class="sei-course-copy"><strong>${escapeHtml(entry.course_name||entry.internal_path)}</strong><small>${escapeHtml(mapped)} · ${escapeHtml(entry.respondent_count??0)} respondente(s) estimado(s)</small>${resolutionSelect}</span></label>`;
+      }).join('')}</div><small>Em relatórios gerados diretamente pelo SEI atual, “Educação Física” é reconhecida como Licenciatura porque o Bacharelado continua identificado separadamente como “Educação Física (Bac. Presencial)”. Em uploads manuais ambíguos, a escolha continua explícita.</small></div>
       <div id="npsSurveyImportResult" class="span-2"></div>
       <div class="modal-form-footer span-2"><button type="button" class="button secondary" id="surveyBackQuestionnaire">Voltar</button><button type="submit" class="button primary">Importar no Data UNIVC</button></div>
     </form>`;
   }
-  $('#surveySelectMapped')?.addEventListener('click',()=>$$('input[name="survey_path"]:not(:disabled)',root).forEach(input=>input.checked=true));
+  $('#surveySelectMapped')?.addEventListener('click',()=>$$('input[name="survey_path"][data-auto-select="1"]',root).forEach(input=>input.checked=true));
   $('#surveyClearEntries')?.addEventListener('click',()=>$$('input[name="survey_path"]',root).forEach(input=>input.checked=false));
   $('#surveyBackQuestionnaire')?.addEventListener('click', ctx.sessionToken ? renderNpsSeiQuestionnaireStep : renderNpsSurveyUploadStep);
   $('#npsSurveyImportForm')?.addEventListener('submit',async event=>{
     event.preventDefault(); const paths=$$('input[name="survey_path"]:checked',root).map(input=>input.value);
     const sem=academicSemesterFromForm(event.currentTarget,'survey_import_semester');
-    if(!paths.length){toast(copy.scope==='faculty'?'Selecione ao menos um relatório':'Selecione ao menos um curso',copy.scope==='faculty'?'Escolha um ou mais relatórios institucionais dos docentes.':'Somente cursos mapeados podem ser importados.','warning');return;}
+    if(!paths.length){toast(copy.scope==='faculty'?'Selecione ao menos um relatório':'Selecione ao menos um curso',copy.scope==='faculty'?'Escolha um ou mais relatórios institucionais dos docentes.':'Selecione ao menos um curso mapeado ou resolva explicitamente um curso ambíguo.','warning');return;}
+    const resolutions={};
+    if(copy.scope!=='faculty') {
+      for(const path of paths){
+        const select=Array.from(root.querySelectorAll('[data-nps-course-resolution]')).find(item=>item.dataset.npsCourseResolution===path);
+        if(select){
+          if(!select.value){toast('Confirme o curso','Um dos blocos selecionados possui nome ambíguo. Escolha a habilitação/curso antes de importar.','warning');select.focus();return;}
+          resolutions[path]=Number(select.value);
+        }
+      }
+    }
     try {
       const processEndpoint=copy.scope==='faculty'?'/api/surveys/faculty-institution/import/process':'/api/surveys/import/process';
-      ctx.importResult=await api(processEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:inspection.token,selected_paths:paths,semester_override:sem}),loadingTitle:'Importando questionário',loadingMessage:copy.scope==='faculty'?'Salvando o questionário docente institucional sem identificar pessoas ou cursos.':'Salvando o relatório normalizado e preservando as distribuições originais do SEI.'});
+      ctx.importResult=await api(processEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:inspection.token,selected_paths:paths,semester_override:sem,course_resolutions:resolutions}),loadingTitle:'Importando questionário',loadingMessage:copy.scope==='faculty'?'Salvando o questionário docente institucional sem identificar pessoas ou cursos.':'Salvando o relatório normalizado e preservando as distribuições originais do SEI.'});
       renderNpsSeiCandidateStep();
     } catch(error){toast('Não foi possível importar o questionário',error.message,'error');}
   });

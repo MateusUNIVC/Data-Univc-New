@@ -1,9 +1,17 @@
 Data UNIVC v0.13.0 - PRODUCTION
 
 Base acadêmica: v0.11.6.7
-Schema esperado: 48
-Migration ledger: 048_dpe_teacher_profiles_v0130.sql
+Schema esperado: 49
+Migration ledger: 049_academic_faculty_context_scopes_v0130.sql
 Perfil: production
+
+Patch operacional 2026-09-29 - Parte 4 NPS com nomes longos de cursos:
+- graficos comparativos por curso deixam de limitar rotulos a duas linhas;
+- altura das linhas cresce conforme o nome completo, sem truncagem por reticencias;
+- margem esquerda responsiva e tooltip/title preservam o nome integral;
+- correcao compartilhada por renderBarChart, incluindo NPS e demais comparativos por curso;
+- sem alteracao de schema, API ou calculos;
+- detalhes em docs/PART4_NPS_LONG_COURSE_LABELS_2026-09-29.md.
 
 Hardening obrigatório:
 - ENVIRONMENT=production
@@ -14,6 +22,27 @@ Hardening obrigatório:
 - LOGIN_RATE_LIMIT_ENABLED=true
 
 Esta promoção não introduz novas regras de negócio sobre a v0.13.0-dev.15 reconciliada.
+
+Patch operacional 2026-09-29 - Parte 3 Identidade Acadêmica e Turmas Compartilhadas:
+- Avaliacao Docente usa Ano + Semestre na interface, preservando AAAA-SEM1/2 no contrato interno;
+- contextos docentes podem ter varios cursos por faculty_evaluation_context_scopes sem duplicar respostas;
+- visoes globais deduplicam agregados; visoes por curso incluem o mesmo contexto em cada escopo valido;
+- SEI atual: Educacao Fisica sem qualificacao e tratada como Licenciatura somente no adapter da fonte;
+- upload manual/legado com Educacao Fisica permanece ambiguo e exige resolucao explicita;
+- schema 49 via 049_academic_faculty_context_scopes_v0130.sql;
+- regressao: 176 testes aprovados, 2 ignorados.
+- detalhes em docs/PART3_ACADEMIC_IDENTITY_SHARED_CLASSES_2026-09-29.md.
+
+Patch operacional 2026-09-29 - Parte 2 Filtros de Disciplina Pesquisaveis:
+- cria DataUNIVC.searchableSelect como componente compartilhado;
+- Visao Geral e Aprovacoes e Notas passam a pesquisar disciplinas por texto e sem diferenciar acentos;
+- Avaliacao Docente deixa de manter uma implementacao propria de combobox e reutiliza o componente compartilhado;
+- preserva os selects nativos, eventos change e contratos atuais das APIs;
+- adiciona cache busting por BUILD_FINGERPRINT aos assets da pagina academica;
+- inclui o hotfix do SEI para Educacao Fisica - Licenciatura entregue na Parte 1;
+- sem alteracao de schema e sem migration adicional;
+- regressao: 172 testes aprovados, 2 ignorados.
+- detalhes em docs/PART2_SEARCHABLE_DISCIPLINE_FILTERS_2026-09-29.md.
 
 Patch operacional 2026-09-29 - Parte 1 UX + Educação Física Licenciatura:
 - remove avisos não acionáveis de Resultados Acadêmicos e o painel diagnóstico da Avaliação Docente;

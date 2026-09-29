@@ -6,10 +6,10 @@
   <meta name="color-scheme" content="light">
   <link rel="icon" type="image/png" href="/static/img/univc-logo.png">
   <title>Data UNIVC | Gestão por KPIs</title>
-  <link rel="stylesheet" href="/static/css/app.css?v={{ app_version }}">
-  <link rel="stylesheet" href="/static/css/data-univc-foundation.css?v={{ app_version }}">
-  <link rel="stylesheet" href="/static/css/ui-v2.css?v={{ app_version }}">
-  <link rel="stylesheet" href="/static/css/faculty-evaluation.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ asset_version }}">
+  <link rel="stylesheet" href="/static/css/data-univc-foundation.css?v={{ asset_version }}">
+  <link rel="stylesheet" href="/static/css/ui-v2.css?v={{ asset_version }}">
+  <link rel="stylesheet" href="/static/css/faculty-evaluation.css?v={{ asset_version }}">
 </head>
 <body class="ui-v2 ui-v2-academic">
   <div id="loginScreen" class="login-screen">
@@ -139,7 +139,7 @@
 
           <div class="analysis-bar" aria-label="Filtros da visão geral acadêmica">
             <label><span>Curso</span><select id="dashboardCourse"></select></label>
-            <label><span>Disciplina</span><select id="dashboardDiscipline" disabled><option value="(todas)">Selecione um curso</option></select></label>
+            <label><span>Disciplina</span><select id="dashboardDiscipline" data-combobox-placeholder="Pesquisar disciplina..." data-combobox-clear-value="(todas)" disabled><option value="(todas)">Selecione um curso</option></select></label>
             <label><span>Visualização</span><select id="dashboardGranularity"><option value="semestral" selected>Semestral</option></select></label>
             <label><span>Referência</span><select id="dashboardReference"></select></label>
             <label><span>Comparação</span><select id="dashboardComparison"></select></label>
@@ -348,7 +348,7 @@
         <div class="results-view-tabs segmented-control" id="resultsViewTabs"><button class="active" data-results-view="resumo">Resumo por disciplina</button><button data-results-view="detalhes">Registros individuais</button></div>
         <div class="academic-result-summary-cards" id="resultsSummaryCards"></div>
         <div class="results-active-filter hidden" id="resultsActiveFilter"></div>
-        <div class="panel data-panel"><div class="table-toolbar results-toolbar"><div class="results-filter-row"><div class="search-field"><span>⌕</span><input type="search" class="table-search" data-dataset="resultados" placeholder="Buscar curso, disciplina, aluno, matrícula, turma ou situação"></div><label class="table-filter"><span>Semestre</span><select id="resultsPeriodFilter"><option value="">Todos os semestres</option></select></label><label class="table-filter"><span>Curso</span><select id="resultsCourseFilter"><option value="">Todos os cursos</option></select></label><label class="table-filter"><span>Disciplina</span><select id="resultsDisciplineFilter" disabled><option value="">Todas as disciplinas</option></select></label></div><div class="toolbar-count" id="count-resultados"></div></div><div class="table-wrap" id="table-resultados"></div></div>
+        <div class="panel data-panel"><div class="table-toolbar results-toolbar"><div class="results-filter-row"><div class="search-field"><span>⌕</span><input type="search" class="table-search" data-dataset="resultados" placeholder="Buscar curso, disciplina, aluno, matrícula, turma ou situação"></div><label class="table-filter"><span>Semestre</span><select id="resultsPeriodFilter"><option value="">Todos os semestres</option></select></label><label class="table-filter"><span>Curso</span><select id="resultsCourseFilter"><option value="">Todos os cursos</option></select></label><label class="table-filter"><span>Disciplina</span><select id="resultsDisciplineFilter" data-combobox-placeholder="Pesquisar disciplina..." data-combobox-clear-value="" disabled><option value="">Todas as disciplinas</option></select></label></div><div class="toolbar-count" id="count-resultados"></div></div><div class="table-wrap" id="table-resultados"></div></div>
       </section>
       <section id="section-planos" class="page-section">
         <div class="section-intro">
@@ -555,11 +555,11 @@
   </div>
 
   <div id="toastRegion" class="toast-region" aria-live="polite"></div>
-  <script src="/static/js/data-univc-auth.js?v={{ app_version }}"></script>
-  <script src="/static/js/data-univc-identity.js?v={{ app_version }}"></script>
-  <script src="/static/js/data-univc-ui.js?v={{ app_version }}"></script>
-  <script src="/static/js/app.js?v={{ app_version }}"></script>
-  <script src="/static/js/faculty-evaluation.js?v={{ app_version }}"></script>
-  <script src="/static/js/ui-v2.js?v={{ app_version }}"></script>
+  <script src="/static/js/data-univc-auth.js?v={{ asset_version }}"></script>
+  <script src="/static/js/data-univc-identity.js?v={{ asset_version }}"></script>
+  <script src="/static/js/data-univc-ui.js?v={{ asset_version }}"></script>
+  <script src="/static/js/app.js?v={{ asset_version }}"></script>
+  <script src="/static/js/faculty-evaluation.js?v={{ asset_version }}"></script>
+  <script src="/static/js/ui-v2.js?v={{ asset_version }}"></script>
 </body>
 </html>

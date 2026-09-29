@@ -1917,6 +1917,36 @@ class FacultyEvaluationContext(Base):
     imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class FacultyEvaluationContextScope(Base):
+    """Curso/oferta associado a um contexto docente sem duplicar respostas.
+
+    ``FacultyEvaluationContext.teaching_assignment_id`` permanece como o vínculo
+    primário por compatibilidade. Esta tabela permite que a mesma turma avaliada
+    pertença legitimamente a dois ou mais cursos, mantendo as respostas em um
+    único contexto.
+    """
+
+    __tablename__ = "faculty_evaluation_context_scopes"
+    __table_args__ = (
+        UniqueConstraint("context_id", "teaching_assignment_id", name="uq_faculty_context_scope_assignment"),
+        Index("ix_faculty_context_scope_context", "context_id"),
+        Index("ix_faculty_context_scope_assignment", "teaching_assignment_id"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    context_id: Mapped[int] = mapped_column(
+        ForeignKey("faculty_evaluation_contexts.id", ondelete="CASCADE"), index=True
+    )
+    teaching_assignment_id: Mapped[int] = mapped_column(
+        ForeignKey("teaching_assignments.id", ondelete="CASCADE"), index=True
+    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    resolution_source: Mapped[str] = mapped_column(String(40), default="catalog")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    context: Mapped[FacultyEvaluationContext] = relationship()
+    teaching_assignment: Mapped[TeachingAssignment] = relationship()
+
+
 class FacultyResponseAggregate(Base):
     __tablename__ = "faculty_response_aggregates"
     __table_args__ = (

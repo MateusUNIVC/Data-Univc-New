@@ -110,7 +110,19 @@ def _inspection_response(
     token, stored_path = uploads.create(filename, content)
     entries, meta = inspect_file(stored_path)
     raw_entries = [entry.to_dict() for entry in entries]
-    enriched = repo.inspect_entries(raw_entries)
+    enriched = repo.inspect_entries(raw_entries, origin=origin)
+    resolvable_paths = [
+        str(entry.get("internal_path") or "")
+        for entry in enriched
+        if (entry.get("course_match") or {}).get("resolution_required")
+    ]
+    course_resolution_candidates = {
+        str(entry.get("internal_path") or ""): [
+            int(value) for value in ((entry.get("course_match") or {}).get("candidate_ids") or [])
+        ]
+        for entry in enriched
+        if (entry.get("course_match") or {}).get("resolution_required")
+    }
     manifest = {
         "token": token,
         "original_name": filename,
@@ -119,6 +131,8 @@ def _inspection_response(
         "sei_context": sei_context or {},
         "meta": meta,
         "entries": raw_entries,
+        "resolvable_paths": resolvable_paths,
+        "course_resolution_candidates": course_resolution_candidates,
         "owner_user_id": repo.user.user_id,
         "directorate_id": repo.directorate_id,
     }
@@ -131,6 +145,8 @@ def _inspection_response(
         "meta": meta,
         "semester_suggestions": semesters,
         "entries": enriched,
+        "resolvable_paths": resolvable_paths,
+        "course_resolution_candidates": course_resolution_candidates,
         "sei_context": sei_context or None,
     }
 
@@ -227,9 +243,10 @@ def _faculty_student_inspection_response(
                 scope_status = "wrong_questionnaire"
                 scope_reason = "O relatório não usa o questionário de discente avaliando docente."
             else:
-                course_match = repo.match_course(
+                course_match = repo.match_course_for_source(
                     str(item.get("course_name") or ""),
                     str(item.get("modality") or ""),
+                    origin=origin,
                 )
                 if course_match.get("matched"):
                     semantic_key = faculty_context_semantic_key(
@@ -361,6 +378,7 @@ def _faculty_student_inspection_response(
         "eligible_paths": eligible_paths,
         "resolvable_paths": resolvable_paths,
         "course_resolution_candidates": course_resolution_candidates,
+        "available_courses": repo.course_options(),
         "existing_import": public_existing_state,
         "audience": "faculty_student",
         "owner_user_id": repo.user.user_id,
@@ -381,6 +399,7 @@ def _faculty_student_inspection_response(
         "eligible_paths": eligible_paths,
         "resolvable_paths": resolvable_paths,
         "course_resolution_candidates": course_resolution_candidates,
+        "available_courses": repo.course_options(),
         "existing_import": public_existing_state,
         "warnings": warnings,
         "summary": {
@@ -457,6 +476,8 @@ class ProcessSurveyImportRequest(BaseModel):
     # v0.11.2: resolução explícita por arquivo/contexto. A chave é o caminho
     # interno do XLSX no ZIP e o valor é um course_id permitido pelo preview.
     course_resolutions: dict[str, int] = Field(default_factory=dict)
+    # Cursos adicionais atendidos pela mesma turma/contexto docente.
+    shared_course_scopes: dict[str, list[int]] = Field(default_factory=dict)
 
 
 class BindNpsRequest(BaseModel):
@@ -622,6 +643,25 @@ def process_import(
         unknown = set(payload.selected_paths) - allowed
         if unknown:
             raise SurveyIntegrationError(f"A seleção contém relatórios desconhecidos: {sorted(unknown)[:3]}")
+        requested = set(payload.selected_paths)
+        resolvable = set(manifest.get("resolvable_paths") or [])
+        candidate_map = {
+            str(key): {int(value) for value in values}
+            for key, values in (manifest.get("course_resolution_candidates") or {}).items()
+        }
+        resolutions = {str(key): int(value) for key, value in (payload.course_resolutions or {}).items()}
+        if set(resolutions) - requested:
+            raise SurveyIntegrationError("Há resolução de curso para relatório que não foi selecionado.")
+        unresolved = {path for path in requested if path in resolvable and path not in resolutions}
+        if unresolved:
+            raise SurveyIntegrationError(
+                "Resolva a identidade do curso antes de importar: " + ", ".join(sorted(unresolved)[:3])
+            )
+        for source_path, course_id in resolutions.items():
+            if source_path not in resolvable or int(course_id) not in candidate_map.get(source_path, set()):
+                raise SurveyIntegrationError(
+                    f"{source_path}: o curso escolhido não está entre as opções permitidas pelo preview."
+                )
         parsed = read_selected_workbooks(path, payload.selected_paths)
         result = repo.import_workbooks(
             sha256=manifest["meta"]["sha256"],
@@ -631,6 +671,7 @@ def process_import(
             semester_override=payload.semester_override,
             origin=manifest.get("origin", "manual"),
             metadata=manifest.get("sei_context") or None,
+            course_resolutions=resolutions,
         )
         result["reports_selected"] = len(parsed)
         result["nps_candidates"] = repo.list_nps_candidates(int(result["run_id"]))
@@ -813,6 +854,10 @@ def faculty_student_process_import(
         }
         requested = set(payload.selected_paths)
         resolutions = {str(key): int(value) for key, value in (payload.course_resolutions or {}).items()}
+        shared_scopes = {
+            str(key): sorted({int(value) for value in (values or [])})
+            for key, values in (payload.shared_course_scopes or {}).items()
+        }
         if not requested:
             raise SurveyIntegrationError("Selecione ao menos um relatório elegível.")
 
@@ -840,6 +885,20 @@ def faculty_student_process_import(
                     f"{source_path}: o course_id escolhido não está entre os candidatos permitidos."
                 )
 
+        unexpected_shared = set(shared_scopes) - requested
+        if unexpected_shared:
+            raise SurveyIntegrationError(
+                "Há escopo compartilhado para relatório que não foi selecionado: "
+                + ", ".join(sorted(unexpected_shared)[:3])
+            )
+        allowed_course_ids = {int(item["course_id"]) for item in repo.course_options()}
+        for source_path, course_ids in shared_scopes.items():
+            invalid_ids = {int(value) for value in course_ids} - allowed_course_ids
+            if invalid_ids:
+                raise SurveyIntegrationError(
+                    f"{source_path}: há curso compartilhado fora da diretoria ou inativo."
+                )
+
         allowed_with_resolution = allowed | {
             source_path for source_path in resolvable if source_path in resolutions
         }
@@ -862,6 +921,7 @@ def faculty_student_process_import(
                 context.course_name,
                 context.modality,
                 explicit_course_id=resolutions.get(context.source_path),
+                origin=manifest.get("origin", "manual"),
             )
             if not match.get("matched"):
                 raise SurveyIntegrationError(
@@ -909,6 +969,8 @@ def faculty_student_process_import(
         })
         if resolutions:
             import_metadata["faculty_course_resolution_ids"] = resolutions
+        if shared_scopes:
+            import_metadata["faculty_shared_course_scope_ids"] = shared_scopes
 
         result = repo.import_faculty_contexts(
             sha256=manifest["meta"]["sha256"],
@@ -919,6 +981,7 @@ def faculty_student_process_import(
             origin=manifest.get("origin", "manual"),
             metadata=import_metadata,
             course_resolutions=resolutions,
+            shared_course_scopes=shared_scopes,
         )
         result["reports_selected"] = len(contexts)
         result["scope"] = {
