@@ -28,16 +28,21 @@ from security import DirectorateScope, UserContext
 from academic_excel_parser import (
     classificacao_aprovacao, inspecionar_relatorio, iterar_registros, motivo_reprovacao,
 )
-from academic_catalog import canonical_course_name, course_name_matches, is_ambiguous_course_name
+from academic_catalog import (
+    canonical_course_name,
+    course_sei_name_matches,
+    is_ambiguous_course_name,
+)
 from analytics import active_goal, goal_info, status_for
 
 
 DATASET_MODEL = {"nps": NpsStudent, "avaliacao_docente": TeacherEvaluation, "resultados": AcademicResult, "matriculas": Enrollment, "frequencia": Attendance}
 
-# Política de identidade de Educação Física: a habilitação é determinada exclusivamente
-# pelo campo Curso: do XLSX. Nome/código da turma e turno do seletor do SEI nunca
-# participam dessa decisão. Este identificador também é exposto no diagnóstico do build.
-EDUCACAO_FISICA_IDENTITY_POLICY = "xlsx-course-field-only-v3"
+# Política de identidade de Educação Física: o Bacharelado continua explícito no
+# SEI/XLSX. Desde setembro/2026 a Licenciatura passou a vir como "Educação Física";
+# esse rótulo genérico só é aceito quando o fluxo curso-a-curso já solicitou
+# explicitamente a Licenciatura. Uploads sem contexto continuam bloqueados.
+EDUCACAO_FISICA_IDENTITY_POLICY = "xlsx-course-field-plus-explicit-sei-context-v4"
 FACULTY_GOAL_METRIC_VERSION = "faculty_favorability_pct_v1"
 FACULTY_GOAL_LEGACY_VERSION = "legacy_score_0_10"
 
@@ -2644,13 +2649,20 @@ class DatabaseRepository:
             raise ValidationError("Não foi possível identificar Ano/Semestre no relatório do SEI.")
 
         raw_report_course = str(metadata.get("curso") or "").strip()
-        canonical_report_course = canonical_course_name(raw_report_course, self.directorate_code)
-        if is_ambiguous_course_name(raw_report_course, self.directorate_code):
+        sei_expected_match = bool(
+            expected_course and course_sei_name_matches(raw_report_course, expected_course)
+        )
+        canonical_report_course = (
+            canonical_course_name(expected_course, self.directorate_code)
+            if sei_expected_match and expected_course
+            else canonical_course_name(raw_report_course, self.directorate_code)
+        )
+        if is_ambiguous_course_name(raw_report_course, self.directorate_code) and not sei_expected_match:
             raise ValidationError(
-                "O relatório usa o nome ambíguo 'Educação Física'. Gere o relatório selecionando Bacharelado ou Licenciatura no SEI.",
+                "O relatório usa o nome ambíguo 'Educação Física'. Gere o relatório pelo fluxo curso a curso ou informe explicitamente a habilitação.",
                 {"curso": raw_report_course},
             )
-        if expected_course and not course_name_matches(raw_report_course, expected_course, self.directorate_code):
+        if expected_course and not sei_expected_match:
             raise ValidationError(
                 "O XLSX retornado pelo SEI pertence a um curso diferente do solicitado.",
                 {"curso": f"Esperado: {expected_course}. Relatório: {raw_report_course or 'não identificado'}."},
@@ -2661,15 +2673,16 @@ class DatabaseRepository:
             ambiguous_labels = [
                 label for label in report_course_labels
                 if is_ambiguous_course_name(label, self.directorate_code)
+                and not course_sei_name_matches(label, expected_course)
             ]
             if ambiguous_labels:
                 raise ValidationError(
-                    "O relatório contém bloco(s) com o nome ambíguo 'Educação Física'. Gere o relatório selecionando Bacharelado ou Licenciatura no SEI.",
+                    "O relatório contém bloco(s) com o nome ambíguo 'Educação Física' fora de um contexto de habilitação validado.",
                     {"curso": "; ".join(ambiguous_labels)},
                 )
             mismatched_labels = [
                 label for label in report_course_labels
-                if not course_name_matches(label, expected_course, self.directorate_code)
+                if not course_sei_name_matches(label, expected_course)
             ]
             if mismatched_labels:
                 raise ValidationError(
@@ -2685,9 +2698,16 @@ class DatabaseRepository:
             for index, record in enumerate(iterar_registros(file_path), start=1):
                 yield index, {
                     "periodo": period,
-                    "curso": canonical_course_name(
-                        record.get("curso") or raw_report_course or metadata.get("curso"),
-                        self.directorate_code,
+                    "curso": (
+                        canonical_report_course
+                        if expected_course and course_sei_name_matches(
+                            record.get("curso") or raw_report_course or metadata.get("curso"),
+                            expected_course,
+                        )
+                        else canonical_course_name(
+                            record.get("curso") or raw_report_course or metadata.get("curso"),
+                            self.directorate_code,
+                        )
                     ),
                     "disciplina": record.get("disciplina"),
                     "turma": record.get("turma") or "SEM_TURMA",
@@ -2724,7 +2744,7 @@ class DatabaseRepository:
         metadata["identidade_curso_validada_por"] = "campo Curso: do XLSX"
         metadata["identidade_curso_validada"] = bool(
             not expected_course
-            or course_name_matches(raw_report_course, expected_course, self.directorate_code)
+            or course_sei_name_matches(raw_report_course, expected_course)
         )
         result["metadados"] = metadata
         result["avisos_parser"] = warnings

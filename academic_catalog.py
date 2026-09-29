@@ -68,7 +68,11 @@ COURSE_ALIASES = {
 COURSE_SEI_FORM_VALUES = {
     "Comunicação Social - Publicidade e Propaganda": "Publicidade e Propaganda",
     "Educação Física - Bacharelado": "Educação Física (Bac. Presencial)",
-    "Educação Física - Licenciatura": "Educação Física (Lic. Presencial)",
+    # Em setembro/2026 o SEI passou a exibir a Licenciatura apenas como
+    # "Educação Física" no diálogo, no form:nomeCurso e no XLSX gerado.
+    # Mantemos o nome institucional separado e usamos este valor apenas no
+    # contrato específico com o SEI.
+    "Educação Física - Licenciatura": "Educação Física",
 }
 
 COURSE_SEARCH_TERMS = {
@@ -149,6 +153,36 @@ def course_name_matches(raw_name: str, expected_course: str, directorate_code: s
     actual = canonical_course_name(raw_name, directorate_code)
     return bool(expected and actual and normalize_course_text(expected) == normalize_course_text(actual))
 
+
+def course_sei_selector_aliases(course_name: str) -> tuple[str, ...]:
+    """Rótulos aceitos exclusivamente no seletor de cursos do SEI.
+
+    A forma genérica ``Educação Física`` continua NÃO sendo alias institucional,
+    pois é ambígua fora do fluxo explícito do SEI. Desde setembro/2026, porém,
+    o SEI usa exatamente esse rótulo para a Licenciatura enquanto mantém o
+    Bacharelado como ``Educação Física (Bac. Presencial)``.
+    """
+    aliases = list(course_aliases(course_name))
+    sei_value = COURSE_SEI_FORM_VALUES.get(course_name)
+    if sei_value:
+        aliases.append(sei_value)
+    return tuple(dict.fromkeys(aliases))
+
+
+def course_sei_name_matches(raw_name: str, expected_course: str) -> bool:
+    """Valida um rótulo vindo do fluxo SEI contra um curso já solicitado.
+
+    O relaxamento para ``Educação Física`` só vale quando o chamador já sabe
+    que está processando ``Educação Física - Licenciatura``. Isso impede que
+    uploads sem contexto ou históricos antigos passem a tratar o nome genérico
+    como identidade institucional da Licenciatura.
+    """
+    if (
+        expected_course == "Educação Física - Licenciatura"
+        and normalize_course_text(raw_name) == normalize_course_text("Educação Física")
+    ):
+        return True
+    return course_name_matches(raw_name, expected_course)
 
 
 def is_ambiguous_course_name(raw_name: str, directorate_code: str | None = None) -> bool:

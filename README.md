@@ -1257,7 +1257,7 @@ As abas **NPS da Instituição** e **NPS do Curso** agora permitem combinar seme
 - Bacharelado e Licenciatura usam identidade explícita (`Bac.`/`Lic.`) e nunca `EFB/EFL` da turma.
 - O fluxo de Educação Física reproduz também a inicialização `form:j_idt477` observada nos HARs manuais, sem alterar os demais cursos.
 - Após o download, o XLSX é validado por curso e período antes da importação; em caso de estado cruzado, Educação Física repete uma vez todo o fluxo a partir de uma tela limpa.
-- O backend expõe `build` (fingerprint) e a política `xlsx-course-field-only-v3`; o release interrompe a inicialização se a validação legada de turma voltar a aparecer em `repository.py`.
+- O backend expõe `build` (fingerprint) e a política `xlsx-course-field-plus-explicit-sei-context-v4`; o release interrompe a inicialização se a validação legada de turma voltar a aparecer em `repository.py`.
 - Para evitar deploy acidental do código antigo, a entrega inclui ZIP flat com `app.py` diretamente na raiz.
 
 ## v0.8.9.5 — estado real do formulário JSF na geração do Excel
@@ -1296,7 +1296,7 @@ A integração acadêmica com o SEI foi endurecida no núcleo compartilhado por 
 - rejeita cruzamento entre Bacharelado e Licenciatura;
 - mantém XLSX manual e busca direta no SEI no mesmo parser acadêmico.
 
-Rótulos observados e suportados: `Educação Física (Bac. Presencial)` → Bacharelado e `Educação Física (Lic. Presencial)` → Licenciatura. Os códigos/prefixos de turma `EFB`/`EFL` não definem a habilitação: a identidade vem do campo `Curso:` de cada bloco do XLSX, evitando falsos conflitos com códigos históricos de turma.
+Rótulos observados e suportados: `Educação Física (Bac. Presencial)` → Bacharelado. Em 29/09/2026 o SEI passou a apresentar a Licenciatura apenas como `Educação Física` no diálogo, em `form:nomeCurso` e no XLSX. Esse rótulo genérico só é aceito quando o fluxo curso-a-curso já solicitou explicitamente `Educação Física - Licenciatura`; uploads sem contexto continuam bloqueados como ambíguos. O alias histórico `Educação Física (Lic. Presencial)` continua suportado. Os códigos/prefixos de turma `EFB`/`EFL` não definem a habilitação.
 
 ## NPS Discente pelo SEI
 

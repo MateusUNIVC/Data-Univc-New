@@ -434,7 +434,7 @@ Antes de testar Educação Física, abra `/api/health/live` e confirme:
 
 ```text
 version = 0.8.13.1
-educacao_fisica_policy = xlsx-course-field-only-v3
+educacao_fisica_policy = xlsx-course-field-plus-explicit-sei-context-v4
 build = <fingerprint de 12 caracteres>
 ```
 

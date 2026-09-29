@@ -44,3 +44,18 @@ A proteção contra mistura real de Bacharelado e Licenciatura continua ativa: b
 - compilação Python do parser modificado: OK
 - suite completa: 163 passed, 2 skipped
 - teste de regressão específico para Educação Física - Licenciatura incluído.
+
+
+## Hotfix SEI — Educação Física - Licenciatura (29/09/2026)
+
+O HAR capturado em produção confirmou uma mudança no rótulo do curso no SEI:
+
+- Bacharelado permanece como `Educação Física (Bac. Presencial)`.
+- Licenciatura passou a aparecer como `Educação Física`.
+- A seleção validada no HAR usa a configuração ativa `INTEGRAL - NOTURNO`.
+- Após a seleção, `form:nomeCurso` também fica como `Educação Física`.
+- O XLSX real capturado traz `Curso: Educação Física`.
+
+A correção mantém o nome institucional `Educação Física - Licenciatura` no Data UNIVC e cria uma compatibilidade específica do fluxo SEI. O rótulo genérico `Educação Física` não virou alias institucional global: sem `expected_course` explícito ele continua bloqueado como ambíguo.
+
+Validação com o XLSX real extraído do HAR: 150 registros lidos, 150 inseridos em banco de teste e todos persistidos sob `Educação Física - Licenciatura`.

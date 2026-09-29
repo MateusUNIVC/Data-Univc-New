@@ -51,6 +51,8 @@ from academic_catalog import (
     canonical_course_name,
     course_aliases,
     course_name_matches,
+    course_sei_name_matches,
+    course_sei_selector_aliases,
     normalize_course_text,
 )
 
@@ -225,7 +227,7 @@ class SEIBot:
                     "O formulario devolvido pelo SEI ficou em outro semestre antes do Excel: "
                     f"esperado {semestre}, recebido {selected_semester}."
                 )
-            if selected_course and not course_name_matches(selected_course, course_name):
+            if selected_course and not course_sei_name_matches(selected_course, course_name):
                 raise RuntimeError(
                     "O formulario devolvido pelo SEI ficou em outro curso antes do Excel: "
                     f"esperado {course_name!r}, recebido {selected_course!r}."
@@ -243,7 +245,7 @@ class SEIBot:
             extra=self.base_form(
                 ano=ano,
                 semestre=semestre,
-                curso=course_name,
+                curso=COURSE_SEI_FORM_VALUES.get(course_name, course_name),
                 layout="MapaNotaAlunoPorTurmaRel_unidadeTurmaDiscSala",
             ),
         )
@@ -812,7 +814,7 @@ class SEIBot:
         curso com o botão que realmente aplica a seleção.
         """
         decoded = html.unescape(response_text)
-        aliases = course_aliases(course_name)
+        aliases = course_sei_selector_aliases(course_name)
         normalized_aliases = [(normalize_course_text(a), a) for a in aliases]
         target_norm = normalize_course_text(course_name)
         preferred_turn = normalize_course_text(COURSE_SEI_TURN_PREFERENCES.get(course_name, ""))
@@ -990,7 +992,7 @@ class SEIBot:
         option = self.descrever_opcao_curso(search_response.text, source)
         if course_name in EDUCACAO_FISICA_COURSES:
             expected_label = COURSE_SEI_FORM_VALUES[course_name]
-            if normalize_course_text(option.get("curso", "")) != normalize_course_text(expected_label):
+            if not course_sei_name_matches(option.get("curso", ""), course_name):
                 raise RuntimeError(
                     "A linha escolhida no seletor do SEI não é a habilitação esperada de Educação Física: "
                     f"esperado {expected_label!r}, linha {option.get('curso')!r}."
@@ -1039,7 +1041,7 @@ class SEIBot:
         if selected:
             print(f"       Curso aplicado pelo SEI: {selected}")
 
-            if not course_name_matches(selected, course_name):
+            if not course_sei_name_matches(selected, course_name):
                 raise RuntimeError(
                     "O SEI retornou um curso diferente do esperado: "
                     f"{selected!r}. Veja debug_sei/resposta_selecao_curso.xml"
@@ -1246,7 +1248,7 @@ def validar_xlsx_baixado(
     raw_course = str(metadata.get("curso") or "").strip()
     if not raw_course:
         raise RuntimeError("O XLSX baixado não informa o campo Curso:.")
-    if not course_name_matches(raw_course, course_name):
+    if not course_sei_name_matches(raw_course, course_name):
         raise RuntimeError(
             "O XLSX baixado pertence a outro curso: "
             f"solicitado {course_name!r}, XLSX {raw_course!r}."
