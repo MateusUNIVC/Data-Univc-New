@@ -1,8 +1,8 @@
 {
-  "artifact_profile": "production-vps-v0130-part7-excel-interativo-oficial",
-  "created_at_utc": "2026-09-29T20:13:52.113369+00:00",
+  "artifact_profile": "production-vps-v0130-part8-faculty-legacy-release-hardening",
+  "created_at_utc": "2026-09-29T20:46:28.900218+00:00",
   "app_version": "0.13.0",
-  "release_name": "Data UNIVC 0.13.0 - Production - Part 7 Excel Interativo Oficial",
+  "release_name": "Data UNIVC 0.13.0 - Production - Part 8 Faculty Legacy Cleanup and Release Hardening",
   "academic_base_version": "0.11.6.7",
   "schema_expected": 49,
   "schema_migration": "049_academic_faculty_context_scopes_v0130.sql",
@@ -25,7 +25,11 @@
     "part7-academic-interactive-excel-official",
     "part7-visible-managerial-database-tables",
     "part7-five-chart-executive-panel",
-    "part7-remove-academic-beta-labels"
+    "part7-remove-academic-beta-labels",
+    "part8-faculty-legacy-frontend-removal",
+    "part8-retired-faculty-endpoints-410-compatibility",
+    "part8-all-javascript-node-check",
+    "part8-template-script-reference-validation"
   ],
   "production_hardening": {
     "environment": "production",
@@ -36,7 +40,7 @@
     "login_rate_limit_enabled": true
   },
   "validation": {
-    "full_test_suite": "192 passed, 2 skipped",
+    "full_test_suite": "196 passed, 2 skipped",
     "data_univc_ui_js_node_check": "ok",
     "app_js_node_check": "ok",
     "faculty_evaluation_js_node_check": "ok",
@@ -48,14 +52,18 @@
     "interactive_excel_ref_formula_errors": 0,
     "faculty_import_benchmark": "50 contexts: ~860 SQL operations before; 19 SELECT + 13 INSERT + 1 UPDATE after",
     "survey_nps_benchmark": "50 reports: 153 SELECT + 256 INSERT before; 6 SELECT + 9 INSERT after",
-    "faculty_nps_benchmark": "50 reports: 152 SELECT + 256 INSERT before; 5 SELECT + 9 INSERT after"
+    "faculty_nps_benchmark": "50 reports: 152 SELECT + 256 INSERT before; 5 SELECT + 9 INSERT after",
+    "all_static_js_node_check": "26/26 ok",
+    "template_js_references": "26/26 present",
+    "faculty_legacy_frontend_tokens": "absent",
+    "app_js_legacy_lines_removed": 186
   },
   "faculty_import_batch_size_default": 100,
   "survey_import_batch_size_default": 50,
   "local_demo_database_included": false,
   "local_windows_launchers_included": false,
   "docker_compose_app_only_included": true,
-  "file_count": 372,
+  "file_count": 374,
   "files": [
     {
       "path": ".dockerignore",
@@ -74,8 +82,8 @@
     },
     {
       "path": "BUILD_INFO.txt",
-      "bytes": 16309,
-      "sha256": "bc4eb40f892b2fc21f47a1223ecfdd93aa85391919537107a451c249bdf5beed"
+      "bytes": 16982,
+      "sha256": "5141f1e30c3d617acf4e7d3a6f47e9532c06b871939188a7791338d86c9d621d"
     },
     {
       "path": "Dockerfile",
@@ -94,13 +102,13 @@
     },
     {
       "path": "PRODUCTION_VALIDATION.txt",
-      "bytes": 1753,
-      "sha256": "5cf448b897bb11e3e06051f9cf7d3ba7a30116a9468955d5eae1d767ef0aaec9"
+      "bytes": 2153,
+      "sha256": "2dd9bd6ac9705c6a7363a2336fdd4912f0282dcc6761f21c71ddd251d30a879e"
     },
     {
       "path": "README.md",
-      "bytes": 104734,
-      "sha256": "2900ae08bac395e43b75fdd4d843a6c96a6206b9a3ad42dc44ca9d1262b3345e"
+      "bytes": 105302,
+      "sha256": "bdf2dec6e5cfd95ea197ee511e2485827d586b0c9cd41d64c900a2d0221a8192"
     },
     {
       "path": "academic_analytics.py",
@@ -321,6 +329,11 @@
       "path": "dadm_v2_router.py",
       "bytes": 14093,
       "sha256": "a97c2c01c1c3d836ca4689945d47e7a766467c8747a87bb3a84d4a77a62e40c2"
+    },
+    {
+      "path": "database.py",
+      "bytes": 920,
+      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
     },
     {
       "path": "database/001_init.sql",
@@ -551,11 +564,6 @@
       "path": "database/049_academic_faculty_context_scopes_v0130.sql",
       "bytes": 1954,
       "sha256": "6dee5e034419a39cc15bbf79a1afd197db87e00090b2f55549e593daa66fa657"
-    },
-    {
-      "path": "database.py",
-      "bytes": 920,
-      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
     },
     {
       "path": "demo_data.py",
@@ -1093,6 +1101,11 @@
       "sha256": "368d859da4841bd4911bf8a0b4022046f0866f06ec4bdb54929ca2378d3a1ce2"
     },
     {
+      "path": "docs/PART8_FACULTY_LEGACY_RELEASE_HARDENING_2026-09-29.md",
+      "bytes": 2099,
+      "sha256": "f8afb100aa921d6f2644c31fbaf8f185f0cf7c9a94c8fadb2ea91e22892dbaec"
+    },
+    {
       "path": "docs/PERFORMANCE_v08170.md",
       "bytes": 2870,
       "sha256": "2048940ee8e711261f41456291eae36472dba65ccee3bcfdca975c977f302992"
@@ -1309,8 +1322,8 @@
     },
     {
       "path": "scripts/run_release_checks.py",
-      "bytes": 1607,
-      "sha256": "34a7d720e5aeb695f9e52ac236859b3d35634db6720ab7f1f165cba6d98e5f0c"
+      "bytes": 3440,
+      "sha256": "5e5f1f5f378535a1772e860e2b0101722cbd2a562758085f77ecfb20e7933a36"
     },
     {
       "path": "scripts/seed_dpe_demo.py",
@@ -1454,8 +1467,8 @@
     },
     {
       "path": "static/js/app.js",
-      "bytes": 222263,
-      "sha256": "fac1b288f0e2141bcd7d7fd7f58ce6ee05e16499fbcf259b91f648ed23f8f39d"
+      "bytes": 208628,
+      "sha256": "c9179d9d10b576c3271e35c5330767fe3fa96fae3f0bb0e2f18d127fdb8ed564"
     },
     {
       "path": "static/js/dadm.js",
@@ -1574,8 +1587,8 @@
     },
     {
       "path": "static/js/ui-v2.js",
-      "bytes": 10960,
-      "sha256": "84c9ad51ef81c18d8f724e09b7171c053bb3d67f462919e335c518ae1d83c63e"
+      "bytes": 10932,
+      "sha256": "9b2c55f9f8ed8fb6f4c4a6ebc52069da89238c1ef086a15ca59073c59429b1a5"
     },
     {
       "path": "survey_archive.py",
@@ -1896,6 +1909,11 @@
       "path": "tests/test_part4_nps_long_course_labels.py",
       "bytes": 796,
       "sha256": "ff604db9194e1a95442339d1c0ef0c6ef69275ca68bb45fb8856afbb7ffdfeb2"
+    },
+    {
+      "path": "tests/test_part8_faculty_legacy_and_release_hardening.py",
+      "bytes": 1968,
+      "sha256": "24393a965acda3cf988a1a9b95b1ded2302fd496d035712b56719f0e2a9eb966"
     },
     {
       "path": "tests/test_release_production_v0130.py",
