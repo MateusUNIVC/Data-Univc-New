@@ -325,7 +325,7 @@ function bindDownloadLinks() {
     event.preventDefault();
     const baseUrl = link.getAttribute('href');
     const url = ['/api/excel','/api/excel-interativo'].includes(baseUrl) ? academicExcelUrl(baseUrl) : baseUrl;
-    const fallback = baseUrl === '/api/excel' ? `Relatorio_${state.activeDirectorate || 'UNIVC'}_Academico.xlsx` : baseUrl === '/api/excel-interativo' ? `Painel_${state.activeDirectorate || 'DTNH'}_Interativo_beta.xlsx` : `Modelo_${baseUrl.split('/').pop()}.xlsx`;
+    const fallback = baseUrl === '/api/excel' ? `Relatorio_${state.activeDirectorate || 'UNIVC'}_Academico.xlsx` : baseUrl === '/api/excel-interativo' ? `Painel_${state.activeDirectorate || 'DTNH'}_Interativo.xlsx` : `Modelo_${baseUrl.split('/').pop()}.xlsx`;
     downloadFile(url, fallback);
   });
 }

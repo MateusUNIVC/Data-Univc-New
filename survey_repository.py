@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import os
+import time
 import uuid
 from dataclasses import asdict
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, insert, or_, select
 from sqlalchemy.orm import Session
 
 from auth.objects import require_question_for_run, require_survey_run_for_directorate, survey_run_owner_ids
@@ -66,6 +69,32 @@ from survey_faculty_institution_models import ParsedFacultyInstitutionWorkbook
 from survey_parser import normalize_key
 
 
+LOGGER = logging.getLogger("univc.survey.faculty.import")
+
+
+def _faculty_import_batch_size() -> int:
+    try:
+        value = int(os.getenv("FACULTY_IMPORT_BATCH_SIZE", "100"))
+    except (TypeError, ValueError):
+        value = 100
+    return max(25, min(500, value))
+
+
+def _survey_import_batch_size() -> int:
+    """Quantidade de relatórios/linhas agrupados por escrita no módulo de questionários.
+
+    O NPS acadêmico normalmente possui poucos relatórios (um por curso), mas a
+    mesma infraestrutura atende ZIPs maiores e o NPS institucional dos docentes.
+    Mantemos um limite conservador para não montar listas de parâmetros enormes
+    em VPS pequenas.
+    """
+    try:
+        value = int(os.getenv("SURVEY_IMPORT_BATCH_SIZE", "50"))
+    except (TypeError, ValueError):
+        value = 50
+    return max(10, min(250, value))
+
+
 class SurveyIntegrationError(RuntimeError):
     pass
 
@@ -99,6 +128,7 @@ class SurveyRepository:
         self.directorate_id = scope.directorate_id
         self.directorate_code = scope.directorate_code
         self.user = scope.user
+        self._course_candidates_cache: list[Course] | None = None
 
     def _audit(self, action: str, entity: str, entity_id: Any = None, details: Any = None) -> None:
         self.db.add(AuditLog(
@@ -130,9 +160,15 @@ class SurveyRepository:
         return "sei:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     def _course_candidates(self) -> list[Course]:
-        return list(self.db.scalars(
-            select(Course).where(Course.directorate_id == self.directorate_id).order_by(Course.name)
-        ).all())
+        if self._course_candidates_cache is None:
+            self._course_candidates_cache = list(self.db.scalars(
+                select(Course).where(Course.directorate_id == self.directorate_id).order_by(Course.name)
+            ).all())
+        return self._course_candidates_cache
+
+    def _course_candidate_by_id(self, course_id: int) -> Course | None:
+        target = int(course_id)
+        return next((course for course in self._course_candidates() if int(course.id) == target), None)
 
     def course_options(self) -> list[dict[str, Any]]:
         """Cursos ativos da diretoria disponíveis para escopos compartilhados."""
@@ -456,10 +492,7 @@ class SurveyRepository:
         except (TypeError, ValueError) as exc:
             raise SurveyIntegrationError("A resolução manual do curso precisa informar um course_id válido.") from exc
 
-        course = self.db.scalar(select(Course).where(
-            Course.id == requested_id,
-            Course.directorate_id == self.directorate_id,
-        ))
+        course = self._course_candidate_by_id(requested_id)
         if not course:
             raise SurveyIntegrationError("O curso escolhido para resolução não pertence a esta diretoria.")
 
@@ -561,6 +594,101 @@ class SurveyRepository:
             self.db.flush()
         return row
 
+    def _prepare_question_catalog(
+        self,
+        questionnaire_id: int,
+        questions: list[ParsedQuestion],
+    ) -> dict[str, SurveyQuestion]:
+        """Resolve perguntas e vínculos do questionário em poucas consultas.
+
+        Relatórios por curso repetem as mesmas perguntas dezenas de vezes. O
+        fluxo antigo fazia SELECT + eventual flush para cada repetição. Aqui a
+        identidade normalizada é carregada uma vez, perguntas ausentes são
+        criadas em conjunto e os vínculos do questionário são resolvidos em uma
+        única consulta.
+        """
+        grouped: dict[str, list[ParsedQuestion]] = {}
+        for question in questions:
+            key = str(question.normalized_text or "").strip()
+            if not key:
+                continue
+            grouped.setdefault(key, []).append(question)
+        if not grouped:
+            return {}
+
+        existing = list(self.db.scalars(
+            select(SurveyQuestion).where(SurveyQuestion.normalized_text.in_(list(grouped)))
+        ).all())
+        by_key = {row.normalized_text: row for row in existing}
+
+        missing: list[SurveyQuestion] = []
+        for key, variants in grouped.items():
+            if key in by_key:
+                continue
+            first = variants[0]
+            row = SurveyQuestion(
+                text=first.text,
+                normalized_text=key,
+                position=first.position,
+                detected_metric_type=first.metric_type,
+                nps_candidate=bool(first.nps_candidate),
+            )
+            missing.append(row)
+            by_key[key] = row
+        if missing:
+            self.db.add_all(missing)
+            # Um único flush atribui os IDs necessários aos inserts agregados.
+            self.db.flush()
+
+        # Preserva a semântica anterior: NPS só cresce para True e um tipo mais
+        # específico substitui "categorical", sem rebaixar tipos já detectados.
+        for key, variants in grouped.items():
+            row = by_key[key]
+            for question in variants:
+                if question.nps_candidate and not row.nps_candidate:
+                    row.nps_candidate = True
+                if row.detected_metric_type == "categorical" and question.metric_type != "categorical":
+                    row.detected_metric_type = question.metric_type
+
+        question_ids = [int(row.id) for row in by_key.values() if row.id is not None]
+        links = list(self.db.scalars(
+            select(SurveyQuestionnaireQuestion).where(
+                SurveyQuestionnaireQuestion.questionnaire_id == questionnaire_id,
+                SurveyQuestionnaireQuestion.question_id.in_(question_ids),
+            )
+        ).all()) if question_ids else []
+        link_by_question = {int(link.question_id): link for link in links}
+        missing_links: list[SurveyQuestionnaireQuestion] = []
+        for key, variants in grouped.items():
+            row = by_key[key]
+            position = int(variants[-1].position or 0)
+            link = link_by_question.get(int(row.id))
+            if link is not None:
+                link.position = position
+                continue
+            link = SurveyQuestionnaireQuestion(
+                questionnaire_id=questionnaire_id,
+                question_id=int(row.id),
+                position=position,
+            )
+            missing_links.append(link)
+            link_by_question[int(row.id)] = link
+        if missing_links:
+            self.db.add_all(missing_links)
+            self.db.flush()
+        return by_key
+
+    def _bulk_insert_rows(self, model, rows: list[dict[str, Any]], *, batch_size: int) -> tuple[int, int]:
+        """Executa inserts em lotes sem materializar um objeto ORM por resposta."""
+        if not rows:
+            return 0, 0
+        batches = 0
+        for offset in range(0, len(rows), batch_size):
+            chunk = rows[offset:offset + batch_size]
+            self.db.execute(insert(model), chunk)
+            batches += 1
+        return len(rows), batches
+
     def import_workbooks(
         self,
         *,
@@ -575,6 +703,7 @@ class SurveyRepository:
     ) -> dict[str, Any]:
         if not workbooks:
             raise SurveyIntegrationError("Nenhum relatório foi selecionado para importação.")
+        started_at = time.perf_counter()
         metadata = metadata or {}
         course_resolutions = {str(key): int(value) for key, value in (course_resolutions or {}).items()}
         first = workbooks[0]
@@ -585,9 +714,15 @@ class SurveyRepository:
         external_key = self.external_import_key(origin, metadata)
         existing = None
         if external_key:
-            existing = self.db.scalar(select(SurveyImport).where(SurveyImport.directorate_id == self.directorate_id, SurveyImport.external_key == external_key))
+            existing = self.db.scalar(select(SurveyImport).where(
+                SurveyImport.directorate_id == self.directorate_id,
+                SurveyImport.external_key == external_key,
+            ))
         if not existing:
-            existing = self.db.scalar(select(SurveyImport).where(SurveyImport.directorate_id == self.directorate_id, SurveyImport.sha256 == sha256))
+            existing = self.db.scalar(select(SurveyImport).where(
+                SurveyImport.directorate_id == self.directorate_id,
+                SurveyImport.sha256 == sha256,
+            ))
 
         if existing:
             imp = existing
@@ -599,6 +734,7 @@ class SurveyRepository:
                 run.semester = semester
             imp.source_filename = source_filename
             imp.origin = origin
+            imp.status = "processing"
             if metadata:
                 imp.metadata_json = metadata
             if external_key and not imp.external_key:
@@ -636,6 +772,10 @@ class SurveyRepository:
         imported: list[str] = []
         skipped: list[str] = []
         unmapped: list[dict[str, str]] = []
+
+        # Resolve os cursos primeiro. O cache de catálogo transforma essa etapa
+        # em uma única leitura dos cursos da diretoria, mesmo com muitos XLSX.
+        resolved: list[tuple[ParsedWorkbook, int]] = []
         for parsed in workbooks:
             match = self.resolve_course(
                 parsed.course_name,
@@ -644,46 +784,95 @@ class SurveyRepository:
                 origin=origin,
             )
             if not match.get("matched"):
-                unmapped.append({"source_path": parsed.source_path, "course": parsed.course_name, "reason": match.get("reason") or "Não mapeado"})
+                unmapped.append({
+                    "source_path": parsed.source_path,
+                    "course": parsed.course_name,
+                    "reason": match.get("reason") or "Não mapeado",
+                })
                 continue
-            course_id = int(match["course_id"])
-            exists = self.db.scalar(select(SurveyRunCourse).where(
-                SurveyRunCourse.run_id == run.id,
-                SurveyRunCourse.course_id == course_id,
-            ))
-            if exists:
+            resolved.append((parsed, int(match["course_id"])))
+
+        existing_course_ids = set(self.db.scalars(
+            select(SurveyRunCourse.course_id).where(SurveyRunCourse.run_id == run.id)
+        ).all())
+        seen_course_ids = {int(value) for value in existing_course_ids}
+        pending: list[tuple[ParsedWorkbook, int]] = []
+        for parsed, course_id in resolved:
+            if course_id in seen_course_ids:
                 skipped.append(parsed.source_path)
                 continue
-            self.db.add(SurveyRunCourse(
-                run_id=run.id,
-                course_id=course_id,
-                source_path=parsed.source_path,
-                respondent_count=max(0, int(parsed.respondent_count or 0)),
-            ))
+            seen_course_ids.add(course_id)
+            pending.append((parsed, course_id))
+
+        # O catálogo de perguntas é preparado somente para relatórios novos.
+        question_catalog = self._prepare_question_catalog(
+            run.questionnaire_id,
+            [question for parsed, _ in pending for question in parsed.questions],
+        ) if pending else {}
+
+        run_course_rows: list[dict[str, Any]] = []
+        aggregate_rows: list[dict[str, Any]] = []
+        raw_rows: list[dict[str, Any]] = []
+        for parsed, course_id in pending:
+            run_course_rows.append({
+                "run_id": int(run.id),
+                "course_id": course_id,
+                "source_path": parsed.source_path,
+                "respondent_count": max(0, int(parsed.respondent_count or 0)),
+            })
             for question in parsed.questions:
-                qrow = self._get_or_create_question(run.questionnaire_id, question)
+                qrow = question_catalog.get(str(question.normalized_text or "").strip())
+                if qrow is None:
+                    continue
+                question_id = int(qrow.id)
                 for option in question.options:
-                    self.db.add(SurveyResponseAggregate(
-                        run_id=run.id,
-                        course_id=course_id,
-                        question_id=qrow.id,
-                        option_label=option.label,
-                        option_key=normalize_key(option.label),
-                        numeric_value=option.numeric_value,
-                        response_count=max(0, int(option.count or 0)),
-                        source_percentage=option.source_percentage,
-                    ))
+                    aggregate_rows.append({
+                        "run_id": int(run.id),
+                        "course_id": course_id,
+                        "question_id": question_id,
+                        "option_label": option.label,
+                        "option_key": normalize_key(option.label),
+                        "numeric_value": option.numeric_value,
+                        "response_count": max(0, int(option.count or 0)),
+                        "source_percentage": option.source_percentage,
+                    })
                 for response_text in question.raw_responses:
-                    self.db.add(SurveyRawResponse(
-                        run_id=run.id,
-                        course_id=course_id,
-                        question_id=qrow.id,
-                        response_text=response_text,
-                        response_key=normalize_key(response_text),
-                    ))
+                    raw_rows.append({
+                        "run_id": int(run.id),
+                        "course_id": course_id,
+                        "question_id": question_id,
+                        "response_text": response_text,
+                        "response_key": normalize_key(response_text),
+                    })
             imported.append(parsed.source_path)
 
+        batch_size = _survey_import_batch_size()
+        course_count, course_batches = self._bulk_insert_rows(
+            SurveyRunCourse, run_course_rows, batch_size=batch_size
+        )
+        aggregate_count, aggregate_batches = self._bulk_insert_rows(
+            SurveyResponseAggregate, aggregate_rows, batch_size=max(batch_size * 20, 200)
+        )
+        raw_count, raw_batches = self._bulk_insert_rows(
+            SurveyRawResponse, raw_rows, batch_size=max(batch_size * 20, 200)
+        )
+
         imp.status = "completed"
+        elapsed_ms = round((time.perf_counter() - started_at) * 1000, 2)
+        performance = {
+            "batch_size": batch_size,
+            "reports_received": len(workbooks),
+            "reports_resolved": len(resolved),
+            "reports_imported": len(imported),
+            "reports_skipped": len(skipped),
+            "reports_unmapped": len(unmapped),
+            "questions_catalogued": len(question_catalog),
+            "run_courses_inserted": course_count,
+            "aggregates_inserted": aggregate_count,
+            "raw_responses_inserted": raw_count,
+            "write_batches": course_batches + aggregate_batches + raw_batches,
+            "elapsed_ms": elapsed_ms,
+        }
         self._audit("import", "survey_run", run.id, {
             "origin": origin,
             "semester": semester,
@@ -691,6 +880,7 @@ class SurveyRepository:
             "skipped": len(skipped),
             "unmapped": len(unmapped),
             "course_resolutions_applied": len(course_resolutions),
+            "performance": performance,
         })
         self.db.commit()
         return {
@@ -701,6 +891,7 @@ class SurveyRepository:
             "skipped_files": skipped,
             "unmapped": unmapped,
             "course_resolutions_applied": len(course_resolutions),
+            "performance": performance,
         }
 
     def list_nps_candidates(self, run_id: int) -> list[dict[str, Any]]:
@@ -1255,7 +1446,7 @@ class SurveyRepository:
         origin: str = "manual",
         metadata: dict | None = None,
     ) -> dict[str, Any]:
-        """Persiste Avaliação Institucional respondida por docentes.
+        """Persiste Avaliação Institucional respondida por docentes em lote.
 
         Os relatórios reais são anônimos e não carregam curso, disciplina ou
         identificação do respondente. Toda a importação representa uma única
@@ -1263,6 +1454,7 @@ class SurveyRepository:
         """
         if not workbooks:
             raise SurveyIntegrationError("Nenhum relatório docente foi selecionado para importação.")
+        started_at = time.perf_counter()
         metadata = metadata or {}
         first = workbooks[0]
         semester = _semester_to_data_univc(semester_override or first.semester_suggested)
@@ -1276,9 +1468,15 @@ class SurveyRepository:
         external_key = self.faculty_institution_external_import_key(origin, metadata)
         imp = None
         if external_key:
-            imp = self.db.scalar(select(SurveyImport).where(SurveyImport.directorate_id == self.directorate_id, SurveyImport.external_key == external_key))
+            imp = self.db.scalar(select(SurveyImport).where(
+                SurveyImport.directorate_id == self.directorate_id,
+                SurveyImport.external_key == external_key,
+            ))
         if not imp:
-            imp = self.db.scalar(select(SurveyImport).where(SurveyImport.directorate_id == self.directorate_id, SurveyImport.sha256 == sha256))
+            imp = self.db.scalar(select(SurveyImport).where(
+                SurveyImport.directorate_id == self.directorate_id,
+                SurveyImport.sha256 == sha256,
+            ))
 
         refresh_existing = False
         if imp:
@@ -1290,10 +1488,6 @@ class SurveyRepository:
                 raise SurveyIntegrationError("Este arquivo já pertence a outro tipo de questionário no Data UNIVC.")
             refresh_existing = bool(external_key and imp.sha256 != sha256)
             if refresh_existing:
-                # A mesma aplicacao do SEI pode ser regenerada com respostas
-                # diferentes. Antes de substituir os agregados, invalide a
-                # projecao NPS oficial que dependia deste run para nunca deixar
-                # um 01C antigo apontando para distribuicoes que ja nao existem.
                 stale_sources = list(self.db.scalars(
                     select(SurveyFacultyNpsSource).where(SurveyFacultyNpsSource.run_id == run.id)
                 ).all())
@@ -1312,6 +1506,7 @@ class SurveyRepository:
             imp.source_filename = source_filename
             imp.source_kind = source_kind
             imp.origin = origin
+            imp.status = "processing"
             if metadata:
                 imp.metadata_json = metadata
             if external_key and not imp.external_key:
@@ -1346,46 +1541,102 @@ class SurveyRepository:
             self.db.add(run)
             self.db.flush()
 
-        imported: list[str] = []
+        existing_paths = set(self.db.scalars(
+            select(SurveyFacultyInstitutionContext.source_path).where(
+                SurveyFacultyInstitutionContext.run_id == run.id
+            )
+        ).all())
+        pending: list[ParsedFacultyInstitutionWorkbook] = []
         skipped: list[str] = []
+        seen_paths = {str(path) for path in existing_paths}
         for parsed in workbooks:
-            existing = self.db.scalar(select(SurveyFacultyInstitutionContext).where(
-                SurveyFacultyInstitutionContext.run_id == run.id,
-                SurveyFacultyInstitutionContext.source_path == parsed.source_path,
-            ))
-            if existing:
+            if parsed.source_path in seen_paths:
                 skipped.append(parsed.source_path)
                 continue
-            context = SurveyFacultyInstitutionContext(
-                run_id=run.id,
-                source_path=parsed.source_path,
-                unit_name=parsed.unit_name,
-                respondent_count=max(0, int(parsed.respondent_count or 0)),
-            )
-            self.db.add(context)
-            self.db.flush()
-            for question in parsed.questions:
-                qrow = self._get_or_create_question(run.questionnaire_id, question)
-                for option in question.options:
-                    self.db.add(SurveyFacultyInstitutionResponseAggregate(
-                        context_id=context.id,
-                        question_id=qrow.id,
-                        option_label=option.label,
-                        option_key=normalize_key(option.label),
-                        numeric_value=option.numeric_value,
-                        response_count=max(0, int(option.count or 0)),
-                        source_percentage=option.source_percentage,
-                    ))
-                for response_text in question.raw_responses:
-                    self.db.add(SurveyFacultyInstitutionRawResponse(
-                        context_id=context.id,
-                        question_id=qrow.id,
-                        response_text=response_text,
-                        response_key=normalize_key(response_text),
-                    ))
-            imported.append(parsed.source_path)
+            seen_paths.add(parsed.source_path)
+            pending.append(parsed)
 
+        question_catalog = self._prepare_question_catalog(
+            run.questionnaire_id,
+            [question for parsed in pending for question in parsed.questions],
+        ) if pending else {}
+
+        context_rows = [
+            {
+                "run_id": int(run.id),
+                "source_path": parsed.source_path,
+                "unit_name": parsed.unit_name,
+                "respondent_count": max(0, int(parsed.respondent_count or 0)),
+            }
+            for parsed in pending
+        ]
+        context_id_by_path: dict[str, int] = {}
+        if context_rows:
+            # RETURNING preserva os IDs necessários às respostas sem criar um
+            # objeto ORM + INSERT individual para cada XLSX. PostgreSQL executa
+            # isso de forma nativa e o SQLite dos testes usa insertmanyvalues.
+            result = self.db.execute(
+                insert(SurveyFacultyInstitutionContext).returning(
+                    SurveyFacultyInstitutionContext.id,
+                    SurveyFacultyInstitutionContext.source_path,
+                ),
+                context_rows,
+            )
+            context_id_by_path = {str(path): int(context_id) for context_id, path in result.all()}
+
+        aggregate_rows: list[dict[str, Any]] = []
+        raw_rows: list[dict[str, Any]] = []
+        for parsed in pending:
+            context_id = context_id_by_path[parsed.source_path]
+            for question in parsed.questions:
+                qrow = question_catalog.get(str(question.normalized_text or "").strip())
+                if qrow is None:
+                    continue
+                question_id = int(qrow.id)
+                for option in question.options:
+                    aggregate_rows.append({
+                        "context_id": context_id,
+                        "question_id": question_id,
+                        "option_label": option.label,
+                        "option_key": normalize_key(option.label),
+                        "numeric_value": option.numeric_value,
+                        "response_count": max(0, int(option.count or 0)),
+                        "source_percentage": option.source_percentage,
+                    })
+                for response_text in question.raw_responses:
+                    raw_rows.append({
+                        "context_id": context_id,
+                        "question_id": question_id,
+                        "response_text": response_text,
+                        "response_key": normalize_key(response_text),
+                    })
+
+        batch_size = _survey_import_batch_size()
+        aggregate_count, aggregate_batches = self._bulk_insert_rows(
+            SurveyFacultyInstitutionResponseAggregate,
+            aggregate_rows,
+            batch_size=max(batch_size * 20, 200),
+        )
+        raw_count, raw_batches = self._bulk_insert_rows(
+            SurveyFacultyInstitutionRawResponse,
+            raw_rows,
+            batch_size=max(batch_size * 20, 200),
+        )
+        imported = [parsed.source_path for parsed in pending]
         imp.status = "completed"
+        elapsed_ms = round((time.perf_counter() - started_at) * 1000, 2)
+        performance = {
+            "batch_size": batch_size,
+            "reports_received": len(workbooks),
+            "reports_imported": len(imported),
+            "reports_skipped": len(skipped),
+            "questions_catalogued": len(question_catalog),
+            "contexts_inserted": len(context_rows),
+            "aggregates_inserted": aggregate_count,
+            "raw_responses_inserted": raw_count,
+            "write_batches": aggregate_batches + raw_batches + (1 if context_rows else 0),
+            "elapsed_ms": elapsed_ms,
+        }
         self._audit("import", "survey_faculty_institution", run.id, {
             "origin": origin,
             "semester": semester,
@@ -1393,6 +1644,7 @@ class SurveyRepository:
             "skipped": len(skipped),
             "anonymous_population": True,
             "refresh_existing": refresh_existing,
+            "performance": performance,
         })
         self.db.commit()
         return {
@@ -1402,6 +1654,7 @@ class SurveyRepository:
             "imported_files": imported,
             "skipped_files": skipped,
             "anonymous_population": True,
+            "performance": performance,
         }
 
     def _faculty_institution_distribution_rows(self, run_id: int, question_id: int) -> list[dict[str, Any]]:
@@ -1753,6 +2006,537 @@ class SurveyRepository:
         self.db.flush()
         return row
 
+    def _import_faculty_context_batch(
+        self,
+        *,
+        run_id: int,
+        questionnaire_id: int,
+        semester: str,
+        items: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Persiste um lote docente com prefetch e escrita agrupada.
+
+        O lote elimina o padrão SELECT/flush por contexto. Dimensões são
+        carregadas uma vez e registros ausentes são criados por executemany;
+        respostas e escopos também são inseridos em massa.
+        """
+        if not items:
+            return {"imported": [], "skipped": [], "shared_resolutions": [], "metrics": {}}
+
+        metrics: dict[str, int] = {
+            "contexts_seen": len(items),
+            "teachers_created": 0,
+            "disciplines_created": 0,
+            "offerings_created": 0,
+            "assignments_created": 0,
+            "questions_created": 0,
+            "contexts_created": 0,
+            "scopes_inserted": 0,
+            "aggregates_inserted": 0,
+            "raw_responses_inserted": 0,
+        }
+
+        # ------------------------------------------------------------------
+        # 1. Docentes: uma leitura + um executemany para os ausentes.
+        # ------------------------------------------------------------------
+        teacher_specs: dict[int, tuple[str, str, str | None]] = {}
+        teacher_keys: set[str] = set()
+        teacher_external_ids: set[str] = set()
+        for index, item in enumerate(items):
+            parsed: ParsedFacultyContext = item["parsed"]
+            display = clean_identity_display(parsed.teacher_name)
+            key = teacher_identity_key(display)
+            if not key:
+                raise SurveyIntegrationError("O contexto docente não informou o professor.")
+            external_id = str(parsed.teacher_external_id) if parsed.teacher_external_id else None
+            teacher_specs[index] = (display, key, external_id)
+            teacher_keys.add(key)
+            if external_id:
+                teacher_external_ids.add(external_id)
+
+        def load_teachers() -> tuple[dict[str, Teacher], dict[str, Teacher]]:
+            filters = []
+            if teacher_keys:
+                filters.append(Teacher.normalized_name.in_(teacher_keys))
+            if teacher_external_ids:
+                filters.append(Teacher.external_id.in_(teacher_external_ids))
+            rows = list(self.db.scalars(
+                select(Teacher).where(or_(*filters)).order_by(Teacher.id)
+            ).all()) if filters else []
+            by_key: dict[str, Teacher] = {}
+            by_external: dict[str, Teacher] = {}
+            for row in rows:
+                by_key.setdefault(row.normalized_name, row)
+                if row.external_id:
+                    by_external.setdefault(str(row.external_id), row)
+            return by_key, by_external
+
+        teacher_by_key, teacher_by_external = load_teachers()
+        pending_teacher_rows: dict[str, dict[str, Any]] = {}
+        pending_external_to_key: dict[str, str] = {}
+        for display, key, external_id in teacher_specs.values():
+            existing = teacher_by_external.get(external_id) if external_id else None
+            if existing is None:
+                existing = teacher_by_key.get(key)
+            if existing is not None:
+                continue
+            if external_id and external_id in pending_external_to_key:
+                continue
+            if key not in pending_teacher_rows:
+                pending_teacher_rows[key] = {
+                    "external_id": external_id,
+                    "display_name": display,
+                    "normalized_name": key,
+                    "active": True,
+                }
+                if external_id:
+                    pending_external_to_key[external_id] = key
+        if pending_teacher_rows:
+            self.db.execute(insert(Teacher), list(pending_teacher_rows.values()))
+            metrics["teachers_created"] = len(pending_teacher_rows)
+            teacher_by_key, teacher_by_external = load_teachers()
+
+        item_teachers: dict[int, Teacher] = {}
+        for index, (display, key, external_id) in teacher_specs.items():
+            row = teacher_by_external.get(external_id) if external_id else None
+            if row is None:
+                row = teacher_by_key.get(key)
+            if row is None:
+                raise SurveyIntegrationError("Não foi possível persistir a identidade do professor.")
+            row.display_name = display
+            if external_id and not row.external_id:
+                row.external_id = external_id
+                teacher_by_external[external_id] = row
+            row.active = True
+            item_teachers[index] = row
+
+        # ------------------------------------------------------------------
+        # 2. Disciplinas: todos os cursos do lote em uma leitura.
+        # ------------------------------------------------------------------
+        course_ids = sorted({
+            int(course_id)
+            for item in items
+            for course_id in item["scope_course_ids"]
+        })
+
+        def load_disciplines() -> dict[tuple[int, str], Discipline]:
+            rows = list(self.db.scalars(
+                select(Discipline)
+                .where(Discipline.course_id.in_(course_ids))
+                .order_by(Discipline.id)
+            ).all()) if course_ids else []
+            out: dict[tuple[int, str], Discipline] = {}
+            for row in rows:
+                out.setdefault((int(row.course_id), discipline_identity_key(row.name)), row)
+            return out
+
+        discipline_by_key = load_disciplines()
+        period_text = str(semester or "").strip().upper()
+        valid_from = None
+        if len(period_text) >= 4 and period_text[:4].isdigit():
+            valid_from = f"{period_text[:4]}-{'07' if period_text.endswith('SEM2') else '01'}"
+        if not valid_from:
+            raise SurveyIntegrationError("Não foi possível definir a vigência inicial da disciplina docente.")
+
+        missing_disciplines: dict[tuple[int, str], dict[str, Any]] = {}
+        item_discipline_keys: dict[tuple[int, int], tuple[int, str]] = {}
+        for index, item in enumerate(items):
+            parsed: ParsedFacultyContext = item["parsed"]
+            display = clean_identity_display(parsed.discipline_name)
+            if not display:
+                raise SurveyIntegrationError("O contexto docente não informou a disciplina.")
+            key = discipline_identity_key(display)
+            for course_id in item["scope_course_ids"]:
+                map_key = (int(course_id), key)
+                item_discipline_keys[(index, int(course_id))] = map_key
+                if map_key not in discipline_by_key and map_key not in missing_disciplines:
+                    missing_disciplines[map_key] = {
+                        "course_id": int(course_id),
+                        "name": display,
+                        "active": True,
+                        "valid_from": valid_from,
+                    }
+        if missing_disciplines:
+            self.db.execute(insert(Discipline), list(missing_disciplines.values()))
+            metrics["disciplines_created"] = len(missing_disciplines)
+            discipline_by_key = load_disciplines()
+
+        item_disciplines: dict[tuple[int, int], Discipline] = {}
+        for item_key, map_key in item_discipline_keys.items():
+            row = discipline_by_key.get(map_key)
+            if row is None:
+                raise SurveyIntegrationError("Não foi possível persistir a identidade da disciplina.")
+            row.active = True
+            item_disciplines[item_key] = row
+
+        # ------------------------------------------------------------------
+        # 3. Ofertas: período/cursos + external_ids primários.
+        # ------------------------------------------------------------------
+        offering_external_ids = {
+            str(item["parsed"].offering_external_id)
+            for item in items
+            if item["parsed"].offering_external_id
+        }
+
+        def load_offerings() -> tuple[dict[str, AcademicOffering], dict[tuple[str, int, int, str], AcademicOffering]]:
+            conditions = [
+                and_(AcademicOffering.period == semester, AcademicOffering.course_id.in_(course_ids))
+            ]
+            if offering_external_ids:
+                conditions.append(AcademicOffering.external_id.in_(offering_external_ids))
+            rows = list(self.db.scalars(
+                select(AcademicOffering).where(or_(*conditions)).order_by(AcademicOffering.id)
+            ).all()) if course_ids else []
+            by_external: dict[str, AcademicOffering] = {}
+            by_key: dict[tuple[str, int, int, str], AcademicOffering] = {}
+            for row in rows:
+                if row.external_id:
+                    by_external.setdefault(str(row.external_id), row)
+                by_key.setdefault(
+                    (row.period, int(row.course_id), int(row.discipline_id), class_group_display(row.class_group)),
+                    row,
+                )
+            return by_external, by_key
+
+        offering_by_external, offering_by_key = load_offerings()
+        missing_offerings: dict[tuple[str, int, int, str], dict[str, Any]] = {}
+        item_offering_specs: dict[tuple[int, int], tuple[str | None, tuple[str, int, int, str]]] = {}
+        for index, item in enumerate(items):
+            parsed: ParsedFacultyContext = item["parsed"]
+            class_group = class_group_display(parsed.class_code or "")
+            primary_course_id = int(item["primary_course_id"])
+            for course_id in item["scope_course_ids"]:
+                course_id = int(course_id)
+                discipline = item_disciplines[(index, course_id)]
+                external_id = (
+                    str(parsed.offering_external_id)
+                    if course_id == primary_course_id and parsed.offering_external_id
+                    else None
+                )
+                key = (semester, course_id, int(discipline.id), class_group)
+                item_offering_specs[(index, course_id)] = (external_id, key)
+                row = offering_by_external.get(external_id) if external_id else None
+                if row is None:
+                    row = offering_by_key.get(key)
+                if row is None and key not in missing_offerings:
+                    missing_offerings[key] = {
+                        "period": semester,
+                        "course_id": course_id,
+                        "discipline_id": int(discipline.id),
+                        "class_group": class_group,
+                        "external_id": external_id,
+                    }
+        if missing_offerings:
+            self.db.execute(insert(AcademicOffering), list(missing_offerings.values()))
+            metrics["offerings_created"] = len(missing_offerings)
+            offering_by_external, offering_by_key = load_offerings()
+
+        item_offerings: dict[tuple[int, int], AcademicOffering] = {}
+        for item_key, (external_id, key) in item_offering_specs.items():
+            row = offering_by_external.get(external_id) if external_id else None
+            if row is None:
+                row = offering_by_key.get(key)
+            if row is None:
+                raise SurveyIntegrationError("Não foi possível persistir a oferta acadêmica docente.")
+            if external_id and not row.external_id:
+                row.external_id = external_id
+                offering_by_external[external_id] = row
+            item_offerings[item_key] = row
+
+        # ------------------------------------------------------------------
+        # 4. Vínculos docentes: uma leitura + um executemany para ausentes.
+        # ------------------------------------------------------------------
+        offering_ids = sorted({int(row.id) for row in item_offerings.values()})
+        assignment_external_ids = {
+            str(item["parsed"].assignment_external_id)
+            for item in items
+            if item["parsed"].assignment_external_id
+        }
+
+        def load_assignments() -> tuple[dict[str, TeachingAssignment], dict[tuple[int, int], TeachingAssignment]]:
+            conditions = []
+            if offering_ids:
+                conditions.append(TeachingAssignment.offering_id.in_(offering_ids))
+            if assignment_external_ids:
+                conditions.append(TeachingAssignment.external_id.in_(assignment_external_ids))
+            rows = list(self.db.scalars(
+                select(TeachingAssignment).where(or_(*conditions)).order_by(TeachingAssignment.id)
+            ).all()) if conditions else []
+            by_external: dict[str, TeachingAssignment] = {}
+            by_key: dict[tuple[int, int], TeachingAssignment] = {}
+            for row in rows:
+                if row.external_id:
+                    by_external.setdefault(str(row.external_id), row)
+                by_key.setdefault((int(row.offering_id), int(row.teacher_id)), row)
+            return by_external, by_key
+
+        assignment_by_external, assignment_by_key = load_assignments()
+        missing_assignments: dict[tuple[int, int], dict[str, Any]] = {}
+        item_assignment_specs: dict[tuple[int, int], tuple[str | None, tuple[int, int]]] = {}
+        for index, item in enumerate(items):
+            parsed: ParsedFacultyContext = item["parsed"]
+            teacher = item_teachers[index]
+            primary_course_id = int(item["primary_course_id"])
+            for course_id in item["scope_course_ids"]:
+                course_id = int(course_id)
+                offering = item_offerings[(index, course_id)]
+                external_id = (
+                    str(parsed.assignment_external_id)
+                    if course_id == primary_course_id and parsed.assignment_external_id
+                    else None
+                )
+                key = (int(offering.id), int(teacher.id))
+                item_assignment_specs[(index, course_id)] = (external_id, key)
+                row = assignment_by_external.get(external_id) if external_id else None
+                if row is None:
+                    row = assignment_by_key.get(key)
+                if row is None and key not in missing_assignments:
+                    missing_assignments[key] = {
+                        "offering_id": int(offering.id),
+                        "teacher_id": int(teacher.id),
+                        "external_id": external_id,
+                    }
+        if missing_assignments:
+            self.db.execute(insert(TeachingAssignment), list(missing_assignments.values()))
+            metrics["assignments_created"] = len(missing_assignments)
+            assignment_by_external, assignment_by_key = load_assignments()
+
+        item_assignments: dict[tuple[int, int], TeachingAssignment] = {}
+        for item_key, (external_id, key) in item_assignment_specs.items():
+            row = assignment_by_external.get(external_id) if external_id else None
+            if row is None:
+                row = assignment_by_key.get(key)
+            if row is None:
+                raise SurveyIntegrationError("Não foi possível persistir o vínculo docente.")
+            if external_id and not row.external_id:
+                row.external_id = external_id
+                assignment_by_external[external_id] = row
+            item_assignments[item_key] = row
+
+        # ------------------------------------------------------------------
+        # 5. Contextos: uma leitura, deduplicação no próprio lote e bulk insert.
+        # ------------------------------------------------------------------
+        primary_assignment_ids = [
+            int(item_assignments[(index, int(item["primary_course_id"]))].id)
+            for index, item in enumerate(items)
+        ]
+
+        def load_contexts() -> dict[int, FacultyEvaluationContext]:
+            rows = list(self.db.scalars(
+                select(FacultyEvaluationContext)
+                .where(
+                    FacultyEvaluationContext.run_id == run_id,
+                    FacultyEvaluationContext.teaching_assignment_id.in_(primary_assignment_ids),
+                )
+                .order_by(FacultyEvaluationContext.id)
+            ).all()) if primary_assignment_ids else []
+            out: dict[int, FacultyEvaluationContext] = {}
+            for row in rows:
+                out.setdefault(int(row.teaching_assignment_id), row)
+            return out
+
+        context_by_assignment = load_contexts()
+        planned_first_by_assignment: dict[int, tuple[int, dict[str, Any]]] = {}
+        new_context_rows: list[dict[str, Any]] = []
+        for index, item in enumerate(items):
+            primary_assignment = item_assignments[(index, int(item["primary_course_id"]))]
+            assignment_id = int(primary_assignment.id)
+            if assignment_id in context_by_assignment:
+                continue
+            if assignment_id in planned_first_by_assignment:
+                continue
+            planned_first_by_assignment[assignment_id] = (index, item)
+            parsed: ParsedFacultyContext = item["parsed"]
+            new_context_rows.append({
+                "run_id": run_id,
+                "teaching_assignment_id": assignment_id,
+                "source_key": parsed.source_key,
+                "source_path": parsed.source_path,
+                "respondent_count": max(0, int(parsed.respondent_count or 0)),
+            })
+        if new_context_rows:
+            self.db.execute(insert(FacultyEvaluationContext), new_context_rows)
+            metrics["contexts_created"] = len(new_context_rows)
+            context_by_assignment = load_contexts()
+
+        context_ids = [int(row.id) for row in context_by_assignment.values()]
+        existing_scope_rows = list(self.db.execute(
+            select(
+                FacultyEvaluationContextScope.context_id,
+                FacultyEvaluationContextScope.teaching_assignment_id,
+            ).where(FacultyEvaluationContextScope.context_id.in_(context_ids))
+        ).all()) if context_ids else []
+        existing_scope_keys = {(int(row[0]), int(row[1])) for row in existing_scope_rows}
+
+        imported: list[str] = []
+        skipped: list[str] = []
+        shared_resolutions: list[dict[str, Any]] = []
+        scope_insert_rows: list[dict[str, Any]] = []
+        scope_insert_keys: set[tuple[int, int]] = set()
+        new_context_items: list[tuple[int, dict[str, Any], FacultyEvaluationContext]] = []
+
+        for index, item in enumerate(items):
+            parsed: ParsedFacultyContext = item["parsed"]
+            primary_assignment = item_assignments[(index, int(item["primary_course_id"]))]
+            assignment_id = int(primary_assignment.id)
+            context = context_by_assignment[assignment_id]
+            is_first_new = planned_first_by_assignment.get(assignment_id, (None, None))[0] == index
+            if is_first_new:
+                new_context_items.append((index, item, context))
+                imported.append(parsed.source_key)
+            else:
+                skipped.append(parsed.source_key)
+
+            # Tanto reimportações quanto duplicatas dentro do lote podem trazer
+            # novos cursos compartilhados; os escopos são unidos ao mesmo contexto.
+            for course_id in item["scope_course_ids"]:
+                assignment = item_assignments[(index, int(course_id))]
+                key = (int(context.id), int(assignment.id))
+                if key in existing_scope_keys or key in scope_insert_keys:
+                    continue
+                scope_insert_keys.add(key)
+                scope_insert_rows.append({
+                    "context_id": int(context.id),
+                    "teaching_assignment_id": int(assignment.id),
+                    "is_primary": int(assignment.id) == assignment_id,
+                    "resolution_source": (
+                        item["match"].get("resolution_source") or "catalog"
+                        if int(assignment.id) == assignment_id
+                        else "shared_course_user"
+                    ),
+                    "created_by": self.user.email,
+                })
+
+        # ------------------------------------------------------------------
+        # 6. Perguntas somente dos contextos efetivamente novos.
+        # ------------------------------------------------------------------
+        question_occurrences: list[ParsedQuestion] = [
+            question
+            for _, item, _ in new_context_items
+            for question in item["parsed"].questions
+        ]
+        question_keys = {str(question.normalized_text or "") for question in question_occurrences}
+
+        def load_questions() -> dict[str, SurveyQuestion]:
+            rows = list(self.db.scalars(
+                select(SurveyQuestion)
+                .where(SurveyQuestion.normalized_text.in_(question_keys))
+                .order_by(SurveyQuestion.id)
+            ).all()) if question_keys else []
+            return {row.normalized_text: row for row in rows}
+
+        question_by_key = load_questions()
+        missing_question_rows: dict[str, dict[str, Any]] = {}
+        for question in question_occurrences:
+            if question.normalized_text in question_by_key:
+                continue
+            pending = missing_question_rows.get(question.normalized_text)
+            if pending is None:
+                pending = {
+                    "text": question.text,
+                    "normalized_text": question.normalized_text,
+                    "position": question.position,
+                    "detected_metric_type": question.metric_type,
+                    "nps_candidate": bool(question.nps_candidate),
+                }
+                missing_question_rows[question.normalized_text] = pending
+            else:
+                pending["nps_candidate"] = bool(pending["nps_candidate"] or question.nps_candidate)
+                if pending["detected_metric_type"] == "categorical" and question.metric_type != "categorical":
+                    pending["detected_metric_type"] = question.metric_type
+        if missing_question_rows:
+            self.db.execute(insert(SurveyQuestion), list(missing_question_rows.values()))
+            metrics["questions_created"] = len(missing_question_rows)
+            question_by_key = load_questions()
+
+        for question in question_occurrences:
+            row = question_by_key[question.normalized_text]
+            if question.nps_candidate and not row.nps_candidate:
+                row.nps_candidate = True
+            if row.detected_metric_type == "categorical" and question.metric_type != "categorical":
+                row.detected_metric_type = question.metric_type
+
+        question_ids = [int(question_by_key[key].id) for key in question_keys]
+        existing_links = list(self.db.scalars(
+            select(SurveyQuestionnaireQuestion).where(
+                SurveyQuestionnaireQuestion.questionnaire_id == questionnaire_id,
+                SurveyQuestionnaireQuestion.question_id.in_(question_ids),
+            )
+        ).all()) if question_ids else []
+        link_by_question_id = {int(link.question_id): link for link in existing_links}
+        desired_link_positions: dict[int, int] = {}
+        for question in question_occurrences:
+            qrow = question_by_key[question.normalized_text]
+            desired_link_positions[int(qrow.id)] = question.position
+        missing_link_rows = [
+            {
+                "questionnaire_id": questionnaire_id,
+                "question_id": question_id,
+                "position": position,
+            }
+            for question_id, position in desired_link_positions.items()
+            if question_id not in link_by_question_id
+        ]
+        if missing_link_rows:
+            self.db.execute(insert(SurveyQuestionnaireQuestion), missing_link_rows)
+        for question_id, position in desired_link_positions.items():
+            link = link_by_question_id.get(question_id)
+            if link is not None:
+                link.position = position
+
+        # ------------------------------------------------------------------
+        # 7. Escopos e fatos de resposta por executemany.
+        # ------------------------------------------------------------------
+        aggregate_rows: list[dict[str, Any]] = []
+        raw_rows: list[dict[str, Any]] = []
+        for index, item, context in new_context_items:
+            parsed: ParsedFacultyContext = item["parsed"]
+            for question in parsed.questions:
+                qrow = question_by_key[question.normalized_text]
+                for option in question.options:
+                    aggregate_rows.append({
+                        "context_id": int(context.id),
+                        "question_id": int(qrow.id),
+                        "option_label": option.label,
+                        "option_key": normalize_key(option.label),
+                        "numeric_value": option.numeric_value,
+                        "response_count": max(0, int(option.count or 0)),
+                        "source_percentage": option.source_percentage,
+                    })
+                for response_text in question.raw_responses:
+                    raw_rows.append({
+                        "context_id": int(context.id),
+                        "question_id": int(qrow.id),
+                        "response_text": response_text,
+                        "response_key": normalize_key(response_text),
+                    })
+            if len(item["scope_course_ids"]) > 1:
+                shared_resolutions.append({
+                    "source_path": parsed.source_path,
+                    "source_key": parsed.source_key,
+                    "primary_course_id": int(item["primary_course_id"]),
+                    "course_ids": [int(value) for value in item["scope_course_ids"]],
+                    "course_names": list(item["scope_course_names"]),
+                    "resolution_type": "shared_course_scope",
+                })
+
+        if scope_insert_rows:
+            self.db.execute(insert(FacultyEvaluationContextScope), scope_insert_rows)
+            metrics["scopes_inserted"] = len(scope_insert_rows)
+        if aggregate_rows:
+            self.db.execute(insert(FacultyResponseAggregate), aggregate_rows)
+            metrics["aggregates_inserted"] = len(aggregate_rows)
+        if raw_rows:
+            self.db.execute(insert(FacultyRawResponse), raw_rows)
+            metrics["raw_responses_inserted"] = len(raw_rows)
+
+        return {
+            "imported": imported,
+            "skipped": skipped,
+            "shared_resolutions": shared_resolutions,
+            "metrics": metrics,
+        }
+
     def import_faculty_contexts(
         self,
         *,
@@ -1766,13 +2550,13 @@ class SurveyRepository:
         course_resolutions: dict[str, int] | None = None,
         shared_course_scopes: dict[str, list[int]] | None = None,
     ) -> dict[str, Any]:
-        """Persiste os contextos normalizados do relatório docente do SEI.
+        """Persiste Avaliação Docente em lotes, sem duplicar respostas compartilhadas.
 
-        Suporta várias combinações docente × disciplina × curso no mesmo semestre
-        e preserva as distribuições das respostas por pergunta. O parser do
-        relatório ``Disciplina/Professor`` é responsável apenas por produzir
-        ``ParsedFacultyContext``; esta camada continua independente do layout XLSX.
+        A identidade e os resultados permanecem equivalentes à implementação
+        anterior, mas a persistência usa prefetch e flushes por estágio. Lotes já
+        confirmados permanecem idempotentes e podem ser retomados após interrupção.
         """
+        started_at = time.perf_counter()
         if not contexts:
             raise SurveyIntegrationError("Nenhum contexto docente foi informado.")
         metadata = metadata or {}
@@ -1789,9 +2573,15 @@ class SurveyRepository:
         external_key = self.external_import_key(origin, metadata)
         imp = None
         if external_key:
-            imp = self.db.scalar(select(SurveyImport).where(SurveyImport.directorate_id == self.directorate_id, SurveyImport.external_key == external_key))
+            imp = self.db.scalar(select(SurveyImport).where(
+                SurveyImport.directorate_id == self.directorate_id,
+                SurveyImport.external_key == external_key,
+            ))
         if not imp:
-            imp = self.db.scalar(select(SurveyImport).where(SurveyImport.directorate_id == self.directorate_id, SurveyImport.sha256 == sha256))
+            imp = self.db.scalar(select(SurveyImport).where(
+                SurveyImport.directorate_id == self.directorate_id,
+                SurveyImport.sha256 == sha256,
+            ))
         logical_run = None
         if not imp:
             logical_run = self._find_faculty_run_by_identity(
@@ -1855,14 +2645,28 @@ class SurveyRepository:
             self.db.add(run)
             self.db.flush()
 
-        imported: list[str] = []
-        skipped: list[str] = []
+        run_id = int(run.id)
+        questionnaire_id = int(run.questionnaire_id)
+        import_id = str(imp.id)
+
+        # Resolve/valida cursos antes do primeiro commit de lote. Assim erros de
+        # identidade continuam sendo detectados antes de gravar contextos parciais.
+        active_courses = {
+            int(course.id): course
+            for course in self._course_candidates()
+            if bool(course.active)
+        }
+        prepared: list[dict[str, Any]] = []
         unmapped: list[dict[str, Any]] = []
         applied_resolutions: list[dict[str, Any]] = []
         for parsed in contexts:
-            context_semester = _semester_to_data_univc(semester_override or parsed.semester_suggested or semester)
+            context_semester = _semester_to_data_univc(
+                semester_override or parsed.semester_suggested or semester
+            )
             if context_semester != semester:
-                raise SurveyIntegrationError("Todos os contextos da mesma importação docente precisam pertencer ao mesmo semestre.")
+                raise SurveyIntegrationError(
+                    "Todos os contextos da mesma importação docente precisam pertencer ao mesmo semestre."
+                )
             explicit_course_id = course_resolutions.get(parsed.source_path)
             match = self.resolve_course(
                 parsed.course_name,
@@ -1883,22 +2687,21 @@ class SurveyRepository:
 
             primary_course_id = int(match["course_id"])
             requested_extra_ids = [
-                int(value) for value in shared_course_scopes.get(parsed.source_path, [])
+                int(value)
+                for value in shared_course_scopes.get(parsed.source_path, [])
                 if int(value) != primary_course_id
             ]
-            scope_courses: list[Course] = []
-            for scope_course_id in [primary_course_id, *requested_extra_ids]:
-                course = self.db.scalar(select(Course).where(
-                    Course.id == int(scope_course_id),
-                    Course.directorate_id == self.directorate_id,
-                    Course.active.is_(True),
-                ))
+            scope_course_ids: list[int] = []
+            scope_course_names: list[str] = []
+            for course_id in [primary_course_id, *requested_extra_ids]:
+                course = active_courses.get(int(course_id))
                 if not course:
                     raise SurveyIntegrationError(
                         f"{parsed.source_path}: um dos cursos da turma compartilhada não pertence à diretoria ou está inativo."
                     )
-                if not any(int(existing.id) == int(course.id) for existing in scope_courses):
-                    scope_courses.append(course)
+                if int(course.id) not in scope_course_ids:
+                    scope_course_ids.append(int(course.id))
+                    scope_course_names.append(course.name)
 
             if match.get("match_type") == "manual_resolution":
                 applied_resolutions.append({
@@ -1909,132 +2712,132 @@ class SurveyRepository:
                     "course_name": match.get("course_name"),
                     "resolution_type": "primary_course",
                 })
+            prepared.append({
+                "parsed": parsed,
+                "match": match,
+                "primary_course_id": primary_course_id,
+                "scope_course_ids": scope_course_ids,
+                "scope_course_names": scope_course_names,
+            })
 
-            teacher = self._get_or_create_teacher(parsed.teacher_name, parsed.teacher_external_id)
-            assignments: list[tuple[Course, TeachingAssignment]] = []
-            for scope_course in scope_courses:
-                discipline = self._get_or_create_discipline(int(scope_course.id), parsed.discipline_name, semester)
-                offering = self._get_or_create_offering(
-                    period=semester,
-                    course_id=int(scope_course.id),
-                    discipline_id=discipline.id,
-                    class_group=parsed.class_code or "",
-                    external_id=parsed.offering_external_id if int(scope_course.id) == primary_course_id else None,
+        imp.status = "processing"
+        self.db.commit()
+        # A partir daqui cada lote é confirmável isoladamente. Em caso de
+        # interrupção, a reexecução encontra os contextos já persistidos e pula.
+        self.db.expunge_all()
+
+        imported: list[str] = []
+        skipped: list[str] = []
+        batch_size = _faculty_import_batch_size()
+        total_batches = (len(prepared) + batch_size - 1) // batch_size if prepared else 0
+        batch_metrics: list[dict[str, Any]] = []
+
+        try:
+            for batch_index, offset in enumerate(range(0, len(prepared), batch_size), start=1):
+                batch_started = time.perf_counter()
+                batch_items = prepared[offset: offset + batch_size]
+                outcome = self._import_faculty_context_batch(
+                    run_id=run_id,
+                    questionnaire_id=questionnaire_id,
+                    semester=semester,
+                    items=batch_items,
                 )
-                assignment = self._get_or_create_assignment(
-                    offering_id=offering.id,
-                    teacher_id=teacher.id,
-                    external_id=parsed.assignment_external_id if int(scope_course.id) == primary_course_id else None,
+                imported.extend(outcome["imported"])
+                skipped.extend(outcome["skipped"])
+                applied_resolutions.extend(outcome["shared_resolutions"])
+                elapsed_ms = int((time.perf_counter() - batch_started) * 1000)
+                metrics = {
+                    **outcome["metrics"],
+                    "batch": batch_index,
+                    "total_batches": total_batches,
+                    "elapsed_ms": elapsed_ms,
+                }
+                batch_metrics.append(metrics)
+                self.db.commit()
+                LOGGER.info(
+                    "faculty_import_batch directorate=%s run_id=%s batch=%s/%s contexts=%s created=%s skipped=%s aggregates=%s elapsed_ms=%s",
+                    self.directorate_code,
+                    run_id,
+                    batch_index,
+                    total_batches,
+                    len(batch_items),
+                    len(outcome["imported"]),
+                    len(outcome["skipped"]),
+                    metrics.get("aggregates_inserted", 0),
+                    elapsed_ms,
                 )
-                assignments.append((scope_course, assignment))
+                self.db.expunge_all()
+        except Exception as exc:
+            self.db.rollback()
+            failed_imp = self.db.get(SurveyImport, import_id)
+            if failed_imp is not None:
+                failed_imp.status = "failed"
+                failed_metadata = dict(failed_imp.metadata_json or {})
+                failed_metadata["faculty_import_failure"] = {
+                    "message": str(exc)[:500],
+                    "completed_batches": len(batch_metrics),
+                    "total_batches": total_batches,
+                }
+                failed_imp.metadata_json = failed_metadata
+                self.db.commit()
+            raise
 
-            primary_assignment = next(
-                assignment for course, assignment in assignments if int(course.id) == primary_course_id
-            )
-            # O vínculo principal permanece para compatibilidade. Os demais cursos
-            # ficam em faculty_evaluation_context_scopes e não duplicam respostas.
-            existing = self.db.scalar(select(FacultyEvaluationContext).where(
-                FacultyEvaluationContext.run_id == run.id,
-                FacultyEvaluationContext.teaching_assignment_id == primary_assignment.id,
-            ).order_by(FacultyEvaluationContext.id))
-            if existing:
-                for scope_course, assignment in assignments:
-                    scope_row = self.db.scalar(select(FacultyEvaluationContextScope).where(
-                        FacultyEvaluationContextScope.context_id == existing.id,
-                        FacultyEvaluationContextScope.teaching_assignment_id == assignment.id,
-                    ))
-                    if not scope_row:
-                        self.db.add(FacultyEvaluationContextScope(
-                            context_id=existing.id,
-                            teaching_assignment_id=assignment.id,
-                            is_primary=int(assignment.id) == int(primary_assignment.id),
-                            resolution_source=(
-                                match.get("resolution_source") or "catalog"
-                                if int(assignment.id) == int(primary_assignment.id)
-                                else "shared_course_user"
-                            ),
-                            created_by=self.user.email,
-                        ))
-                skipped.append(parsed.source_key)
-                continue
-
-            context = FacultyEvaluationContext(
-                run_id=run.id,
-                teaching_assignment_id=primary_assignment.id,
-                source_key=parsed.source_key,
-                source_path=parsed.source_path,
-                respondent_count=max(0, int(parsed.respondent_count or 0)),
-            )
-            self.db.add(context)
-            self.db.flush()
-            for scope_course, assignment in assignments:
-                self.db.add(FacultyEvaluationContextScope(
-                    context_id=context.id,
-                    teaching_assignment_id=assignment.id,
-                    is_primary=int(assignment.id) == int(primary_assignment.id),
-                    resolution_source=(
-                        (match.get("resolution_source") or "catalog")
-                        if int(assignment.id) == int(primary_assignment.id)
-                        else "shared_course_user"
-                    ),
-                    created_by=self.user.email,
-                ))
-            for question in parsed.questions:
-                qrow = self._get_or_create_question(run.questionnaire_id, question)
-                for option in question.options:
-                    self.db.add(FacultyResponseAggregate(
-                        context_id=context.id,
-                        question_id=qrow.id,
-                        option_label=option.label,
-                        option_key=normalize_key(option.label),
-                        numeric_value=option.numeric_value,
-                        response_count=max(0, int(option.count or 0)),
-                        source_percentage=option.source_percentage,
-                    ))
-                for response_text in question.raw_responses:
-                    self.db.add(FacultyRawResponse(
-                        context_id=context.id,
-                        question_id=qrow.id,
-                        response_text=response_text,
-                        response_key=normalize_key(response_text),
-                    ))
-            if len(scope_courses) > 1:
-                applied_resolutions.append({
-                    "source_path": parsed.source_path,
-                    "source_key": parsed.source_key,
-                    "primary_course_id": primary_course_id,
-                    "course_ids": [int(course.id) for course in scope_courses],
-                    "course_names": [course.name for course in scope_courses],
-                    "resolution_type": "shared_course_scope",
-                })
-            imported.append(parsed.source_key)
-
+        imp = self.db.get(SurveyImport, import_id)
+        if imp is None:
+            raise SurveyIntegrationError("Importação docente não foi encontrada ao finalizar os lotes.")
         if applied_resolutions:
             merged_metadata = dict(imp.metadata_json or {})
             merged_metadata["faculty_course_resolutions"] = applied_resolutions
             imp.metadata_json = merged_metadata
-
         imp.status = "completed"
-        self._audit("import", "survey_faculty", run.id, {
+        total_elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+        performance = {
+            "batch_size": batch_size,
+            "batches": total_batches,
+            "contexts_prepared": len(prepared),
+            "contexts_imported": len(imported),
+            "contexts_skipped": len(skipped),
+            "elapsed_ms": total_elapsed_ms,
+            "batch_metrics": batch_metrics,
+        }
+        self._audit("import", "survey_faculty", run_id, {
             "semester": semester,
             "imported": len(imported),
             "skipped": len(skipped),
             "unmapped": len(unmapped),
             "course_resolutions_applied": len(applied_resolutions),
-            "shared_course_contexts": sum(1 for item in applied_resolutions if item.get("resolution_type") == "shared_course_scope"),
+            "shared_course_contexts": sum(
+                1 for item in applied_resolutions
+                if item.get("resolution_type") == "shared_course_scope"
+            ),
+            "batch_size": batch_size,
+            "batches": total_batches,
+            "elapsed_ms": total_elapsed_ms,
         })
         self.db.commit()
+        LOGGER.info(
+            "faculty_import_complete directorate=%s run_id=%s imported=%s skipped=%s unmapped=%s batches=%s elapsed_ms=%s",
+            self.directorate_code,
+            run_id,
+            len(imported),
+            len(skipped),
+            len(unmapped),
+            total_batches,
+            total_elapsed_ms,
+        )
         return {
-            "import_id": imp.id,
-            "run_id": run.id,
+            "import_id": import_id,
+            "run_id": run_id,
             "semester": semester,
             "imported_contexts": imported,
             "skipped_contexts": skipped,
             "unmapped": unmapped,
             "course_resolutions_applied": applied_resolutions,
             "shared_course_contexts": [
-                item for item in applied_resolutions if item.get("resolution_type") == "shared_course_scope"
+                item for item in applied_resolutions
+                if item.get("resolution_type") == "shared_course_scope"
             ],
+            "performance": performance,
         }
 
     def faculty_import_history(self) -> dict[str, Any]:

@@ -604,3 +604,7 @@ O frontend agora depende dos cookies V2 e de CSRF para métodos mutáveis. Após
 
 Não reaplique a migration 033 se ela já estiver registrada/aplicada.
 
+
+## v0.13.0 — Parte 7 — Excel Interativo acadêmico oficial
+
+Sem migration nova; schema permanece 49. `/api/excel-interativo` passa a ser o Excel Interativo oficial de DTNH/DCS, com download `Painel_<DIRETORIA>_Interativo.xlsx`. O workbook passa a expor bases gerenciais separadas e visíveis, enquanto CALC/listas/bases técnicas permanecem ocultas. Valide DTNH e DCS, os 5 gráficos do PAINEL, as tabelas das bases, filtros em PARAMETROS e a ausência de `beta` na interface/download.

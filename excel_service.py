@@ -778,7 +778,7 @@ def export_academic_interactive_excel(
     discipline: str | None = None,
     window_periods: int | str | None = None,
 ) -> BytesIO:
-    """Generate the academic Excel Interativo V3 beta with full authorized history."""
+    """Generate the official academic Excel Interativo with full authorized history."""
     from academic_excel_v3_builder import build_academic_interactive_workbook_bytes
 
     return build_academic_interactive_workbook_bytes(

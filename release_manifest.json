@@ -1,8 +1,8 @@
 {
-  "artifact_profile": "production-vps-v0130-part4-nps-long-course-labels",
-  "created_at_utc": "2026-09-29T19:13:13.685318+00:00",
+  "artifact_profile": "production-vps-v0130-part7-excel-interativo-oficial",
+  "created_at_utc": "2026-09-29T20:13:52.113369+00:00",
   "app_version": "0.13.0",
-  "release_name": "Data UNIVC 0.13.0 - Production - Part 4 NPS Long Course Labels",
+  "release_name": "Data UNIVC 0.13.0 - Production - Part 7 Excel Interativo Oficial",
   "academic_base_version": "0.11.6.7",
   "schema_expected": 49,
   "schema_migration": "049_academic_faculty_context_scopes_v0130.sql",
@@ -15,7 +15,17 @@
     "faculty-global-analytics-deduplication",
     "nps-sei-current-educacao-fisica-licenciatura-resolution",
     "nps-manual-ambiguous-course-resolution",
-    "part4-nps-full-long-course-labels"
+    "part4-nps-full-long-course-labels",
+    "part5-faculty-batch-prefetch-executemany",
+    "part5-faculty-resumable-batch-import",
+    "part5-hotfix-faculty-candidate-only-multiselect",
+    "part5-hotfix-shared-scope-candidate-validation",
+    "part6-survey-nps-batch-prefetch-executemany",
+    "part6-faculty-nps-bulk-context-returning",
+    "part7-academic-interactive-excel-official",
+    "part7-visible-managerial-database-tables",
+    "part7-five-chart-executive-panel",
+    "part7-remove-academic-beta-labels"
   ],
   "production_hardening": {
     "environment": "production",
@@ -26,17 +36,26 @@
     "login_rate_limit_enabled": true
   },
   "validation": {
-    "full_test_suite": "179 passed, 2 skipped",
+    "full_test_suite": "192 passed, 2 skipped",
     "data_univc_ui_js_node_check": "ok",
     "app_js_node_check": "ok",
     "faculty_evaluation_js_node_check": "ok",
     "python_compile": "ok",
-    "release_checks": "ok"
+    "release_checks": "ok",
+    "interactive_excel_panel_charts": 5,
+    "interactive_excel_visible_sheets": 17,
+    "interactive_excel_visible_tables_regression": 12,
+    "interactive_excel_ref_formula_errors": 0,
+    "faculty_import_benchmark": "50 contexts: ~860 SQL operations before; 19 SELECT + 13 INSERT + 1 UPDATE after",
+    "survey_nps_benchmark": "50 reports: 153 SELECT + 256 INSERT before; 6 SELECT + 9 INSERT after",
+    "faculty_nps_benchmark": "50 reports: 152 SELECT + 256 INSERT before; 5 SELECT + 9 INSERT after"
   },
+  "faculty_import_batch_size_default": 100,
+  "survey_import_batch_size_default": 50,
   "local_demo_database_included": false,
   "local_windows_launchers_included": false,
   "docker_compose_app_only_included": true,
-  "file_count": 364,
+  "file_count": 372,
   "files": [
     {
       "path": ".dockerignore",
@@ -45,18 +64,18 @@
     },
     {
       "path": ".env.example",
-      "bytes": 3321,
-      "sha256": "d2f29961e2c1123cb6f8f4e9201b72099578f19985df9691b7487f5051596148"
+      "bytes": 3451,
+      "sha256": "1210c10c4f6ea02076863e2cf258c9b568d9448d319ec06b2c175c84b431f712"
     },
     {
       "path": ".env.production.example",
-      "bytes": 3321,
-      "sha256": "d2f29961e2c1123cb6f8f4e9201b72099578f19985df9691b7487f5051596148"
+      "bytes": 3575,
+      "sha256": "89ba8ce858c41880e936ac021d9e086e0a7200a6f24593955400e54b23b94c3c"
     },
     {
       "path": "BUILD_INFO.txt",
-      "bytes": 13290,
-      "sha256": "6c9fd0e7c605583b0fcb3e0f040e75bc7277a33fb6e682c6a9e15e5aac514e86"
+      "bytes": 16309,
+      "sha256": "bc4eb40f892b2fc21f47a1223ecfdd93aa85391919537107a451c249bdf5beed"
     },
     {
       "path": "Dockerfile",
@@ -75,13 +94,13 @@
     },
     {
       "path": "PRODUCTION_VALIDATION.txt",
-      "bytes": 1494,
-      "sha256": "f34ceaa95d338572d00f7573ba19132ebd4e1c9c16dd35abec443b57dd4f0f9b"
+      "bytes": 1753,
+      "sha256": "5cf448b897bb11e3e06051f9cf7d3ba7a30116a9468955d5eae1d767ef0aaec9"
     },
     {
       "path": "README.md",
-      "bytes": 102152,
-      "sha256": "12e74857ecf9f7ec9fe1be27eaa2d024e073dd625391892fd7e592f8cd89fca9"
+      "bytes": 104734,
+      "sha256": "2900ae08bac395e43b75fdd4d843a6c96a6206b9a3ad42dc44ca9d1262b3345e"
     },
     {
       "path": "academic_analytics.py",
@@ -110,8 +129,8 @@
     },
     {
       "path": "academic_excel_v3_builder.py",
-      "bytes": 56167,
-      "sha256": "967210382e156d4cae3e5a18a7730586be02a03b08a9ab3df6ca152e328347c6"
+      "bytes": 68836,
+      "sha256": "fd6cf406a98745df5ed88034ff8e0f7e55f0297ec567447e93d2b098e7380f0a"
     },
     {
       "path": "admin_router.py",
@@ -125,8 +144,8 @@
     },
     {
       "path": "app.py",
-      "bytes": 49254,
-      "sha256": "22c459a42124be9d051ea9d843f543dca4d16155cf8855e1d5bdc08118b1bcc0"
+      "bytes": 49246,
+      "sha256": "e8dbdcea4d5a63ccbd866e6c703e7e737324e460a3af7c0c1c8d0f1969c961b8"
     },
     {
       "path": "assets/modelos/Modelo_Avaliacao_Docente.xlsx",
@@ -619,6 +638,11 @@
       "sha256": "754722aed828288b2a93ed0f4812f680014c952501fc7b634e2f4ce1e5d9dc71"
     },
     {
+      "path": "docs/ACADEMIC_INTERACTIVE_EXCEL_OFFICIAL_v0130.md",
+      "bytes": 2059,
+      "sha256": "605ba5edb4e6807e9ba2e763579b1505a1f8af922b860ae6fc5e12b03cc702f8"
+    },
+    {
       "path": "docs/ACADEMIC_INTERACTIVE_EXCEL_V3_DCS_v0967.md",
       "bytes": 1356,
       "sha256": "0837e3699a995283865cc58cc721e618f9f103e9d1883f363fae2b9506a57c1e"
@@ -685,8 +709,8 @@
     },
     {
       "path": "docs/CHANGELOG.md",
-      "bytes": 75337,
-      "sha256": "722fe6baaca82bfd256a2fbe06668f21828d07ea6e27e049744898fc3a8232b9"
+      "bytes": 76690,
+      "sha256": "303c0a9ce6a16c40f47c2d9dc27bed87105c9802928252fd1d49e84736044844"
     },
     {
       "path": "docs/DADM_FULL_ATTENDANCE_EXPLORER_v09611.md",
@@ -760,8 +784,8 @@
     },
     {
       "path": "docs/DEPLOY.md",
-      "bytes": 29996,
-      "sha256": "00784961937daf4a86d540be9e5875fbe4493101734b678b169f96ced94b3d3e"
+      "bytes": 30487,
+      "sha256": "7112149accbf80036ea4813abb430a6025674526fc4b9aa43b8a507beef3ff33"
     },
     {
       "path": "docs/DM_DOMAIN_SIMPLIFICATION_v08290.md",
@@ -1054,6 +1078,21 @@
       "sha256": "a8210923de9eb75bf7713b5fbc0e6a6dde5648c621bb866d5ce93ebbf57bb029"
     },
     {
+      "path": "docs/PART5_FACULTY_CANDIDATE_MULTISELECT_HOTFIX_2026-09-29.md",
+      "bytes": 1765,
+      "sha256": "5ea847b39337391fbea9d0340afa26ced27fce9426386e855f266c554e44faa0"
+    },
+    {
+      "path": "docs/PART5_FACULTY_IMPORT_BATCH_PERFORMANCE_2026-09-29.md",
+      "bytes": 3657,
+      "sha256": "1ad031530b95de875826794cc6043e546d28bd05d7272fd32dc06e6f9cc17322"
+    },
+    {
+      "path": "docs/PART6_SURVEY_NPS_BATCH_PERFORMANCE_2026-09-29.md",
+      "bytes": 3340,
+      "sha256": "368d859da4841bd4911bf8a0b4022046f0866f06ec4bdb54929ca2378d3a1ce2"
+    },
+    {
       "path": "docs/PERFORMANCE_v08170.md",
       "bytes": 2870,
       "sha256": "2048940ee8e711261f41456291eae36472dba65ccee3bcfdca975c977f302992"
@@ -1185,8 +1224,8 @@
     },
     {
       "path": "excel_service.py",
-      "bytes": 39645,
-      "sha256": "9be272c0c468252c94f2c4718a60100a00f54dd2f0a69c153ffb3c0b8aa8793e"
+      "bytes": 39646,
+      "sha256": "35fa68751f1929d1440bd9a2e0142ead04de793d5f58d4c479140154c8440851"
     },
     {
       "path": "management_catalog.py",
@@ -1385,8 +1424,8 @@
     },
     {
       "path": "static/css/faculty-evaluation.css",
-      "bytes": 13720,
-      "sha256": "1019b34c3f5ea91f32126c845cf2b1116691553fa6bee3f632910012e72a002c"
+      "bytes": 13889,
+      "sha256": "1daa6fdb516f4a2f77d2d4243c49d292d4c881dad634f5365de85438d1509614"
     },
     {
       "path": "static/css/management.css",
@@ -1415,8 +1454,8 @@
     },
     {
       "path": "static/js/app.js",
-      "bytes": 222268,
-      "sha256": "cc7bbb5ae4f95f1a274db76dd09c9dbe3bcf770b0391d6d838b642f93a4ecd9f"
+      "bytes": 222263,
+      "sha256": "fac1b288f0e2141bcd7d7fd7f58ce6ee05e16499fbcf259b91f648ed23f8f39d"
     },
     {
       "path": "static/js/dadm.js",
@@ -1525,8 +1564,8 @@
     },
     {
       "path": "static/js/faculty-evaluation.js",
-      "bytes": 53608,
-      "sha256": "41ed19d6c622e9edc5e6ae65ff561ba6b11cbf3212cd532afbfd9aa12ea34285"
+      "bytes": 51812,
+      "sha256": "67f23eed512b92da5746b78e7e89c44f029c1c6476fbf78e366605da678e9435"
     },
     {
       "path": "static/js/management.js",
@@ -1610,13 +1649,13 @@
     },
     {
       "path": "survey_repository.py",
-      "bytes": 147406,
-      "sha256": "5e7263e4d9bc10a5e3ac527867ba81b61024bf5e51c64eb3f06473f8853ec3fd"
+      "bytes": 183618,
+      "sha256": "321a1d653fc2249db901d73c47b2948becd313fe0e34eb90f58d08268dbc4597"
     },
     {
       "path": "survey_router.py",
-      "bytes": 56084,
-      "sha256": "bb42085552a90bed805f1fc33acf84a594164fa1e94baba574fd1f17c3c1d99d"
+      "bytes": 56808,
+      "sha256": "27f9db3d4ec03efdd693a66ded4c1d51c4ec56c25f62dfc17c84ae0c3314b9d7"
     },
     {
       "path": "survey_sei.py",
@@ -1655,8 +1694,8 @@
     },
     {
       "path": "templates/index.html",
-      "bytes": 48789,
-      "sha256": "562d4f57513311d8330e4ec462db17f2b9e13d41cbaaec475384b56486dc1f3c"
+      "bytes": 48794,
+      "sha256": "e379edc7f3b3ade14efa27b3c38b9dfaf2d8945aae336e187037be92ccdcbb19"
     },
     {
       "path": "templates/management.html",
@@ -1669,9 +1708,14 @@
       "sha256": "62d2f3365491e2ef3c548ebd953a064ee48881554f18627e7318abca71c03c69"
     },
     {
+      "path": "tests/test_academic_interactive_excel_part7.py",
+      "bytes": 7296,
+      "sha256": "43572ecbf32a4b39564b9b299c1184a03fbc36de6b3c6db826858dee0f678978"
+    },
+    {
       "path": "tests/test_academic_part3_v0130.py",
-      "bytes": 8887,
-      "sha256": "51d7fcdbac273f33b23a94b4304e32a3ae46ca27b6c7e29e9f6378f6c4ad8a48"
+      "bytes": 8992,
+      "sha256": "367b3780b1b73dfd9875b35803e85404aa0c90e5a0690e5e7c43ed7b0dc325f0"
     },
     {
       "path": "tests/test_academic_results_v01164.py",
@@ -1799,6 +1843,16 @@
       "sha256": "c89ed4cd7fd683f497d85efed180367382b583fc0f195771d520e27fb4222d6b"
     },
     {
+      "path": "tests/test_faculty_candidate_multiselect_hotfix_v0130.py",
+      "bytes": 1201,
+      "sha256": "31acd000c4169cc6fbe2884461de0f6a69ad41e056eef2e794de4a722f8e712f"
+    },
+    {
+      "path": "tests/test_faculty_import_batch_part5_v0130.py",
+      "bytes": 7283,
+      "sha256": "9f99db0d4916fa8025f77701f90aebeb9b37d01b567a6b97cb26ac79c04b625f"
+    },
+    {
       "path": "tests/test_faculty_student_v0111.py",
       "bytes": 5655,
       "sha256": "adb3def38c78e10ead138627ffa5f54d07700e3938ae6df4b7fcb55f088dab0b"
@@ -1852,6 +1906,11 @@
       "path": "tests/test_release_reconciliation_v0130_dev15.py",
       "bytes": 1422,
       "sha256": "5e0ea6a2182316bb1be74e3173ab63520d375a70ca47f7f3fa821e3feae1ee65"
+    },
+    {
+      "path": "tests/test_survey_import_batch_part6_v0130.py",
+      "bytes": 7333,
+      "sha256": "03ef0e48df6005c6304be1339a1935f50ab519d798bd33354d8f5a950c0b254b"
     },
     {
       "path": "upload_utils.py",

@@ -630,9 +630,18 @@
     } catch (error) { toast('Não foi possível analisar o arquivo', error.message, 'error'); }
   }
 
-  function candidateOptions(entry) {
+  function candidateCourseSelectionHtml(entry) {
+    const path = String(entry.resolution_key || entry.internal_path || '');
     const candidates = entry.course_match?.candidate_courses || [];
-    return `<option value="">Selecione o curso principal</option>${candidates.map(item => `<option value="${Number(item.course_id)}">${escapeHtml(item.course_name)}${item.modality ? ` · ${escapeHtml(item.modality)}` : ''}</option>`).join('')}`;
+    if (!candidates.length) return '';
+    return `<div class="faculty-resolution-row faculty-resolution-multi" data-course-candidate-row="${escapeHtml(path)}">
+      <div class="faculty-resolution-copy">
+        <strong>${escapeHtml(entry.teacher_name || 'Docente')} · ${escapeHtml(entry.discipline_name || 'Disciplina')}</strong>
+        <small>${escapeHtml(entry.course_name || '')} · ${escapeHtml(entry.internal_path || '')}</small>
+        <small class="faculty-resolution-help">Marque um ou mais cursos que realmente recebem esta mesma turma.</small>
+      </div>
+      <div class="faculty-shared-course-grid">${candidates.map(item => `<label class="faculty-shared-course-option"><input type="checkbox" data-course-candidate-path="${escapeHtml(path)}" value="${Number(item.course_id)}"><span><strong>${escapeHtml(item.course_name)}</strong>${item.modality ? `<small>${escapeHtml(item.modality)}</small>` : ''}</span></label>`).join('')}</div>
+    </div>`;
   }
 
   function facultySemesterParts(value = '') {
@@ -658,62 +667,25 @@
     return `${year}-SEM${semester}`;
   }
 
-  function sharedScopeHtml(entry, preview) {
-    const path = String(entry.resolution_key || entry.internal_path || '');
-    const courses = preview.available_courses || [];
-    const primaryId = entry.course_match?.matched ? Number(entry.course_match?.course_id || 0) : 0;
-    const primaryName = entry.course_match?.matched
-      ? entry.course_match?.course_name
-      : 'Defina o curso principal acima';
-    const options = courses.filter(item => Number(item.course_id) !== primaryId);
-    if (!options.length) return '';
-    return `<details class="faculty-shared-scope" data-shared-scope-row="${escapeHtml(path)}">
-      <summary><span>Turma compartilhada</span><small>Principal: ${escapeHtml(primaryName || '—')} · adicionar outro curso</small></summary>
-      <div class="faculty-shared-scope-body">
-        <p>Marque apenas cursos que realmente recebem a <strong>mesma turma</strong>. As respostas continuam armazenadas uma única vez e não serão multiplicadas na visão geral.</p>
-        <div class="faculty-shared-course-grid">${options.map(item => `<label class="faculty-shared-course-option"><input type="checkbox" data-shared-course-path="${escapeHtml(path)}" value="${Number(item.course_id)}"><span><strong>${escapeHtml(item.course_name)}</strong>${item.modality ? `<small>${escapeHtml(item.modality)}</small>` : ''}</span></label>`).join('')}</div>
-      </div>
-    </details>`;
-  }
-
-  function syncSharedScopePrimary(path, primaryCourseId) {
-    const normalizedPath = String(path || '');
-    const primary = Number(primaryCourseId || 0);
-    document.querySelectorAll('[data-shared-course-path]').forEach(input => {
-      if (input.dataset.sharedCoursePath !== normalizedPath) return;
-      const isPrimary = primary > 0 && Number(input.value) === primary;
-      input.disabled = isPrimary;
-      if (isPrimary) input.checked = false;
-    });
-  }
-
   function openImportPreview(preview) {
     const summary = preview.summary || {};
     const unresolved = (preview.entries || []).filter(item => item.scope_status === 'course_resolution_required');
-    const importableEntries = (preview.entries || []).filter(item => ['eligible', 'course_resolution_required'].includes(item.scope_status));
     const semester = preview.suggested_semester || '';
     const importable = Number(summary.eligible || 0) + Number(summary.resolvable || 0);
     const warningHtml = (preview.warnings || []).map(text => `<div class="faculty-import-warning">${escapeHtml(text)}</div>`).join('');
-    const resolutionsHtml = unresolved.length ? `<div><span class="eyebrow">Curso principal a confirmar</span><p>Quando o relatório não identifica o curso de forma inequívoca, escolha o curso principal. Se a mesma turma atender mais cursos, use “Turma compartilhada” logo abaixo.</p><div class="faculty-resolution-list">${unresolved.map(entry => `<label class="faculty-resolution-row"><div><strong>${escapeHtml(entry.teacher_name || 'Docente')} · ${escapeHtml(entry.discipline_name || 'Disciplina')}</strong><small>${escapeHtml(entry.course_name || '')} · ${escapeHtml(entry.internal_path || '')}</small></div><select data-course-resolution="${escapeHtml(entry.resolution_key || entry.internal_path || '')}">${candidateOptions(entry)}</select></label>`).join('')}</div></div>` : '';
-    const sharedHtml = importableEntries.length ? `<div class="faculty-shared-section"><span class="eyebrow">Turmas compartilhadas · opcional</span><p>Abra somente os contextos em que a mesma turma atende dois ou mais cursos.</p>${importableEntries.map(entry => sharedScopeHtml(entry, preview)).join('')}</div>` : '';
+    const resolutionsHtml = unresolved.length ? `<div><span class="eyebrow">Cursos da turma</span><p>O sistema já identificou os cursos possíveis para cada disciplina. Marque <strong>um ou mais</strong> cursos que realmente recebem a mesma turma. Apenas os candidatos detectados são exibidos.</p><div class="faculty-resolution-list">${unresolved.map(entry => candidateCourseSelectionHtml(entry)).join('')}</div></div>` : '';
     const body = `<form id="facultyImportConfirmForm" class="faculty-import-preview">
       <div class="faculty-import-note"><strong>${escapeHtml(preview.filename || 'Relatório')}</strong><br>Esta etapa é apenas uma prévia. Nenhum dado foi gravado no banco.</div>
-      <div class="faculty-import-summary"><div class="faculty-import-stat"><strong>${number(summary.total_reports || 0)}</strong><span>relatórios encontrados</span></div><div class="faculty-import-stat"><strong>${number(summary.eligible || 0)}</strong><span>prontos para importar</span></div><div class="faculty-import-stat"><strong>${number(summary.already_imported || 0)}</strong><span>já importados</span></div><div class="faculty-import-stat"><strong>${number(summary.course_resolution_required || 0)}</strong><span>exigem decisão de curso</span></div></div>
+      <div class="faculty-import-summary"><div class="faculty-import-stat"><strong>${number(summary.total_reports || 0)}</strong><span>relatórios encontrados</span></div><div class="faculty-import-stat"><strong>${number(summary.eligible || 0)}</strong><span>prontos para importar</span></div><div class="faculty-import-stat"><strong>${number(summary.already_imported || 0)}</strong><span>já importados</span></div><div class="faculty-import-stat"><strong>${number(summary.course_resolution_required || 0)}</strong><span>exigem confirmação de curso(s)</span></div></div>
       ${warningHtml}
       ${facultySemesterFields(semester, Boolean(semester))}
       ${resolutionsHtml}
-      ${sharedHtml}
       <div class="faculty-import-summary"><div class="faculty-import-stat"><strong>${number(summary.outside_unit || 0)}</strong><span>fora da unidade</span></div><div class="faculty-import-stat"><strong>${number(summary.course_out_of_scope || 0)}</strong><span>fora do escopo da diretoria</span></div><div class="faculty-import-stat"><strong>${number(summary.wrong_questionnaire || 0)}</strong><span>questionário incompatível</span></div><div class="faculty-import-stat"><strong>${number(summary.invalid_report || 0)}</strong><span>relatório inválido</span></div></div>
       <div class="modal-form-footer"><button class="button secondary" type="button" id="facultyCancelImport">Cancelar</button><button class="button primary" type="submit" ${importable ? '' : 'disabled'}>Confirmar importação</button></div>
     </form>`;
     openModal('Avaliação Docente · Importação', 'Revisar antes de gravar', body);
     state.modalContext = { type: 'faculty-student-import', preview };
     byId('facultyCancelImport')?.addEventListener('click', closeModal);
-    document.querySelectorAll('[data-course-resolution]').forEach(select => {
-      const path = select.dataset.courseResolution || '';
-      select.addEventListener('change', () => syncSharedScopePrimary(path, select.value));
-      syncSharedScopePrimary(path, select.value);
-    });
     byId('facultyImportConfirmForm')?.addEventListener('submit', event => processImport(event, preview));
   }
 
@@ -727,18 +699,23 @@
     }
     const selected = new Set(preview.eligible_paths || []);
     const resolutions = {};
-    document.querySelectorAll('[data-course-resolution]').forEach(select => {
-      if (!select.value) return;
-      const path = select.dataset.courseResolution;
-      resolutions[path] = Number(select.value);
-      selected.add(path);
+    const candidateSelections = {};
+    document.querySelectorAll('[data-course-candidate-path]:checked').forEach(input => {
+      const path = input.dataset.courseCandidatePath;
+      if (!candidateSelections[path]) candidateSelections[path] = [];
+      candidateSelections[path].push(Number(input.value));
     });
     const sharedScopes = {};
-    document.querySelectorAll('[data-shared-course-path]:checked').forEach(input => {
-      const path = input.dataset.sharedCoursePath;
-      if (!selected.has(path)) return;
-      if (!sharedScopes[path]) sharedScopes[path] = [];
-      sharedScopes[path].push(Number(input.value));
+    Object.entries(candidateSelections).forEach(([path, values]) => {
+      const courseIds = [...new Set(values.filter(Boolean))];
+      if (!courseIds.length) return;
+      // O conceito de curso principal continua apenas como detalhe técnico do
+      // modelo legado. Para o usuário todos os cursos marcados pertencem à
+      // mesma turma; o primeiro candidato marcado ancora o contexto e os demais
+      // viram escopos adicionais sem duplicar respostas.
+      resolutions[path] = courseIds[0];
+      selected.add(path);
+      if (courseIds.length > 1) sharedScopes[path] = courseIds.slice(1);
     });
     if (!selected.size) {
       toast('Nada para importar', 'Não há relatórios elegíveis ou resoluções selecionadas neste lote.', 'warning');

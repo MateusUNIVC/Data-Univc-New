@@ -4,26 +4,33 @@ Base academica: v0.11.6.7
 Schema: 49
 Migration obrigatoria acumulada: 049_academic_faculty_context_scopes_v0130.sql
 
-Patch Parte 4 (2026-09-29):
-- graficos comparativos por curso preservam nomes completos, sem limite fixo de duas linhas;
-- altura de cada linha cresce de forma dinamica conforme o rotulo;
-- margem esquerda responsiva reduz colisao entre rotulos e barras;
-- nome integral permanece disponivel no SVG <title> e no tooltip;
-- renderer compartilhado beneficia NPS e outros comparativos por curso;
-- nenhuma mudanca de API, calculo, banco ou schema nesta etapa.
+Parte 7 - Excel Interativo academico oficial (2026-09-29):
+- /api/excel-interativo oficial para DTNH e DCS;
+- nomes de download sem beta;
+- 17 abas visiveis organizadas em painel, analise e banco gerencial;
+- CALC, LISTAS DE APOIO e bases tecnicas permanecem ocultas;
+- 12 tabelas Excel filtraveis nas bases visiveis no cenario de regressao;
+- PAINEL com 5 graficos executivos;
+- NPS, favorabilidade docente e aprovacao preservam as metodologias vigentes;
+- sem nova migration; schema permanece 49.
 
-Patch Parte 3 acumulado:
-- Avaliacao Docente: Ano + Semestre no frontend, contrato interno AAAA-SEM1/2 preservado.
-- Turmas compartilhadas: multiplos cursos por contexto sem duplicacao de respostas.
-- Analytics global deduplica contexto/agregados; filtros por curso enxergam todos os escopos associados.
-- NPS/SEI: Educacao Fisica atual -> Licenciatura somente no adapter SEI.
-- Upload manual ambiguo: resolucao explicita de curso obrigatoria.
-- Migration 049 faz backfill de todos os contextos docentes historicos como escopo primario.
+Performance acumulada:
+- Resultados Academicos: lote padrao 500;
+- Avaliacao Docente: lote padrao 100, com prefetch e retomada idempotente;
+- NPS/questionarios: lote padrao 50, com catalogos e fatos persistidos em lote.
 
-Checks finais:
+Compatibilidade acumulada:
+- Educacao Fisica - Licenciatura reconhecida pelo rotulo atual do SEI;
+- NPS do SEI resolve Educacao Fisica atual como Licenciatura apenas no adapter da fonte;
+- upload manual ambiguo continua exigindo resolucao explicita;
+- turmas docentes compartilhadas aceitam varios cursos candidatos sem duplicar respostas;
+- nomes longos de cursos nao sao truncados nos graficos web e recebem quebra controlada no Excel.
+
+Checks finais Parte 7:
 - Python compile: OK
 - JavaScript syntax (data-univc-ui.js, app.js, faculty-evaluation.js): OK
-- Pytest: 179 passed, 2 skipped
+- Pytest: 192 passed, 2 skipped
+- Excel estrutural: 5 graficos no PAINEL, 0 formula com #REF!, bases/tabelas presentes
 - Release checks: OK
 
 Antes do deploy em producao, se a migration 049 ainda nao tiver sido aplicada, aplique-a no PostgreSQL antes de iniciar/recriar a aplicacao com REQUIRE_SCHEMA_VERSION=true.

@@ -1009,7 +1009,7 @@ def excel_interativo(
     scope: DirectorateScope = Depends(current_scope),
 ):
     if scope.directorate_code not in {"DTNH", "DCS"}:
-        raise HTTPException(400, "O Excel Interativo V3 acadêmico está disponível apenas para DTNH/DCS.")
+        raise HTTPException(400, "O Excel Interativo acadêmico está disponível apenas para DTNH/DCS.")
     acquired = False
     try:
         if scope.directorate_code == "DPE":
@@ -1040,7 +1040,7 @@ def excel_interativo(
             buffer,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f'attachment; filename="Painel_{scope.directorate_code}_Interativo_beta.xlsx"',
+                "Content-Disposition": f'attachment; filename="Painel_{scope.directorate_code}_Interativo.xlsx"',
                 "Cache-Control": "no-store",
             },
         )

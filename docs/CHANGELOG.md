@@ -1,3 +1,13 @@
+# 2026-09-29 — Parte 5 Hotfix · seleção múltipla somente entre cursos candidatos
+
+- Avaliação Docente deixa de pedir curso principal seguido de seleção adicional entre toda a diretoria.
+- Casos ambíguos mostram apenas `candidate_courses` já detectados pelo backend.
+- Usuário pode marcar um, dois ou mais cursos para a mesma turma.
+- Respostas continuam persistidas uma única vez; cursos adicionais usam `faculty_evaluation_context_scopes`.
+- Backend rejeita escopos adicionais fora dos candidatos autorizados pelo preview.
+- Schema permanece 49; nenhuma migration nova.
+- Regressão completa: 184 testes aprovados e 2 ignorados.
+
 # v0.13.0 — Patch operacional Parte 3 (29/09/2026)
 
 - Avaliação Docente passa a aceitar turmas vinculadas a múltiplos cursos sem duplicação de respostas;
@@ -1207,3 +1217,15 @@ O pacote de produção não carrega mais um arquivo de release/patch/validação
 - mapeamento governado de identificadores de departamento TALLOS;
 - migration 027 eleva o schema esperado para 27;
 - frontend permanece HTML/CSS/JS puro e reutiliza o Design System `ui-v2`.
+
+## 2026-09-29 — Parte 7 — Excel Interativo acadêmico oficial
+
+- promove `/api/excel-interativo` de beta para produto oficial em DTNH/DCS;
+- remove `beta` do botão, fallback de download, Content-Disposition e metadados do workbook;
+- reorganiza o workbook seguindo o princípio estrutural do painel institucional de referência;
+- expõe banco gerencial em abas separadas e tabelas Excel filtráveis;
+- mantém CALC, listas e bases técnicas como camada interna oculta;
+- amplia o PAINEL para cinco gráficos executivos;
+- preserva a favorabilidade docente vigente em %, sem restaurar a antiga métrica 0–10;
+- mantém `/api/excel` tradicional em paralelo;
+- sem migration nova; schema permanece 49.

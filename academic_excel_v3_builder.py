@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from io import BytesIO
+from textwrap import wrap
 from typing import Any
 
 from openpyxl import Workbook
@@ -60,15 +61,23 @@ VISIBLE_SHEETS = [
     "LEIA-ME",
     "PARAMETROS",
     "PAINEL",
-    "NPS INSTITUICAO",
-    "NPS CURSO",
+    "QUALIDADE E GOVERNANCA",
+    "MATRIZ",
+    "PLANO_DE_ACAO",
+    "NPS DISCENTES",
+    "NPS SEMESTRAL",
     "NPS DOCENTES",
     "AVALIACAO DOCENTE",
-    "APROVACAO RESULTADOS",
-    "MATRIZ",
-    "METAS E PLANOS",
-    "QUALIDADE E GOVERNANCA",
+    "RESULTADOS ACADEMICOS",
+    "METAS",
+    "CURSOS",
+    "DISCIPLINAS",
+    "INDICADORES",
+    "DIM_PERIODO",
+    "DIM_MES",
 ]
+
+LISTS_SHEET = "LISTAS DE APOIO"
 
 
 def _sorted_semesters(payload: dict[str, Any]) -> list[str]:
@@ -310,10 +319,20 @@ def _add_table(ws, name: str, header_row: int, last_row: int, last_col: int) -> 
     ws.add_table(table)
 
 
-def _write_rows_sheet(wb: Workbook, name: str, headers: list[str], rows: list[list[Any]], *, table_name: str) -> int:
+def _write_rows_sheet(
+    wb: Workbook,
+    name: str,
+    headers: list[str],
+    rows: list[list[Any]],
+    *,
+    table_name: str,
+    title: str | None = None,
+    subtitle: str = "Base técnica importada do Data UNIVC. Não editar.",
+    visible: bool = False,
+) -> int:
     ws = wb.create_sheet(name)
     _setup(ws, freeze="A5", zoom=80)
-    _title(ws, name.replace("_", " "), "Base técnica importada do Data UNIVC. Não editar.", end_col=max(8, len(headers)))
+    _title(ws, title or name.replace("_", " "), subtitle, end_col=max(8, len(headers)))
     header_row = 4
     for idx, header in enumerate(headers, 1):
         _header(ws.cell(header_row, idx, header))
@@ -324,7 +343,8 @@ def _write_rows_sheet(wb: Workbook, name: str, headers: list[str], rows: list[li
     last = header_row + len(rows)
     _add_table(ws, table_name, header_row, last, len(headers))
     _auto_width(ws)
-    ws.sheet_state = "hidden"
+    if not visible:
+        ws.sheet_state = "hidden"
     return last
 
 
@@ -429,12 +449,200 @@ def _write_technical_data(wb: Workbook, payload: dict[str, Any]) -> dict[str, in
     return ends
 
 
+def _write_visible_database(wb: Workbook, payload: dict[str, Any]) -> None:
+    """Expose the managerial database as readable, filterable Excel tables.
+
+    The calculation engine keeps its compact hidden bases for formula stability,
+    while these sheets are the official user-facing database layer. This mirrors
+    the workbook supplied by the user without changing the current Data UNIVC
+    metric definitions.
+    """
+    rows_nps_course = [[
+        r.get("periodo"), r.get("curso"), int(r.get("respondentes") or 0),
+        int(r.get("promotores") or 0), int(r.get("neutros") or 0), int(r.get("detratores") or 0),
+        ((int(r.get("promotores") or 0) - int(r.get("detratores") or 0)) / int(r.get("respondentes") or 1) * 100)
+        if int(r.get("respondentes") or 0) else None,
+        r.get("meta"), r.get("atencao"), r.get("status"), r.get("fonte"),
+    ] for r in payload.get("course_nps", [])]
+    _write_rows_sheet(
+        wb, "NPS DISCENTES",
+        ["Periodo", "Curso", "Respondentes", "Promotores", "Neutros", "Detratores", "NPS", "Meta", "Atencao", "Status", "Fonte"],
+        rows_nps_course,
+        table_name="TblNpsDiscentes",
+        title=f"BASE DE DADOS · {payload['codes']['nps_course']} · NPS DO CURSO",
+        subtitle="Uma linha por período e curso. Base alimentada pelo Data UNIVC; evite edição manual.",
+        visible=True,
+    )
+
+    rows_nps_sem = [[
+        r.get("periodo"), r.get("curso"), int(r.get("respondentes") or 0),
+        int(r.get("promotores") or 0), int(r.get("neutros") or 0), int(r.get("detratores") or 0),
+        r.get("valor"), r.get("meta"), r.get("atencao"), r.get("status"), r.get("fonte"),
+    ] for r in payload.get("institution_students_by_course", [])]
+    _write_rows_sheet(
+        wb, "NPS SEMESTRAL",
+        ["Periodo", "Curso", "Respondentes", "Promotores", "Neutros", "Detratores", "NPS", "Meta", "Atencao", "Status", "Fonte"],
+        rows_nps_sem,
+        table_name="TblNpsSemestral",
+        title=f"BASE DE DADOS · {payload['codes']['nps_institution']} · NPS INSTITUCIONAL DOS ALUNOS",
+        subtitle="Consolidado semestral por curso usado no painel institucional. Base alimentada pelo Data UNIVC; evite edição manual.",
+        visible=True,
+    )
+
+    rows_nps_fac = [[
+        r.get("periodo"), int(r.get("respondentes") or 0), int(r.get("promotores") or 0),
+        int(r.get("neutros") or 0), int(r.get("detratores") or 0), r.get("valor"), r.get("fonte"),
+    ] for r in payload.get("faculty_nps", [])]
+    _write_rows_sheet(
+        wb, "NPS DOCENTES",
+        ["Periodo", "Respondentes", "Promotores", "Neutros", "Detratores", "NPS", "Fonte"],
+        rows_nps_fac,
+        table_name="TblNpsDocentes",
+        title=f"BASE DE DADOS · {payload['codes']['nps_faculty']} · NPS INSTITUCIONAL DOS DOCENTES",
+        subtitle="População institucional anônima. Base alimentada pelo Data UNIVC; evite edição manual.",
+        visible=True,
+    )
+
+    rows_teacher = [[
+        r.get("periodo"), r.get("curso"), r.get("disciplina"), int(r.get("respondentes") or 0),
+        int(r.get("favoraveis") or 0), int(r.get("intermediarias") or 0), int(r.get("desfavoraveis") or 0),
+        int(r.get("classificados") or 0), int(r.get("nao_classificados") or 0), int(r.get("nao_mapeados") or 0),
+        r.get("favorabilidade"), r.get("meta"), r.get("atencao"), r.get("status"),
+    ] for r in payload.get("teacher", [])]
+    _write_rows_sheet(
+        wb, "AVALIACAO DOCENTE",
+        ["Periodo", "Curso", "Disciplina", "Participacoes", "Favoraveis", "Intermediarias", "Desfavoraveis", "Classificadas", "NaoClassificadas", "NaoMapeadas", "Favorabilidade", "Meta", "Atencao", "Status"],
+        rows_teacher,
+        table_name="TblAvaliacaoDocente",
+        title=f"BASE DE DADOS · {payload['codes']['teacher']} · AVALIAÇÃO DOCENTE",
+        subtitle="Favorabilidade atual do Data UNIVC: respostas favoráveis / respostas classificadas. Base alimentada pelo sistema; evite edição manual.",
+        visible=True,
+    )
+
+    rows_results = [[
+        r.get("periodo"), r.get("curso"), r.get("disciplina"), int(r.get("total_registros") or 0),
+        int(r.get("finalizados") or 0), int(r.get("aprovados") or 0), int(r.get("reprovados_nota") or 0),
+        int(r.get("reprovados_falta") or 0), int(r.get("reprovados_outro") or 0), int(r.get("em_andamento") or 0),
+        (int(r.get("aprovados") or 0) / int(r.get("finalizados") or 1) * 100)
+        if int(r.get("finalizados") or 0) else None,
+        r.get("meta"), r.get("atencao"), r.get("status"),
+    ] for r in payload.get("results", [])]
+    _write_rows_sheet(
+        wb, "RESULTADOS ACADEMICOS",
+        ["Periodo", "Curso", "Disciplina", "TotalRegistros", "Finalizados", "Aprovados", "ReprovadosNota", "ReprovadosFalta", "ReprovadosOutro", "EmAndamento", "TaxaAprovacao", "Meta", "Atencao", "Status"],
+        rows_results,
+        table_name="TblResultadosAcademicos",
+        title=f"BASE DE DADOS · {payload['codes']['approval']} · RESULTADOS ACADÊMICOS",
+        subtitle="Base agregada por período, curso e disciplina. Não exporta linhas individuais de alunos.",
+        visible=True,
+    )
+
+    rows_goals = [[
+        r.get("indicador"), r.get("recorte"), r.get("vigencia"), r.get("meta"), r.get("atencao"),
+        r.get("limite_superior"), r.get("unidade"), r.get("metric_version"), r.get("justificativa"),
+    ] for r in payload.get("goals", [])]
+    _write_rows_sheet(
+        wb, "METAS",
+        ["KPI", "Recorte", "Vigencia", "Meta", "Atencao", "LimiteSuperior", "Unidade", "VersaoMetrica", "Justificativa"],
+        rows_goals,
+        table_name="TblMetas",
+        title="BASE DE DADOS · METAS",
+        subtitle="Metas cadastradas no Data UNIVC. Alterações devem ser feitas no sistema e reexportadas.",
+        visible=True,
+    )
+
+    rows_courses = [[
+        r.get("curso"), "Sim" if r.get("ativo", True) else "Não", r.get("external_id") or r.get("id"),
+    ] for r in payload.get("courses_catalog", [])]
+    _write_rows_sheet(
+        wb, "CURSOS", ["Curso", "Ativo", "Identificador"], rows_courses,
+        table_name="TblCursos", title=f"CURSOS · {payload['directorate']}",
+        subtitle="Catálogo acadêmico ativo usado pelos filtros e pelas bases do Excel.", visible=True,
+    )
+
+    rows_disciplines = [[
+        r.get("curso"), r.get("disciplina"), "Sim" if r.get("ativo", True) else "Não", r.get("external_id") or r.get("id"),
+    ] for r in payload.get("disciplines_catalog", [])]
+    _write_rows_sheet(
+        wb, "DISCIPLINAS", ["Curso", "Disciplina", "Ativa", "Identificador"], rows_disciplines,
+        table_name="TblDisciplinas", title="DISCIPLINAS",
+        subtitle="Catálogo vinculado aos cursos. Pode ser ampliado pelas importações acadêmicas.", visible=True,
+    )
+
+
+def _write_plan_action(wb: Workbook, payload: dict[str, Any]) -> None:
+    rows = [[
+        r.get("indicador"), r.get("recorte") or r.get("escopo"),
+        r.get("acao") or r.get("plano") or r.get("descricao"), r.get("responsavel"),
+        r.get("prazo"), r.get("status"), r.get("resultado_esperado"),
+    ] for r in payload.get("actions", [])]
+    _write_rows_sheet(
+        wb, "PLANO_DE_ACAO",
+        ["KPI", "Recorte", "Acao", "Responsavel", "Prazo", "Status", "ResultadoEsperado"],
+        rows, table_name="TblPlanoAcao", title="PLANO DE AÇÃO",
+        subtitle="Planos cadastrados no Data UNIVC. Esta aba é de consulta; atualize o plano no sistema.", visible=True,
+    )
+
+
+def _write_indicators(wb: Workbook, payload: dict[str, Any]) -> None:
+    codes = payload["codes"]
+    rows = [
+        [codes["nps_institution"], "NPS da Instituição · Alunos", "pontos", "Maior é melhor", "Semestral", "NPS", "Promotores - detratores, em pontos NPS"],
+        [codes["nps_course"], "NPS do Curso", "pontos", "Maior é melhor", "Semestral", "NPS", "Promotores - detratores por curso"],
+        [codes["nps_faculty"], "NPS da Instituição · Docentes", "pontos", "Maior é melhor", "Semestral", "NPS docentes", "População institucional anônima"],
+        [codes["teacher"], "Avaliação Docente pelo Aluno", "%", "Maior é melhor", "Semestral", "Avaliação docente", "Favoráveis / respostas classificadas; categorias não mapeadas suspendem o indicador"],
+        [codes["approval"], "Taxa de Aprovação", "%", "Maior é melhor", "Semestral", "Resultados acadêmicos", "Aprovados / resultados finalizados"],
+    ]
+    _write_rows_sheet(
+        wb, "INDICADORES",
+        ["Codigo", "Indicador", "Unidade", "Direcao", "Periodicidade", "Fonte", "Regra"],
+        rows, table_name="TblIndicadores", title=f"INDICADORES · {payload['directorate']}",
+        subtitle="Definições vigentes usadas pelo painel, matriz e metas.", visible=True,
+    )
+
+
+def _write_dimensions(wb: Workbook, payload: dict[str, Any]) -> None:
+    semesters = payload.get("semesters", [])
+    dim_period = []
+    years: list[int] = []
+    for period in semesters:
+        try:
+            year = int(str(period)[:4]); sem = int(str(period)[-1])
+        except (TypeError, ValueError):
+            continue
+        years.append(year)
+        start = datetime(year, 1 if sem == 1 else 7, 1)
+        end = datetime(year, 6, 30) if sem == 1 else datetime(year, 12, 31)
+        dim_period.append([period, year, sem, start, end, year * 2 + sem])
+    _write_rows_sheet(
+        wb, "DIM_PERIODO", ["Periodo", "Ano", "Semestre", "Inicio", "Fim", "Chave"], dim_period,
+        table_name="TblDimPeriodo", title="DIMENSÃO DE SEMESTRES",
+        subtitle="Calendário acadêmico gerado a partir dos períodos presentes no histórico exportado.", visible=True,
+    )
+
+    dim_month = []
+    if years:
+        for year in range(min(years), max(years) + 1):
+            for month in range(1, 13):
+                sem = 1 if month <= 6 else 2
+                dim_month.append([
+                    f"{year:04d}-{month:02d}", datetime(year, month, 1), year, month,
+                    f"{year}-SEM{sem}", datetime(year, 1 if sem == 1 else 7, 1),
+                    f"{month:02d}/{year}", year * 12 + month,
+                ])
+    _write_rows_sheet(
+        wb, "DIM_MES", ["Mes", "Data", "Ano", "NumeroMes", "Semestre", "InicioSemestre", "Rotulo", "Chave"], dim_month,
+        table_name="TblDimMes", title="DIMENSÃO DE MESES",
+        subtitle="Cada mês aponta para o semestre acadêmico correspondente; usado como dimensão de apoio.", visible=True,
+    )
+
+
 def _named(wb: Workbook, name: str, ref: str) -> None:
     wb.defined_names.add(DefinedName(name, attr_text=ref))
 
 
 def _write_lists(wb: Workbook, payload: dict[str, Any]) -> None:
-    ws = wb.create_sheet("LISTAS")
+    ws = wb.create_sheet(LISTS_SHEET)
     _setup(ws)
     lists = {
         "A": ["Semestres"] + payload.get("semesters", []),
@@ -482,12 +690,12 @@ def _write_parameters(wb: Workbook, payload: dict[str, Any]) -> None:
     discipline_count = len(list(dict.fromkeys(r.get("disciplina") for r in payload.get("disciplines_catalog", []) if r.get("disciplina"))))
     discipline_end = max(2, discipline_count + 2)
     for cell, formula in [
-        ("B6", f"LISTAS!$A$2:$A${semester_end}"),
-        ("B7", f"LISTAS!$A$2:$A${semester_end}"),
-        ("B8", "LISTAS!$D$2:$D$6"),
-        ("B9", f"LISTAS!$B$2:$B${course_end}"),
-        ("B10", f"LISTAS!$C$2:$C${discipline_end}"),
-        ("B11", "LISTAS!$E$2:$E$5"),
+        ("B6", f"'LISTAS DE APOIO'!$A$2:$A${semester_end}"),
+        ("B7", f"'LISTAS DE APOIO'!$A$2:$A${semester_end}"),
+        ("B8", "'LISTAS DE APOIO'!$D$2:$D$6"),
+        ("B9", f"'LISTAS DE APOIO'!$B$2:$B${course_end}"),
+        ("B10", f"'LISTAS DE APOIO'!$C$2:$C${discipline_end}"),
+        ("B11", "'LISTAS DE APOIO'!$E$2:$E$5"),
     ]:
         dv = DataValidation(type="list", formula1=formula, allow_blank=(cell in {"B7"}))
         dv.error = "Escolha um valor da lista."
@@ -497,11 +705,11 @@ def _write_parameters(wb: Workbook, payload: dict[str, Any]) -> None:
 
     _section(ws, 13, "JANELA EFETIVA", end_col=6)
     ws["A14"] = "Índice da referência"
-    ws["B14"] = '=IFERROR(MATCH(P_REF,LISTAS!$A$2:$A$200,0),"")'
+    ws["B14"] = "=IFERROR(MATCH(P_REF,'LISTAS DE APOIO'!$A$2:$A$200,0),\"\")"
     ws["A15"] = "Primeiro índice da janela"
     ws["B15"] = '=IF(P_REF_IDX="","",IF(P_WINDOW="Todo histórico",MAX(1,P_REF_IDX-11),MAX(1,P_REF_IDX-P_WINDOW+1)))'
     ws["A16"] = "Janela efetiva — de"
-    ws["B16"] = '=IF(P_START_IDX="","",INDEX(LISTAS!$A$2:$A$200,P_START_IDX))'
+    ws["B16"] = "=IF(P_START_IDX=\"\",\"\",INDEX('LISTAS DE APOIO'!$A$2:$A$200,P_START_IDX))"
     ws["A17"] = "Janela efetiva — até"
     ws["B17"] = '=P_REF'
     ws["A18"] = "Semestres no gráfico"
@@ -515,8 +723,8 @@ def _write_parameters(wb: Workbook, payload: dict[str, Any]) -> None:
         (21, "Referência possui dados?", '=IF(P_REF="","SEM REFERÊNCIA",IF(COUNTIF(DADOS_01B!$A:$A,P_REF)+COUNTIF(DADOS_02!$A:$A,P_REF)+COUNTIF(DADOS_03!$A:$A,P_REF)>0,"OK — há dados acadêmicos","SEM DADOS no período"))'),
         (22, "Comparação possui dados?", '=IF(P_COMP="","(sem comparação)",IF(COUNTIF(DADOS_01B!$A:$A,P_COMP)+COUNTIF(DADOS_02!$A:$A,P_COMP)+COUNTIF(DADOS_03!$A:$A,P_COMP)>0,"OK — há dados","SEM DADOS no período"))'),
         (23, "Referência dentro da janela?", '=IF(P_REF="","—",IF(AND(P_REF_IDX>=P_START_IDX,P_REF_IDX<=P_REF_IDX),"OK — dentro da janela","FORA DA JANELA"))'),
-        (24, "Curso em foco existe?", '=IF(P_COURSE="(todos)","OK — todos os cursos",IF(COUNTIF(LISTAS!$B:$B,P_COURSE)>0,"OK — curso encontrado","CURSO NÃO ENCONTRADO"))'),
-        (25, "Disciplina em foco existe?", '=IF(P_DISC="(todas)","OK — todas as disciplinas",IF(COUNTIF(LISTAS!$C:$C,P_DISC)>0,"OK — disciplina encontrada","DISCIPLINA NÃO ENCONTRADA"))'),
+        (24, "Curso em foco existe?", "=IF(P_COURSE=\"(todos)\",\"OK — todos os cursos\",IF(COUNTIF('LISTAS DE APOIO'!$B:$B,P_COURSE)>0,\"OK — curso encontrado\",\"CURSO NÃO ENCONTRADO\"))"),
+        (25, "Disciplina em foco existe?", "=IF(P_DISC=\"(todas)\",\"OK — todas as disciplinas\",IF(COUNTIF('LISTAS DE APOIO'!$C:$C,P_DISC)>0,\"OK — disciplina encontrada\",\"DISCIPLINA NÃO ENCONTRADA\"))"),
         (26, "Janela", '=IF(P_WINDOW="Todo histórico","Todo histórico · gráfico mostra até 12 semestres",P_WINDOW&" semestres")'),
     ]
     for row, label, formula in diagnostics:
@@ -604,6 +812,13 @@ def _meta_formula(ends: dict[str, int], kpi_code_expr: str, period_expr: str, *,
     return f'=IF(COUNTIFS({per},{period_expr},{kpi},{kpi_code_expr},{course},{course_expr},{disc},{disc_expr})=0,"",SUMIFS({val},{per},{period_expr},{kpi},{kpi_code_expr},{course},{course_expr},{disc},{disc_expr}))'
 
 
+def _wrap_course_label(value: Any, width: int = 28) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    return "\n".join(wrap(text, width=width, break_long_words=False, break_on_hyphens=False))
+
+
 def _write_calc(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) -> None:
     ws = wb.create_sheet("CALC")
     _setup(ws)
@@ -614,7 +829,7 @@ def _write_calc(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) -> 
     for slot in range(1, 13):
         row = 4 + slot
         ws.cell(row, 1, slot)
-        ws.cell(row, 2, f'=IF({slot}<=P_REF_IDX-P_START_IDX+1,INDEX(LISTAS!$A$2:$A$200,P_START_IDX+{slot}-1),"")')
+        ws.cell(row, 2, f"=IF({slot}<=P_REF_IDX-P_START_IDX+1,INDEX('LISTAS DE APOIO'!$A$2:$A$200,P_START_IDX+{slot}-1),\"\")")
         ws.cell(row, 3, f'=IF(B{row}="",NA(),{_nps_formula("DADOS_01A_DIR", ends, "01A_DIR", f"B{row}", course=True)[1:]})')
         # 01A UNIVC has no course dimension.
         end_u = ends["01A_UNIVC"]
@@ -631,6 +846,27 @@ def _write_calc(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) -> 
         for col in [3, 4, 5, 6]: ws.cell(row, col).number_format = NPS_FMT
         ws.cell(row, 7).number_format = PCT_POINT_FMT
         ws.cell(row, 8).number_format = PCT_POINT_FMT
+
+    # NPS composition helper for the executive panel at the selected reference.
+    ws["T4"] = "Composição NPS"
+    ws["U4"] = "Respondentes"
+    _header(ws["T4"]); _header(ws["U4"])
+    ws["T5"] = "Promotores"; ws["T6"] = "Neutros"; ws["T7"] = "Detratores"
+    for cell in ["T5", "T6", "T7"]:
+        _body(ws[cell], imported=True)
+    end_comp = ends["01A_DIR"]
+    per_comp = _range("DADOS_01A_DIR", "A", end_comp)
+    course_comp = _range("DADOS_01A_DIR", "B", end_comp)
+    prom_comp = _range("DADOS_01A_DIR", "D", end_comp)
+    neut_comp = _range("DADOS_01A_DIR", "E", end_comp)
+    det_comp = _range("DADOS_01A_DIR", "F", end_comp)
+    course_criteria = f'{course_comp},IF(P_COURSE="(todos)","*",P_COURSE)'
+    ws["U5"] = f'=SUMIFS({prom_comp},{per_comp},P_REF,{course_criteria})'
+    ws["U6"] = f'=SUMIFS({neut_comp},{per_comp},P_REF,{course_criteria})'
+    ws["U7"] = f'=SUMIFS({det_comp},{per_comp},P_REF,{course_criteria})'
+    for cell in ["U5", "U6", "U7"]:
+        ws[cell].number_format = INT_FMT
+        _body(ws[cell], formula=True)
 
     # Reference/comparison KPI summary.
     _section(ws, 19, "RESUMO KPI", end_col=10)
@@ -665,8 +901,8 @@ def _write_calc(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) -> 
         for col in [3,4,5,6,7]: ws.cell(idx, col).number_format = numfmt if col != 5 else VAR_FMT
 
     # 01A course snapshot at reference, one row per active course.
-    _section(ws, 29, "01A · CURSOS NO SEMESTRE DE REFERÊNCIA", end_col=9)
-    snap_headers = ["Curso", "NPS", "Meta", "Atenção", "Status", "Dentro", "AtençãoSerie", "Fora", "SemMeta"]
+    _section(ws, 29, "01A · CURSOS NO SEMESTRE DE REFERÊNCIA", end_col=10)
+    snap_headers = ["Curso", "NPS", "Meta", "Atenção", "Status", "Dentro", "AtençãoSerie", "Fora", "SemMeta", "CursoGrafico"]
     for c,h in enumerate(snap_headers,1): _header(ws.cell(30,c,h))
     courses = [r.get("curso") for r in payload.get("courses_catalog", []) if r.get("curso")]
     for offset, course_name in enumerate(courses, 31):
@@ -682,6 +918,7 @@ def _write_calc(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) -> 
         ws.cell(offset,7,f'=IF(E{offset}="Atenção",B{offset},NA())')
         ws.cell(offset,8,f'=IF(E{offset}="Fora da meta",B{offset},NA())')
         ws.cell(offset,9,f'=IF(E{offset}="Sem meta",B{offset},NA())')
+        ws.cell(offset,10,_wrap_course_label(course_name))
         for c in range(2,10): ws.cell(offset,c).number_format=NPS_FMT
 
     # Matrix helper: up to 12 semester columns and one row per course.
@@ -689,7 +926,7 @@ def _write_calc(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) -> 
     _section(ws, start, "MATRIZ · CURSO × SEMESTRE", end_col=18)
     ws.cell(start+1,1,"Curso")
     for c in range(1,13):
-        ws.cell(start+1,1+c,f'=IF({c}<=P_REF_IDX-P_START_IDX+1,INDEX(LISTAS!$A$2:$A$200,P_START_IDX+{c}-1),"")')
+        ws.cell(start+1,1+c,f"=IF({c}<=P_REF_IDX-P_START_IDX+1,INDEX('LISTAS DE APOIO'!$A$2:$A$200,P_START_IDX+{c}-1),\"\")")
     for c,h in enumerate(["Referência","Comparação","Variação","Meta","Status"],14): ws.cell(start+1,c,h)
     for c in range(1,19): _header(ws.cell(start+1,c))
     matrix_first = start+2
@@ -738,12 +975,16 @@ def _approval_course_specific_formula(end: int, period_expr: str, course_expr: s
     return f'IFERROR(SUMIFS({app},{per},{period_expr},{cr},{course_expr})/SUMIFS({fin},{per},{period_expr},{cr},{course_expr})*100,"")'
 
 
-def _chart_line(ws, title: str, data_sheet, value_col: int, anchor: str, *, number_format: str = "0.0", y_min=None, y_max=None) -> None:
+def _chart_line(
+    ws, title: str, data_sheet, value_col: int, anchor: str, *,
+    number_format: str = "0.0", y_min=None, y_max=None,
+    width: float = 12.8, height: float = 7.2,
+) -> None:
     chart = LineChart()
     chart.title = title
     chart.style = 13
-    chart.height = 7.2
-    chart.width = 12.8
+    chart.height = height
+    chart.width = width
     chart.legend = None
     data = Reference(data_sheet, min_col=value_col, min_row=4, max_row=16)
     cats = Reference(data_sheet, min_col=2, min_row=5, max_row=16)
@@ -757,25 +998,45 @@ def _chart_line(ws, title: str, data_sheet, value_col: int, anchor: str, *, numb
     ws.add_chart(chart, anchor)
 
 
+def _chart_nps_composition(ws, calc, anchor: str, *, width: float = 10.8, height: float = 7.2) -> None:
+    chart = BarChart()
+    chart.type = "col"
+    chart.style = 10
+    chart.title = "Promotores, neutros e detratores · referência"
+    chart.height = height
+    chart.width = width
+    chart.legend = None
+    data = Reference(calc, min_col=21, min_row=4, max_row=7)
+    cats = Reference(calc, min_col=20, min_row=5, max_row=7)
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(cats)
+    chart.y_axis.numFmt = INT_FMT
+    chart.dataLabels = DataLabelList()
+    chart.dataLabels.showVal = True
+    ws.add_chart(chart, anchor)
+
+
 def _write_readme(wb: Workbook, payload: dict[str, Any]) -> None:
     code = payload["directorate"]
     codes = payload["codes"]
     ws = wb.create_sheet("LEIA-ME", 0)
     _setup(ws, zoom=100)
-    _title(ws, f"EXCEL INTERATIVO · {code}", "Uma segunda interface analítica do Data UNIVC. Os dados são exportados do banco; os recortes são controlados dentro do Excel.", end_col=8)
+    _title(ws, f"DATA UNIVC · EXCEL INTERATIVO · {code}", "Painel acadêmico oficial exportado do Data UNIVC, com base de dados separada, filtros, matriz, metas e gráficos executivos.", end_col=8)
     blocks = [
         (4, "COMO USAR", [
             "1. Vá à aba PARAMETROS e altere somente as células amarelas.",
             "2. Escolha referência, comparação, janela, curso e disciplina.",
-            "3. PAINEL e as abas de indicadores respondem automaticamente.",
+            "3. PAINEL, MATRIZ e os indicadores respondem automaticamente.",
             "4. MATRIZ permite comparar cursos ao longo da janela e trocar o KPI analisado.",
+            "5. As abas NPS, AVALIACAO DOCENTE, RESULTADOS ACADEMICOS, METAS, CURSOS e DISCIPLINAS formam a camada de banco de dados visível.",
         ]),
-        (11, "FONTE E SEGURANÇA", [
+        (12, "FONTE E SEGURANÇA", [
             "O PostgreSQL/Data UNIVC continua sendo a fonte oficial. Este arquivo não escreve dados de volta no sistema.",
-            "Bases técnicas ficam ocultas por padrão e contêm apenas agregações gerenciais; linhas individuais de alunos não são exportadas.",
-            "DTNH e DCS compartilham o mesmo motor V3. O Excel V2 atual continua disponível em paralelo.",
+            "As bases gerenciais ficam visíveis e separadas por assunto; a camada CALC e bases auxiliares permanecem ocultas.",
+            "Linhas individuais de alunos não são exportadas em RESULTADOS ACADEMICOS; apenas agregações gerenciais por período/curso/disciplina.",
+            "DTNH e DCS compartilham o mesmo motor oficial. O relatório Excel tradicional continua disponível em paralelo.",
         ]),
-        (17, "INDICADORES", [
+        (19, "INDICADORES", [
             f"{codes['nps_institution']} · NPS da Instituição · Alunos — inclui tendência da diretoria, benchmark geral UNIVC e comparação por curso.",
             f"{codes['nps_course']} · NPS do Curso.",
             f"{codes['nps_faculty']} · NPS da Instituição · Docentes.",
@@ -791,8 +1052,8 @@ def _write_readme(wb: Workbook, payload: dict[str, Any]) -> None:
             ws.cell(i,1).font=Font(name="Arial",size=10,color=INK)
             ws.cell(i,1).alignment=Alignment(wrap_text=True,vertical="center")
             ws.row_dimensions[i].height=26
-    ws["A26"] = f"Gerado em {payload.get('generated_at','')} · Data UNIVC {payload.get('app_version','')}"
-    ws["A26"].font = Font(name="Arial", size=8, color=GRAY_600)
+    ws["A28"] = f"Gerado em {payload.get('generated_at','')} · Data UNIVC {payload.get('app_version','')}"
+    ws["A28"].font = Font(name="Arial", size=8, color=GRAY_600)
     for col in range(1,9): ws.column_dimensions[get_column_letter(col)].width=16
 
 
@@ -800,7 +1061,7 @@ def _write_panel(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) ->
     code = payload["directorate"]
     ws = wb.create_sheet("PAINEL")
     _setup(ws, freeze="A4", zoom=85)
-    _title(ws, f"PAINEL DE GESTÃO · {code}", "A leitura muda pela aba PARAMETROS. O benchmark geral da UNIVC não é afetado pelo curso em foco.", end_col=12)
+    _title(ws, f"PAINEL DE GESTÃO · {code}", "Painel oficial do Excel Interativo. Ajuste referência, comparação, janela, curso e disciplina na aba PARAMETROS.", end_col=12)
     # Current controls strip.
     for c,h in enumerate(["Referência","Comparação","Janela","Curso em foco","Disciplina"],1):
         ws.cell(4,(c-1)*2+1,h); _header(ws.cell(4,(c-1)*2+1)); ws.merge_cells(start_row=4,start_column=(c-1)*2+1,end_row=4,end_column=(c-1)*2+2)
@@ -822,25 +1083,28 @@ def _write_panel(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) ->
     for c in range(2,7): ws.cell(13,c).number_format=PCT_POINT_FMT
     _add_status_cf(ws, "G9:G13")
 
-    _section(ws,16,"NPS INSTITUCIONAL · 3 LEITURAS",end_col=12)
+    _section(ws,16,"VISÃO EXECUTIVA",end_col=12)
     calc=wb["CALC"]
-    _chart_line(ws,f"NPS institucional · {code} / curso em foco",calc,3,"A18",number_format="0.0",y_min=-100,y_max=100)
-    _chart_line(ws,"NPS geral · UNIVC",calc,4,"G18",number_format="0.0",y_min=-100,y_max=100)
+    _chart_line(ws,f"NPS institucional · {code} / curso em foco",calc,3,"A18",number_format="0.0",y_min=-100,y_max=100,width=10.8,height=7.0)
+    _chart_nps_composition(ws,calc,"G18",width=10.8,height=7.0)
+    _chart_line(ws,"Favorabilidade docente · janela",calc,7,"A36",number_format='0.0"%"',y_min=0,y_max=100,width=10.8,height=7.0)
+    _chart_line(ws,"Taxa de aprovação · janela",calc,8,"G36",number_format='0.0"%"',y_min=0,y_max=100,width=10.8,height=7.0)
 
     # Course status bar chart.
     courses=[r.get("curso") for r in payload.get("courses_catalog",[]) if r.get("curso")]
     if courses:
+        _section(ws,54,"NPS INSTITUCIONAL POR CURSO · REFERÊNCIA",end_col=12)
         first=31; last=30+len(courses)
         chart=BarChart(); chart.type="bar"; chart.grouping="stacked"; chart.overlap=100; chart.style=10
-        chart.title="NPS institucional por curso · referência"; chart.height=8.2; chart.width=20.0
+        chart.title="NPS institucional por curso · referência"; chart.height=min(16.0,max(9.0,5.5+len(courses)*0.55)); chart.width=20.0
         data=Reference(calc,min_col=6,max_col=9,min_row=30,max_row=last)
-        cats=Reference(calc,min_col=1,min_row=first,max_row=last)
+        cats=Reference(calc,min_col=10,min_row=first,max_row=last)
         chart.add_data(data,titles_from_data=True); chart.set_categories(cats)
         chart.legend.position="b"; chart.x_axis.scaling.min=-100; chart.x_axis.scaling.max=100
         chart.dataLabels=DataLabelList(); chart.dataLabels.showVal=True
         colors=[GREEN,ORANGE,RED,GRAY_600]
         for ser,color in zip(chart.series,colors): ser.graphicalProperties.solidFill=color
-        ws.add_chart(chart,"A34")
+        ws.add_chart(chart,"A56")
     ws.column_dimensions["A"].width=30
     for c in range(2,13): ws.column_dimensions[get_column_letter(c)].width=13
 
@@ -963,7 +1227,7 @@ def _write_quality(wb: Workbook, payload: dict[str, Any]) -> None:
 
 def build_academic_interactive_workbook(payload: dict[str, Any]) -> BytesIO:
     if payload.get("directorate") not in {"DTNH", "DCS"}:
-        raise ValueError("O Excel Interativo V3 acadêmico está disponível apenas para DTNH/DCS.")
+        raise ValueError("O Excel Interativo acadêmico está disponível apenas para DTNH/DCS.")
     wb=Workbook(); wb.remove(wb.active)
     ends=_write_technical_data(wb,payload)
     _write_lists(wb,payload)
@@ -971,14 +1235,12 @@ def build_academic_interactive_workbook(payload: dict[str, Any]) -> BytesIO:
     _write_calc(wb,payload,ends)
     _write_readme(wb,payload)
     _write_panel(wb,payload,ends)
-    _write_nps_institution(wb,payload)
-    _write_indicator_sheet(wb,"NPS CURSO","NPS DO CURSO (01B)",f"Evolução do curso em foco. Com '(todos)', agrega as respostas dos cursos da {payload['directorate']}.",5,summary_row=22,y_min=-100,y_max=100,fmt="0.0",table_sheet="DADOS_01B")
-    _write_indicator_sheet(wb,"NPS DOCENTES","NPS DA INSTITUIÇÃO · DOCENTES (01C)","População institucional anônima; o filtro de curso não altera este indicador.",6,summary_row=23,y_min=-100,y_max=100,fmt="0.0",table_sheet="DADOS_01C")
-    _write_indicator_sheet(wb,"AVALIACAO DOCENTE","FAVORABILIDADE DOCENTE (02)","Percentual de respostas favoráveis entre as respostas classificadas das perguntas sobre o docente; categorias não mapeadas suspendem o indicador.",7,summary_row=24,y_min=0,y_max=100,fmt='0.0"%"',table_sheet="DADOS_02")
-    _write_indicator_sheet(wb,"APROVACAO RESULTADOS","APROVAÇÃO E RESULTADOS (03)","Taxa de aprovação calculada sobre registros finalizados no curso/disciplina selecionados.",8,summary_row=25,y_min=0,y_max=100,fmt='0.0"%"',table_sheet="DADOS_03")
     _write_matrix(wb,payload)
-    _write_goals_actions(wb,payload)
     _write_quality(wb,payload)
+    _write_plan_action(wb,payload)
+    _write_visible_database(wb,payload)
+    _write_indicators(wb,payload)
+    _write_dimensions(wb,payload)
 
     # Reorder visible sheets first, technical sheets after them.
     order = VISIBLE_SHEETS + [s for s in wb.sheetnames if s not in VISIBLE_SHEETS]
@@ -995,9 +1257,9 @@ def build_academic_interactive_workbook(payload: dict[str, Any]) -> BytesIO:
     except Exception:
         pass
     wb.properties.title=f"Data UNIVC · Excel Interativo {payload['directorate']}"
-    wb.properties.subject="Painel acadêmico interativo exportado do Data UNIVC"
+    wb.properties.subject="Painel acadêmico interativo oficial exportado do Data UNIVC"
     wb.properties.creator="Data UNIVC"
-    wb.properties.description=f"Excel Interativo V3 beta · {payload['directorate']}"
+    wb.properties.description=f"Excel Interativo oficial · {payload['directorate']}"
     buffer=BytesIO(); wb.save(buffer); wb.close(); buffer.seek(0); return buffer
 
 

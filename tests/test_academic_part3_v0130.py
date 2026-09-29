@@ -219,6 +219,8 @@ def test_part3_frontend_uses_human_semester_fields_shared_scope_and_nps_resoluti
     assert "facultyImportYear" in faculty_js
     assert "facultyImportSemesterPart" in faculty_js
     assert "shared_course_scopes" in faculty_js
-    assert "Turmas compartilhadas" in faculty_js
+    assert "Cursos da turma" in faculty_js
+    assert "data-course-candidate-path" in faculty_js
+    assert "preview.available_courses" not in faculty_js
     assert "data-nps-course-resolution" in app_js
     assert "CSS.escape(path)" not in app_js

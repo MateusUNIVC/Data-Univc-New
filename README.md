@@ -1,3 +1,38 @@
+## Patch operacional 29/09/2026 — Parte 6
+
+- importações de NPS/questionários passam a pré-carregar perguntas e vínculos em conjunto;
+- cursos/contextos já importados são consultados uma única vez por run;
+- agregados e respostas abertas usam escrita em lote, sem um objeto ORM por resposta;
+- NPS institucional dos docentes usa `INSERT ... RETURNING` em massa para os contextos anônimos;
+- `SURVEY_IMPORT_BATCH_SIZE` controla o lote (padrão 50; limite interno 10–250);
+- benchmark sintético com 50 relatórios: NPS por curso de 153 SELECT + 256 INSERT para 6 SELECT + 9 INSERT;
+- benchmark docente institucional: de 152 SELECT + 256 INSERT para 5 SELECT + 9 INSERT;
+- metodologia NPS, Educação Física e schema 49 permanecem inalterados; sem migration nova.
+
+Detalhes: `docs/PART6_SURVEY_NPS_BATCH_PERFORMANCE_2026-09-29.md`.
+
+## Patch operacional 29/09/2026 — Parte 5
+
+- importação da Avaliação Docente passa a persistir em lotes com prefetch de identidades e escrita agrupada;
+- `FACULTY_IMPORT_BATCH_SIZE` controla o lote (padrão 100; limite interno 25–500);
+- dimensões, contextos, escopos e respostas deixam de fazer `SELECT`/`flush` individual por contexto;
+- commits por lote permitem retomar uma carga interrompida sem duplicar respostas;
+- turmas compartilhadas continuam usando um único contexto de respostas;
+- resposta da importação passa a expor métricas operacionais de performance;
+- benchmark sintético com 50 contextos: de ~860 operações SQL para 19 SELECT + 13 INSERT + 1 UPDATE;
+- schema permanece **49**, sem migration nova.
+
+Detalhes: `docs/PART5_FACULTY_IMPORT_BATCH_PERFORMANCE_2026-09-29.md`.
+
+## Patch operacional 29/09/2026 — Parte 4
+
+- gráficos de NPS/comparação por curso preservam o nome completo, sem reticências após duas linhas;
+- altura e margem do gráfico se adaptam ao número real de linhas do rótulo;
+- tooltip e `<title>` do SVG continuam exibindo o nome integral;
+- alteração compartilhada no renderer de barras, sem mudança de cálculo/API/schema.
+
+Detalhes: `docs/PART4_NPS_LONG_COURSE_LABELS_2026-09-29.md`.
+
 ## Patch operacional 29/09/2026 — Parte 3
 
 - Avaliação Docente passa a usar Ano letivo + Semestre na importação, preservando internamente `AAAA-SEM1/2`;
@@ -1405,3 +1440,7 @@ Foram adicionados launchers Windows independentes para `DTNH`, `DCS`, `DADM`, `D
 - O tooltip e o SVG `title` mantem o nome completo do curso.
 - Nenhuma regra de NPS, API ou schema foi alterada.
 - Detalhes: `docs/PART4_NPS_LONG_COURSE_LABELS_2026-09-29.md`.
+
+### Parte 7 — Excel Interativo acadêmico oficial
+
+O Excel Interativo de DTNH/DCS deixa de ser beta. `/api/excel-interativo` gera `Painel_DTNH_Interativo.xlsx` ou `Painel_DCS_Interativo.xlsx`, com PAINEL de cinco gráficos, MATRIZ, parâmetros e bases gerenciais separadas (`NPS`, avaliação docente, resultados acadêmicos, metas, cursos, disciplinas e dimensões). CALC e listas de apoio permanecem ocultas. O Excel tradicional de `/api/excel` continua disponível em paralelo.

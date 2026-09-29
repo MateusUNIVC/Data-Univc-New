@@ -5,6 +5,52 @@ Schema esperado: 49
 Migration ledger: 049_academic_faculty_context_scopes_v0130.sql
 Perfil: production
 
+Patch operacional 2026-09-29 - Parte 7 Excel Interativo academico oficial:
+- /api/excel-interativo deixa de ser beta em DTNH/DCS;
+- download oficial: Painel_DTNH_Interativo.xlsx / Painel_DCS_Interativo.xlsx;
+- workbook reorganizado em PAINEL, analise, bases gerenciais visiveis e motor interno oculto;
+- bases visiveis usam Excel Tables: NPS, avaliacao docente, resultados, metas, cursos, disciplinas, indicadores e dimensoes;
+- PAINEL passa a ter 5 graficos executivos;
+- rotulos longos de cursos recebem quebra controlada no grafico por curso;
+- metodologia vigente de favorabilidade docente (%) preservada;
+- /api/excel tradicional permanece em paralelo;
+- sem nova migration; schema permanece 49;
+- regressao: 192 testes aprovados, 2 ignorados.
+- detalhes em docs/ACADEMIC_INTERACTIVE_EXCEL_OFFICIAL_v0130.md.
+
+Patch operacional 2026-09-29 - Parte 6 NPS/questionarios em lotes:
+- prefetch compartilhado do catalogo de perguntas e vinculos de questionario;
+- SurveyRunCourse, agregados e respostas abertas persistidos em lote;
+- NPS institucional dos docentes usa INSERT RETURNING para criar contextos anonimos em massa;
+- lote configuravel por SURVEY_IMPORT_BATCH_SIZE (padrao 50; limite 10-250);
+- benchmark 50 relatorios: NPS por curso 153 SELECT + 256 INSERT -> 6 SELECT + 9 INSERT;
+- benchmark NPS docentes 152 SELECT + 256 INSERT -> 5 SELECT + 9 INSERT;
+- sem nova migration; schema permanece 49;
+- regressao: 187 testes aprovados, 2 ignorados.
+- detalhes em docs/PART6_SURVEY_NPS_BATCH_PERFORMANCE_2026-09-29.md.
+
+Hotfix operacional 2026-09-29 - Avaliacao Docente · selecao de cursos candidatos:
+- remove a revisao de "curso principal" + lista completa de cursos adicionais da interface;
+- reutiliza candidate_courses ja calculado pelo backend para mostrar somente os cursos possiveis;
+- permite marcar um, dois ou mais candidatos diretamente por disciplina/contexto;
+- primeiro candidato marcado ancora o contexto apenas como detalhe tecnico; demais viram escopos sem duplicar respostas;
+- backend tambem restringe escopos adicionais aos candidatos autorizados pelo preview;
+- sem nova migration; schema permanece 49;
+- regressao: 184 testes aprovados, 2 ignorados.
+- detalhes em docs/PART5_FACULTY_CANDIDATE_MULTISELECT_HOTFIX_2026-09-29.md.
+
+Patch operacional 2026-09-29 - Parte 5 Avaliacao Docente em lotes:
+- importacao docente passa a usar prefetch por lote e escrita agrupada;
+- reduz SELECT/flush por contexto e usa executemany para dimensoes/fatos ausentes;
+- lote configuravel por FACULTY_IMPORT_BATCH_SIZE (padrao 100; limite 25-500);
+- commits por lote permitem retomada idempotente apos interrupcao;
+- turmas compartilhadas continuam sem duplicar respostas;
+- resposta/logs incluem metricas de performance sem payload pessoal;
+- benchmark sintetico 50 contextos: ~860 operacoes SQL antes, 19 SELECT + 13 INSERT + 1 UPDATE depois;
+- sem nova migration; schema permanece 49;
+- regressao: 182 testes aprovados, 2 ignorados.
+- detalhes em docs/PART5_FACULTY_IMPORT_BATCH_PERFORMANCE_2026-09-29.md.
+
 Patch operacional 2026-09-29 - Parte 4 NPS com nomes longos de cursos:
 - graficos comparativos por curso deixam de limitar rotulos a duas linhas;
 - altura das linhas cresce conforme o nome completo, sem truncagem por reticencias;

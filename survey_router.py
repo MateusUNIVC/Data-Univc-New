@@ -893,11 +893,22 @@ def faculty_student_process_import(
             )
         allowed_course_ids = {int(item["course_id"]) for item in repo.course_options()}
         for source_path, course_ids in shared_scopes.items():
-            invalid_ids = {int(value) for value in course_ids} - allowed_course_ids
+            normalized_ids = {int(value) for value in course_ids}
+            invalid_ids = normalized_ids - allowed_course_ids
             if invalid_ids:
                 raise SurveyIntegrationError(
                     f"{source_path}: há curso compartilhado fora da diretoria ou inativo."
                 )
+            # Quando a própria prévia já delimitou candidatos para uma
+            # ambiguidade, cursos adicionais também precisam ficar dentro da
+            # mesma lista. O frontend não oferece cursos da diretoria inteira e
+            # o backend repete essa proteção para impedir payloads arbitrários.
+            if source_path in resolvable:
+                invalid_candidates = normalized_ids - candidate_map.get(source_path, set())
+                if invalid_candidates:
+                    raise SurveyIntegrationError(
+                        f"{source_path}: há curso compartilhado fora dos candidatos detectados para este relatório."
+                    )
 
         allowed_with_resolution = allowed | {
             source_path for source_path in resolvable if source_path in resolutions
