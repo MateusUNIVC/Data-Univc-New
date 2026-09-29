@@ -27,5 +27,11 @@ production environment and passed the smoke checks above.
 Final stripped-package checks:
 - Python compile: OK
 - DPE JavaScript syntax: OK
-- Pytest: 162 passed, 2 skipped (local DEMO database intentionally excluded)
+- Pytest: 163 passed, 2 skipped (inclui regressão Educação Física - Licenciatura)
 - Release checks: OK
+
+Patch Parte 1 (2026-09-29):
+- static/js/app.js: node --check OK
+- static/js/faculty-evaluation.js: node --check OK
+- academic_excel_parser.py: py_compile OK
+- UI diagnostics removidos conforme escopo; regras de backend preservadas.

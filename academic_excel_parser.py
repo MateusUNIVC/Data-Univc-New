@@ -188,7 +188,8 @@ def inspecionar_relatorio(caminho: Path) -> tuple[dict[str, Any], list[str]]:
         ano: int | None = None
         semestre: int | None = None
         warnings: list[str] = []
-        cursos_encontrados: list[str] = []
+        cursos_de_blocos: list[str] = []
+        cursos_com_registros: list[str] = []
         alunos_unicos: set[str] = set()
         disciplinas: set[str] = set()
         turmas: set[tuple[str | None, str | None]] = set()
@@ -203,6 +204,7 @@ def inspecionar_relatorio(caminho: Path) -> tuple[dict[str, Any], list[str]]:
         qtd_declarada: int | None = None
         alunos_bloco = 0
         bloco_inicio = 0
+        curso_registrado_no_bloco = False
 
         def conferir_bloco() -> None:
             nonlocal qtd_declarada, alunos_bloco
@@ -228,6 +230,7 @@ def inspecionar_relatorio(caminho: Path) -> tuple[dict[str, Any], list[str]]:
                 bloco_inicio = row_number
                 curso = disciplina = turma = periodo = None
                 lendo_alunos = False
+                curso_registrado_no_bloco = False
                 continue
 
             if not encontrou_bloco:
@@ -236,7 +239,7 @@ def inspecionar_relatorio(caminho: Path) -> tuple[dict[str, Any], list[str]]:
             if first == "Curso:":
                 curso = limpar_texto(_valor_coluna(row, 2))
                 if curso:
-                    cursos_encontrados.append(curso)
+                    cursos_de_blocos.append(curso)
             elif first == "Disciplina:":
                 disciplina = limpar_texto(_valor_coluna(row, 2))
                 if disciplina:
@@ -260,6 +263,9 @@ def inspecionar_relatorio(caminho: Path) -> tuple[dict[str, Any], list[str]]:
                 matricula = limpar_texto(_valor_coluna(row, 0))
                 nome = limpar_texto(_valor_coluna(row, 2))
                 if matricula and nome:
+                    if curso and not curso_registrado_no_bloco:
+                        cursos_com_registros.append(curso)
+                        curso_registrado_no_bloco = True
                     total_registros += 1
                     alunos_bloco += 1
                     alunos_unicos.add(matricula)
@@ -274,11 +280,16 @@ def inspecionar_relatorio(caminho: Path) -> tuple[dict[str, Any], list[str]]:
         if not total_registros:
             raise ValueError("Nenhum registro de aluno foi encontrado no arquivo.")
 
-        curso_principal = Counter(cursos_encontrados).most_common(1)[0][0] if cursos_encontrados else None
+        curso_principal = Counter(cursos_de_blocos).most_common(1)[0][0] if cursos_de_blocos else None
         metadata = {
             "arquivo_origem": caminho.name,
             "curso": curso_principal,
-            "cursos_encontrados": sorted(set(cursos_encontrados), key=str.casefold),
+            # Compatibilidade com a validação anterior ao parser streaming: somente
+            # cursos de blocos que efetivamente produziram registros entram na
+            # verificação de identidade. Blocos vazios/auxiliares do SEI não podem
+            # bloquear uma importação válida de Bacharelado/Licenciatura.
+            "cursos_encontrados": sorted(set(cursos_com_registros), key=str.casefold),
+            "cursos_de_blocos": sorted(set(cursos_de_blocos), key=str.casefold),
             "ano": ano,
             "semestre": semestre,
             "aba": ws.title,

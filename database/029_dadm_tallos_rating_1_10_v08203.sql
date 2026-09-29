@@ -3,22 +3,21 @@
 -- Exported S/A means no evaluation; numeric evaluations observed are 1..10.
 -- Until TALLOS documents a real score zero, API level=0 is treated as absence.
 
+ALTER TABLE public.dadm_tallos_attendances
+    DROP CONSTRAINT IF EXISTS ck_dadm_tallos_rating;
 
--- ============================================================
--- 1. Corrigir zeros ainda permitidos pela migration 028
--- ============================================================
+ALTER TABLE public.dadm_tallos_attendances
+    ADD CONSTRAINT ck_dadm_tallos_rating
+    CHECK (rating IS NULL OR rating BETWEEN 1 AND 10);
 
+-- Clear historical zeros introduced by the prior 0..10 assumption.
 UPDATE public.dadm_tallos_attendances
 SET rating = NULL,
     updated_at = now()
 WHERE rating = 0;
 
-
--- ============================================================
--- 2. Reconciliar valores armazenados com o payload sanitizado
---    Apenas 1..10 e considerado avaliacao valida.
--- ============================================================
-
+-- Reconcile every stored row from the sanitized source payload. Only 1..10 is
+-- considered a valid evaluation. 0, null, S/A and non-numeric values become NULL.
 WITH parsed AS (
     SELECT
         id,
@@ -38,27 +37,8 @@ FROM parsed AS p
 WHERE a.id = p.id
   AND a.rating IS DISTINCT FROM p.parsed_rating;
 
-
--- ============================================================
--- 3. Agora que os dados foram saneados, trocar a constraint
--- ============================================================
-
-ALTER TABLE public.dadm_tallos_attendances
-    DROP CONSTRAINT IF EXISTS ck_dadm_tallos_rating;
-
-ALTER TABLE public.dadm_tallos_attendances
-    ADD CONSTRAINT ck_dadm_tallos_rating
-    CHECK (rating IS NULL OR rating BETWEEN 1 AND 10);
-
-
--- ============================================================
--- 4. Registrar schema version
--- ============================================================
-
-INSERT INTO public.data_univc_schema_version
-    (id, version, migration_name, applied_at)
-VALUES
-    (1, 29, '029_dadm_tallos_rating_1_10_v08203.sql', now())
+INSERT INTO public.data_univc_schema_version (id, version, migration_name, applied_at)
+VALUES (1, 29, '029_dadm_tallos_rating_1_10_v08203.sql', now())
 ON CONFLICT (id) DO UPDATE
 SET version = EXCLUDED.version,
     migration_name = EXCLUDED.migration_name,

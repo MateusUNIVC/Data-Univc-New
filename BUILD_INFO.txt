@@ -15,6 +15,13 @@ Hardening obrigatório:
 
 Esta promoção não introduz novas regras de negócio sobre a v0.13.0-dev.15 reconciliada.
 
+Patch operacional 2026-09-29 - Parte 1 UX + Educação Física Licenciatura:
+- remove avisos não acionáveis de Resultados Acadêmicos e o painel diagnóstico da Avaliação Docente;
+- mantém cálculos, auditoria técnica e classificação acadêmica no backend;
+- corrige regressão do parser streaming que podia considerar bloco vazio/auxiliar de Educação Física na validação de habilitação;
+- sem alteração de schema e sem migration adicional;
+- detalhes em docs/PART1_UX_CLEANUP_EF_LIC_2026-09-29.md.
+
 Data UNIVC v0.13.0-dev.15 - Academic Base Reconciliation
 Schema: 48 (sem nova migration; preserva 048_dpe_teacher_profiles_v0130.sql)
 

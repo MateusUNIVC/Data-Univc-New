@@ -15,7 +15,6 @@
     disciplines: [],
     semesterComparison: [],
     importHistory: [],
-    identityQuality: null,
     methodology: null,
     teacherSearch: '',
     disciplineSearch: '',
@@ -192,7 +191,6 @@
     moduleState.disciplines = [];
     moduleState.semesterComparison = [];
     moduleState.importHistory = [];
-    moduleState.identityQuality = null;
     moduleState.methodology = null;
     moduleState.teacherSearch = '';
     moduleState.disciplineSearch = '';
@@ -323,42 +321,6 @@
     return `${n > 0 ? '+' : ''}${formatNumber(n, 1)} pp`;
   }
 
-  function readinessClass(value) {
-    if (value === 'ready') return 'ok';
-    if (value === 'ready_no_goal') return 'warning';
-    if (String(value || '').startsWith('blocked')) return 'error';
-    return 'neutral';
-  }
-
-  function renderOperationalStatus(summary) {
-    const target = byId('facultyOperationalStatus');
-    if (!target) return;
-    const op = moduleState.operational || {};
-    const quality = op.quality || {};
-    const latest = op.latest_import || {};
-    const period = op.current_period ? formatMonth(op.current_period, true) : 'sem período';
-    const lastImport = latest.last_activity_at || latest.created_at;
-    const importText = lastImport ? formatImportDate(lastImport) : 'nenhuma importação';
-    const userText = latest.last_imported_by ? ` · ${latest.last_imported_by}` : '';
-    const action = op.readiness === 'ready_no_goal'
-      ? '<button class="button secondary compact" id="facultyOperationalAction" type="button" data-action="goals">Configurar meta</button>'
-      : op.readiness === 'blocked_identity'
-        ? '<button class="button secondary compact" id="facultyOperationalAction" type="button" data-action="imports">Revisar importações</button>'
-        : op.readiness === 'blocked_scale'
-          ? '<button class="button secondary compact" id="facultyOperationalAction" type="button" data-action="questions">Revisar perguntas</button>'
-          : op.readiness === 'no_data'
-            ? '<button class="button secondary compact" id="facultyOperationalAction" type="button" data-action="import">Importar relatório</button>'
-            : '';
-    target.innerHTML = `<div class="faculty-readiness ${readinessClass(op.readiness)}"><div class="faculty-readiness-main"><span>Prontidão do indicador · ${escapeHtml(period)}</span><strong>${escapeHtml(op.readiness_message || 'Sem diagnóstico operacional.')}</strong>${action}</div><div class="faculty-operational-facts"><div><span>Participações</span><strong>${number(summary.respondent_participations || 0)}</strong></div><div><span>Docentes</span><strong>${number(summary.teachers || 0)}</strong></div><div><span>Disciplinas</span><strong>${number(summary.disciplines || 0)}</strong></div><div><span>Contextos</span><strong>${number(summary.contexts || 0)}</strong></div><div><span>Qualidade</span><strong>${number(quality.blocking_issue_count || 0)} bloqueio(s) · ${number(quality.warning_count || 0)} aviso(s)</strong></div><div><span>Última importação</span><strong>${escapeHtml(importText)}${escapeHtml(userText)}</strong></div></div></div>`;
-    byId('facultyOperationalAction')?.addEventListener('click', event => {
-      const actionName = event.currentTarget.dataset.action;
-      if (actionName === 'goals') navigate('metas');
-      else if (actionName === 'imports') setView('imports');
-      else if (actionName === 'questions') setView('questions');
-      else if (actionName === 'import') triggerImport();
-    });
-  }
-
   function renderOverview() {
     const response = moduleState.overview || {};
     const summary = response.summary || {};
@@ -377,7 +339,6 @@
         summaryCard('Favorabilidade docente', fav.mapping_complete === false ? 'Revisar escala' : pct(fav.favorable_percentage), 'Perguntas do docente · indicador derivado', true),
         summaryCard('Variação semestral', signedPp(op.delta_percentage_points), previousLabel),
         summaryCard('Meta vigente', goalValue, goalSub),
-        summaryCard('Cobertura classificada', pct(fav.classified_coverage_percentage), `${number(fav.classified_total || 0)} classificadas · ${number(fav.unclassified_total || 0)} fora do denominador`),
       ].join('');
     }
 
@@ -389,7 +350,6 @@
         ? `<strong>Há ${number(unmapped)} resposta(s) em categoria ainda não mapeada.</strong> A favorabilidade sintética foi suspensa neste recorte para evitar um percentual incompleto. A distribuição original continua disponível em Perguntas.`
         : '';
     }
-    renderOperationalStatus(summary);
     renderComposition(fav);
     renderSemesterTrend();
     renderQuestionHighlights();
@@ -504,7 +464,7 @@
     const score = fav.mapping_complete === false ? 'Revisar escala' : pct(fav.favorable_percentage);
     return `<article class="faculty-question-card ${contextual ? 'contextual' : ''}">
       <div class="faculty-question-head"><div><span class="faculty-question-number">Pergunta ${number(item.position || 0)} · <span class="faculty-chip ${contextual ? 'contextual' : ''}">${contextual ? 'Contextual' : 'Docente'}</span></span><h4>${escapeHtml(item.question)}</h4></div><div class="faculty-question-score"><strong>${escapeHtml(score)}</strong><small>${contextual ? 'favorabilidade da pergunta · fora da síntese docente' : 'favorabilidade'}</small></div></div>
-      ${compact ? '' : `<div class="faculty-distribution">${distributionRows(item)}</div><div class="faculty-question-foot"><span>${number(item.distribution?.total || 0)} seleções</span><span>·</span><span>${number(item.contexts || 0)} contexto(s)</span><span>·</span><span>cobertura classificada ${pct(fav.classified_coverage_percentage)}</span></div>`}
+      ${compact ? '' : `<div class="faculty-distribution">${distributionRows(item)}</div><div class="faculty-question-foot"><span>${number(item.distribution?.total || 0)} seleções</span><span>·</span><span>${number(item.contexts || 0)} contexto(s)</span></div>`}
     </article>`;
   }
 
@@ -547,28 +507,6 @@
   }
 
   function renderImports() {
-    const quality = moduleState.identityQuality || {};
-    const qsummary = quality.summary || {};
-    const qtarget = byId('facultyIdentityQuality');
-    if (qtarget) {
-      const blockers = Number(quality.blocking_issue_count || 0);
-      const warnings = Number(quality.warning_count || 0);
-      qtarget.innerHTML = [
-        `<div class="faculty-quality-card ${blockers ? 'error' : 'ok'}"><strong>${number(blockers)}</strong><span>${blockers ? 'bloqueio(s) de identidade encontrados' : 'Nenhum bloqueio estrutural'}</span></div>`,
-        `<div class="faculty-quality-card ${warnings ? 'warning' : 'ok'}"><strong>${number(warnings)}</strong><span>${warnings ? 'aviso(s) de rastreabilidade/qualidade' : 'Nenhum aviso de qualidade'}</span></div>`,
-        `<div class="faculty-quality-card"><strong>${number(qsummary.contexts || 0)}</strong><span>contextos persistidos · ${number(qsummary.teachers || 0)} docente(s)</span></div>`,
-      ].join('');
-    }
-    const qualityDetails = byId('facultyQualityDetails');
-    if (qualityDetails) {
-      const issues = [
-        ...(quality.blockers || []).map(item => ({ ...item, tone: 'error', label: 'Bloqueio' })),
-        ...(quality.warnings || []).map(item => ({ ...item, tone: 'warning', label: 'Aviso' })),
-      ];
-      qualityDetails.innerHTML = issues.length
-        ? issues.map(item => `<div class="faculty-quality-detail ${escapeHtml(item.tone)}"><div><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.message || item.code || 'Pendência')}</strong></div><b>${number(item.count || 0)}</b></div>`).join('')
-        : '<div class="faculty-quality-detail ok"><div><span>Integridade</span><strong>Nenhuma pendência estrutural encontrada na malha acadêmica importada.</strong></div></div>';
-    }
     const target = byId('facultyImportHistory');
     if (!target) return;
     const rows = moduleState.importHistory || [];
@@ -628,13 +566,9 @@
         moduleState.methodology = data.methodology || moduleState.methodology;
         renderQuestions();
       } else if (moduleState.view === 'imports') {
-        const [history, quality] = await Promise.all([
-          api(`${API_BASE}/imports`, { blocking: false }),
-          api(`${API_BASE}/identity/quality`, { blocking: false }),
-        ]);
+        const history = await api(`${API_BASE}/imports`, { blocking: false });
         if (serial !== moduleState.loadSerial) return;
         moduleState.importHistory = history.items || [];
-        moduleState.identityQuality = quality;
         renderImports();
       }
     } catch (error) {

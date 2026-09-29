@@ -1900,18 +1900,3 @@ th.numeric, td.numeric {
   .results-active-filter { width: 100%; border-radius: 8px; flex-wrap: wrap; }
 }
 
-/* v0.11.6.7 — pendências sem classificação ficam como qualidade do dado, não KPI principal. */
-.result-summary-quality {
-  grid-column: 1 / -1;
-  display: flex;
-  gap: 8px 14px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 10px 12px;
-  border: 1px solid rgba(182, 122, 29, .24);
-  border-radius: 10px;
-  background: rgba(182, 122, 29, .07);
-  font-size: .82rem;
-  color: var(--text-muted);
-}
-.result-summary-quality strong { color: #8a5b14; }

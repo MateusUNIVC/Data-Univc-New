@@ -296,7 +296,6 @@
 
         <div class="faculty-view active" data-faculty-panel="overview">
           <div id="facultyOverviewCards" class="faculty-metric-grid"></div>
-          <div id="facultyOperationalStatus" class="faculty-operational-status"></div>
           <div id="facultyMethodWarning" class="faculty-method-warning hidden"></div>
           <div class="faculty-grid two">
             <article class="panel faculty-panel">
@@ -330,9 +329,7 @@
         </div>
 
         <div class="faculty-view" data-faculty-panel="imports">
-          <div class="faculty-view-toolbar"><div><span class="eyebrow">Rastreabilidade</span><h3>Importações e qualidade da malha</h3><p>Consulte os lotes já persistidos e os alertas de identidade antes de usar o indicador.</p></div><div class="section-actions"><button class="button secondary" id="facultyFileImportButtonSecondary" type="button" data-write-action>Usar arquivo baixado</button><button class="button primary" id="facultyImportButtonSecondary" type="button" data-write-action>Buscar no SEI</button></div></div>
-          <div id="facultyIdentityQuality" class="faculty-quality-grid"></div>
-          <div id="facultyQualityDetails" class="faculty-quality-details"></div>
+          <div class="faculty-view-toolbar"><div><span class="eyebrow">Rastreabilidade</span><h3>Importações</h3><p>Consulte os lotes já persistidos e o resultado de cada processamento.</p></div><div class="section-actions"><button class="button secondary" id="facultyFileImportButtonSecondary" type="button" data-write-action>Usar arquivo baixado</button><button class="button primary" id="facultyImportButtonSecondary" type="button" data-write-action>Buscar no SEI</button></div></div>
           <article class="panel faculty-panel">
             <div class="panel-heading"><div><span class="eyebrow">Histórico</span><h3>Lotes importados</h3></div></div>
             <div id="facultyImportHistory" class="table-wrap"></div>
@@ -347,7 +344,7 @@
           <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Taxa de aprovação — evolução</h3></div><span class="chart-unit">%</span></div><div id="chartResultsApprovalTrend" class="chart-canvas"></div></article>
           <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Alunos distintos — evolução</h3></div><span class="chart-unit">pessoas no recorte</span></div><div id="chartResultsApprovedTrend" class="chart-canvas"></div></article>
         </div>
-        <div class="data-source-note"><strong>Alunos e resultados são medidas diferentes:</strong> “alunos distintos” conta matrículas únicas no recorte. Na leitura gerencial, qualquer reprovação coloca o aluno em “Com reprovação”; sem reprovação e com ao menos um resultado aprovado, ele fica em “Aprovados”, mesmo que outra disciplina ainda esteja sem situação final. Casos formados somente por resultados sem classificação aparecem apenas como alerta de qualidade. A taxa de aprovação continua sendo calculada sobre resultados disciplinares finalizados. Reprovação por nota e por falta contam alunos distintos e podem se sobrepor.</div>
+        <div class="data-source-note"><strong>Alunos e resultados são medidas diferentes:</strong> “alunos distintos” conta matrículas únicas no recorte. Na leitura gerencial, qualquer reprovação coloca o aluno em “Com reprovação”; sem reprovação e com ao menos um resultado aprovado, ele fica em “Aprovados”. A taxa de aprovação continua sendo calculada somente sobre resultados disciplinares finalizados. Reprovação por nota e por falta contam alunos distintos e podem se sobrepor.</div>
         <div class="results-view-tabs segmented-control" id="resultsViewTabs"><button class="active" data-results-view="resumo">Resumo por disciplina</button><button data-results-view="detalhes">Registros individuais</button></div>
         <div class="academic-result-summary-cards" id="resultsSummaryCards"></div>
         <div class="results-active-filter hidden" id="resultsActiveFilter"></div>

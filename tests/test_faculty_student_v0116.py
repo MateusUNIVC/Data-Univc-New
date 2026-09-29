@@ -139,13 +139,19 @@ class FacultyStudentV0116Tests(unittest.TestCase):
         html = (root / "templates" / "index.html").read_text(encoding="utf-8")
         js = (root / "static" / "js" / "faculty-evaluation.js").read_text(encoding="utf-8")
         css = (root / "static" / "css" / "faculty-evaluation.css").read_text(encoding="utf-8")
-        self.assertIn('id="facultyOperationalStatus"', html)
+        self.assertNotIn('id="facultyOperationalStatus"', html)
         self.assertIn('id="facultyTrendContext"', html)
+        self.assertIn("<h3>Importações</h3>", html)
+        self.assertNotIn("Importações e qualidade da malha", html)
+        self.assertNotIn('id="facultyIdentityQuality"', html)
+        self.assertNotIn('id="facultyQualityDetails"', html)
         self.assertIn("/analytics/operational", js)
+        self.assertNotIn("/identity/quality", js)
         self.assertIn("periodInitialized", js)
         self.assertIn("delta_percentage_points", js)
-        self.assertIn("last_imported_by", js)
-        self.assertIn(".faculty-readiness", css)
+        self.assertNotIn("Cobertura classificada", js)
+        self.assertNotIn("Prontidão do indicador", js)
+        self.assertNotIn(".faculty-readiness", css)
 
 
 if __name__ == "__main__":

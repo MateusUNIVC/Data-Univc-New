@@ -68,7 +68,8 @@ class AcademicResultsV01167Tests(unittest.TestCase):
         self.assertIn("{label:'Aprovados'", js)
         self.assertIn("{label:'Com reprovação'", js)
         self.assertNotIn("{label:'Sem fechamento'", js)
-        self.assertIn("alerta de qualidade", html)
+        self.assertNotIn("alerta de qualidade", html)
+        self.assertNotIn("aluno(s) ainda sem resultado classificável", js)
 
 
 if __name__ == "__main__":

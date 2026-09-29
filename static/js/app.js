@@ -1242,7 +1242,7 @@ function chartTooltipContent(point, opts = {}) {
   if(opts.metric==='avaliacao_docente'&&point.respondentes!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Participações</span><b>${formatNumber(point.respondentes,0)}</b></div>`);if(point.classificados!==undefined)lines.push(`<div class="chart-tip-row"><span>Respostas classificadas</span><b>${formatNumber(point.classificados,0)}</b></div>`);if(point.favoraveis!==undefined)lines.push(`<div class="chart-tip-row"><span>Favoráveis</span><b>${formatNumber(point.favoraveis,0)}</b></div>`);if(point.nao_mapeados)lines.push(`<div class="chart-tip-row"><span>Categorias não mapeadas</span><b>${formatNumber(point.nao_mapeados,0)}</b></div>`);}
   if(opts.metric==='aprovacao'&&point.aprovados!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Aprovados</span><b>${formatNumber(point.aprovados,0)}</b></div>`);if(point.finalizados!==undefined)lines.push(`<div class="chart-tip-row"><span>Finalizados</span><b>${formatNumber(point.finalizados,0)}</b></div>`);if(point.reprovados!==undefined)lines.push(`<div class="chart-tip-row"><span>Reprovados</span><b>${formatNumber(point.reprovados,0)}</b></div>`);}
   if(opts.metric==='alunos_aprovados'&&point.alunos_aprovados!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Alunos aprovados</span><b>${formatNumber(point.alunos_aprovados,0)}</b></div>`);if(point.alunos_finalizados!==undefined)lines.push(`<div class="chart-tip-row"><span>Alunos com resultado final</span><b>${formatNumber(point.alunos_finalizados,0)}</b></div>`);if(point.aprovados!==undefined)lines.push(`<div class="chart-tip-row"><span>Aprovações disciplinares</span><b>${formatNumber(point.aprovados,0)}</b></div>`);}
-  if(opts.metric==='alunos_distintos'&&point.alunos_distintos!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Alunos distintos</span><b>${formatNumber(point.alunos_distintos,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Aprovados</span><b>${formatNumber(point.alunos_aprovados??point.alunos_aprovados_integralmente??0,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Com reprovação</span><b>${formatNumber(point.alunos_com_reprovacao||0,0)}</b></div>`);if(point.alunos_sem_classificacao)lines.push(`<div class="chart-tip-row"><span>Sem resultado classificável</span><b>${formatNumber(point.alunos_sem_classificacao,0)}</b></div>`);}
+  if(opts.metric==='alunos_distintos'&&point.alunos_distintos!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Alunos distintos</span><b>${formatNumber(point.alunos_distintos,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Aprovados</span><b>${formatNumber(point.alunos_aprovados??point.alunos_aprovados_integralmente??0,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Com reprovação</span><b>${formatNumber(point.alunos_com_reprovacao||0,0)}</b></div>`);}
   if(opts.metric==='matriculas'&&point.variacao!==null&&point.variacao!==undefined){lines.push(`<div class="chart-tip-row"><span>Variação vs. mês anterior</span><b>${point.variacao>=0?'+':''}${formatNumber(point.variacao,1)}%</b></div>`);if(point.valor_anterior!==null&&point.valor_anterior!==undefined)lines.push(`<div class="chart-tip-row"><span>Mês anterior</span><b>${formatNumber(point.valor_anterior,0)}</b></div>`);}
   if(opts.metric==='frequencia'&&point.presencas_previstas!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Presenças previstas</span><b>${formatNumber(point.presencas_previstas,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Presenças registradas</span><b>${formatNumber(point.presencas_registradas,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Disciplinas lançadas</span><b>${formatNumber(point.disciplinas,0)}</b></div>`);}
   if(point.alunos_inicio!==undefined) lines.push(`<div class="chart-tip-row"><span>Alunos no início</span><b>${formatNumber(point.alunos_inicio,0)}</b></div>`);
@@ -1663,7 +1663,7 @@ const RESULT_OUTCOME_LABELS={
   '':'Todos os registros',
   aluno_aprovado:'Alunos aprovados',
   aluno_reprovado:'Alunos com reprovação',
-  aluno_pendente:'Alunos sem resultado classificável',
+  aluno_pendente:'Sem situação final',
   nota:'Reprovação por nota',
   falta:'Reprovação por falta',
   outro:'Outras reprovações',
@@ -1724,15 +1724,13 @@ function renderResultSummaryCards(items = visibleResultSummary()) {
     {label:'Taxa de aprovação',value:rate==null?'—':`${formatNumber(rate,1)}%`,sub:`${formatNumber(finalized,0)} resultados disciplinares finalizados`,tone:'success'},
     {label:'Média das notas',value:avg==null?'—':formatNumber(avg,2),sub:`${formatNumber(gradeCount,0)} nota(s) disponível(is)`,tone:'info'},
   ];
-  const qualityPending=Number(students.alunos_sem_classificacao||0);
-  const qualityNote=qualityPending?`<div class="result-summary-quality"><strong>⚠ ${formatNumber(qualityPending,0)} aluno(s) ainda sem resultado classificável.</strong><span>Eles possuem apenas registros sem situação final e não são forçados como aprovados ou reprovados.</span></div>`:'';
   target.innerHTML=cards.map(card=>{
     const clickable=Object.prototype.hasOwnProperty.call(card,'outcome');
     const selected=clickable && active===card.outcome && state.resultView==='detalhes';
     const tag=clickable?'button':'article';
     const attrs=clickable?` type="button" data-result-outcome="${escapeHtml(card.outcome)}" aria-pressed="${selected?'true':'false'}"`:'';
     return `<${tag} class="result-summary-card ${card.tone}${clickable?' actionable':''}${selected?' active-filter':''}"${attrs}><span>${escapeHtml(card.label)}</span><strong>${escapeHtml(card.value)}</strong><small>${escapeHtml(card.sub)}</small>${clickable?'<em>Ver registros</em>':''}</${tag}>`;
-  }).join('')+qualityNote;
+  }).join('');
   bindResultSummaryCardActions(target);
 }
 

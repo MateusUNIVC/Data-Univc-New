@@ -102,6 +102,85 @@ class AcademicResultsV01166Tests(unittest.TestCase):
             self.assertEqual(db.scalar(select(func.count(AcademicResult.id))), 2)
             db.close(); engine.dispose()
 
+
+    @staticmethod
+    def _make_educacao_fisica_lic_report_with_empty_auxiliary_block(path: Path) -> None:
+        wb = Workbook()
+        ws = wb.active
+        ws["A1"] = "Ano/Semestre:"
+        ws["C1"] = "2026/1"
+
+        # Bloco auxiliar/vazio que alguns relatórios do SEI podem carregar com
+        # o nome genérico da área. Ele não contém qualquer registro de aluno.
+        ws["A3"] = "Unidade Ensino:"
+        ws["A4"] = "Curso:"
+        ws["C4"] = "Educação Física"
+        ws["A5"] = "Disciplina:"
+        ws["C5"] = "Bloco auxiliar"
+        ws["A6"] = "Turma:"
+        ws["C6"] = "AUX"
+        ws["A7"] = "Matrícula"
+        ws["C7"] = "Nome"
+        ws["A8"] = "Qtd de alunos:"
+        ws["C8"] = 0
+
+        for start, discipline, registration, student in (
+            (10, "Didática", "LIC001", "Aluno Lic Um"),
+            (19, "Metodologia do Ensino", "LIC002", "Aluno Lic Dois"),
+        ):
+            ws.cell(start, 1, "Unidade Ensino:")
+            ws.cell(start + 1, 1, "Curso:")
+            ws.cell(start + 1, 3, "Educação Física (Lic. Presencial)")
+            ws.cell(start + 2, 1, "Disciplina:")
+            ws.cell(start + 2, 3, discipline)
+            ws.cell(start + 3, 1, "Turma:")
+            ws.cell(start + 3, 3, "EFL1")
+            ws.cell(start + 3, 14, "1º")
+            ws.cell(start + 4, 1, "Matrícula")
+            ws.cell(start + 4, 3, "Nome")
+            ws.cell(start + 4, 11, "Média")
+            ws.cell(start + 4, 18, "Situação")
+            ws.cell(start + 5, 1, registration)
+            ws.cell(start + 5, 3, student)
+            ws.cell(start + 5, 11, 8.0)
+            ws.cell(start + 5, 18, "Aprovado")
+            ws.cell(start + 6, 1, "Qtd de alunos:")
+            ws.cell(start + 6, 3, 1)
+
+        wb.save(path)
+        wb.close()
+
+    def test_licenciatura_identity_validation_ignores_empty_auxiliary_course_block(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "educacao_fisica_licenciatura.xlsx"
+            self._make_educacao_fisica_lic_report_with_empty_auxiliary_block(path)
+            metadata, warnings = inspecionar_relatorio(path)
+            self.assertEqual(metadata["curso"], "Educação Física (Lic. Presencial)")
+            self.assertEqual(metadata["cursos_encontrados"], ["Educação Física (Lic. Presencial)"])
+            self.assertIn("Educação Física", metadata["cursos_de_blocos"])
+            self.assertEqual(metadata["total_registros_aluno_disciplina"], 2)
+            self.assertEqual(warnings, [])
+
+            engine = create_engine("sqlite:///:memory:")
+            Base.metadata.create_all(engine)
+            Session = sessionmaker(bind=engine, expire_on_commit=False)
+            db = Session()
+            directorate = Directorate(code="DCS", name="DCS", active=True)
+            db.add(directorate); db.flush(); db.commit()
+            user = AuthorizationContext(
+                user_id=str(uuid.uuid4()), email="eflic@univc.edu.br", full_name="EF Lic Test",
+                role="editor", directorate_id=directorate.id, directorate_code="DCS", directorate_name="DCS",
+            )
+            try:
+                result = DatabaseRepository(db, user).import_sei_report_file(
+                    path, expected_course="Educação Física - Licenciatura"
+                )
+                self.assertEqual(result["registros_lidos"], 2)
+                self.assertEqual(result["inseridos"], 2)
+                self.assertEqual(result["metadados"]["curso"], "Educação Física - Licenciatura")
+            finally:
+                db.close(); engine.dispose()
+
     def test_sei_course_import_uses_inline_progress_without_blocking_overlay(self):
         root = Path(__file__).resolve().parents[1]
         js = (root / "static" / "js" / "app.js").read_text(encoding="utf-8")

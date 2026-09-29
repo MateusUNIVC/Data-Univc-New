@@ -1,11 +1,16 @@
 {
-  "artifact_profile": "production-vps-v0130-base-v01167",
-  "created_at_utc": "2026-09-29T14:26:05.749231+00:00",
+  "artifact_profile": "production-vps-v0130-part1-ux-eflic",
+  "created_at_utc": "2026-09-29T17:31:16.242855+00:00",
   "app_version": "0.13.0",
-  "release_name": "Data UNIVC 0.13.0 - Production",
+  "release_name": "Data UNIVC 0.13.0 - Production - Part 1 UX + EF Licenciatura",
   "academic_base_version": "0.11.6.7",
   "schema_expected": 48,
   "schema_migration": "048_dpe_teacher_profiles_v0130.sql",
+  "patch_scope": [
+    "academic-results-non-actionable-warning-removal",
+    "faculty-evaluation-diagnostic-ui-cleanup",
+    "educacao-fisica-licenciatura-streaming-validation-compatibility"
+  ],
   "production_hardening": {
     "environment": "production",
     "auth_disabled": false,
@@ -15,16 +20,16 @@
     "login_rate_limit_enabled": true
   },
   "validation": {
-    "prepackage_tests": "164 passed",
-    "final_stripped_package_tests": "162 passed, 2 skipped (local demo db excluded)",
-    "health_ready": 200,
-    "protected_dpe_api_without_session": 401,
-    "api_docs": 404
+    "full_test_suite": "163 passed, 2 skipped",
+    "app_js_node_check": "ok",
+    "faculty_evaluation_js_node_check": "ok",
+    "python_compile": "ok",
+    "release_checks": "ok"
   },
   "local_demo_database_included": false,
   "local_windows_launchers_included": false,
   "docker_compose_app_only_included": true,
-  "file_count": 543,
+  "file_count": 545,
   "files": [
     {
       "path": ".dockerignore",
@@ -57,39 +62,14 @@
       "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad"
     },
     {
+      "path": ".pytest_cache/v/cache/lastfailed",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
       "path": ".pytest_cache/v/cache/nodeids",
-      "bytes": 17601,
-      "sha256": "0a653e697db0f2175ec79112f45945c228de332a9771267b9cb703829a3e46fa"
-    },
-    {
-      "path": "BUILD_INFO.txt",
-      "bytes": 10722,
-      "sha256": "19277b530b2be906c75543f6a78b3b1b99fc944133f7c38b3281003f75b12e11"
-    },
-    {
-      "path": "Dockerfile",
-      "bytes": 610,
-      "sha256": "844053d1b53bf48184432c93992f6da795e14d91a3a62cb3e29ff089f489aa99"
-    },
-    {
-      "path": "PATCH_V01251_INSTRUCTIONS.txt",
-      "bytes": 886,
-      "sha256": "b01570ec019b8f8ce0034c7c3f77b45f02addbfa39d01b1449f8fb54f19a9b19"
-    },
-    {
-      "path": "PATCH_V0125_INSTRUCTIONS.txt",
-      "bytes": 2642,
-      "sha256": "ad48a8146268c5ffc1362f29e88b55e6bdc887592f38c1d10f254388b2aae37e"
-    },
-    {
-      "path": "PRODUCTION_VALIDATION.txt",
-      "bytes": 929,
-      "sha256": "0f5fddb32baf2a3b38e7ce1634fb35f2714600987c521756e877509e7f1e4975"
-    },
-    {
-      "path": "README.md",
-      "bytes": 100160,
-      "sha256": "c71a598f8821825f4a7855335e605809a99d8597903c5dc1504ff12fd97b57a6"
+      "bytes": 17748,
+      "sha256": "fb035ce688c833cf3937fae46ffe4c6a0f926c8a6552629937f163e279370c4d"
     },
     {
       "path": "__pycache__/academic_analytics.cpython-313.pyc",
@@ -108,8 +88,8 @@
     },
     {
       "path": "__pycache__/academic_excel_parser.cpython-313.pyc",
-      "bytes": 25585,
-      "sha256": "ef42c91d24f56ce1ba73fc4d4d209b124b349737d413795349b9376fc70236b6"
+      "bytes": 25862,
+      "sha256": "922bfd9eb629694a0b4cd6b10022f378cbc31692759c0a53cb0de503339cddbc"
     },
     {
       "path": "__pycache__/academic_excel_v2_builder.cpython-313.pyc",
@@ -578,8 +558,8 @@
     },
     {
       "path": "academic_excel_parser.py",
-      "bytes": 20706,
-      "sha256": "b29dcf8128b718e206f194429ffd689e6cd5f12a45452d59357b2dfb3ae39f3c"
+      "bytes": 21426,
+      "sha256": "992a9fc155077504efa0890be4ce94846ac837d545136b6d28b199eb8552a5cb"
     },
     {
       "path": "academic_excel_v2_builder.py",
@@ -757,6 +737,11 @@
       "sha256": "28ccf0e9087f947648923910a62e1c82ce200aec697178ee56869df6af88b1b3"
     },
     {
+      "path": "BUILD_INFO.txt",
+      "bytes": 11239,
+      "sha256": "b3309031e30d4549144f1f7f64d955a2f59e6b8799c796d44d5e344fa7e7abd9"
+    },
+    {
       "path": "config/management_indicators.json",
       "bytes": 45831,
       "sha256": "178823cd02e8f92b13e3bd2b636b3663be8c31a7189406978100aa9088c28deb"
@@ -835,6 +820,11 @@
       "path": "dadm_v2_router.py",
       "bytes": 14093,
       "sha256": "a97c2c01c1c3d836ca4689945d47e7a766467c8747a87bb3a84d4a77a62e40c2"
+    },
+    {
+      "path": "database.py",
+      "bytes": 920,
+      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
     },
     {
       "path": "database/001_init.sql",
@@ -1062,11 +1052,6 @@
       "sha256": "4d87ec68f7f489452ef83e40f8d8f988f53cdc3d220ccdcbdd92621105846514"
     },
     {
-      "path": "database.py",
-      "bytes": 920,
-      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
-    },
-    {
       "path": "demo_data.py",
       "bytes": 10931,
       "sha256": "6d69d292ea3f064ed3db9481a3785cd4a4682ca6329dc27b415f422e5f47b57b"
@@ -1130,6 +1115,11 @@
       "path": "docker-compose.production.yml",
       "bytes": 710,
       "sha256": "8a493031da8e517a5fdf4f4321b37cc0fb548d7a227512c3d0e00ff3836e19cc"
+    },
+    {
+      "path": "Dockerfile",
+      "bytes": 610,
+      "sha256": "844053d1b53bf48184432c93992f6da795e14d91a3a62cb3e29ff089f489aa99"
     },
     {
       "path": "docs/ACADEMIC_EXCEL_V2_v08280.md",
@@ -1562,6 +1552,11 @@
       "sha256": "50698505419f289eef86feef93c25653df7fec628f680e36abc28ec8a2c5e02d"
     },
     {
+      "path": "docs/PART1_UX_CLEANUP_EF_LIC_2026-09-29.md",
+      "bytes": 2791,
+      "sha256": "43160902a4e6e64095b20868609ecc2a76a5a00638a05a176e1f3c8884be30e6"
+    },
+    {
       "path": "docs/PERFORMANCE_v08170.md",
       "bytes": 2870,
       "sha256": "2048940ee8e711261f41456291eae36472dba65ccee3bcfdca975c977f302992"
@@ -1730,6 +1725,26 @@
       "path": "observability.py",
       "bytes": 1766,
       "sha256": "c0839ab6ce67844af29e75b549d8330f0406b4bdf8d62a1f02cb5bd3751e8bb3"
+    },
+    {
+      "path": "PATCH_V01251_INSTRUCTIONS.txt",
+      "bytes": 886,
+      "sha256": "b01570ec019b8f8ce0034c7c3f77b45f02addbfa39d01b1449f8fb54f19a9b19"
+    },
+    {
+      "path": "PATCH_V0125_INSTRUCTIONS.txt",
+      "bytes": 2642,
+      "sha256": "ad48a8146268c5ffc1362f29e88b55e6bdc887592f38c1d10f254388b2aae37e"
+    },
+    {
+      "path": "PRODUCTION_VALIDATION.txt",
+      "bytes": 1171,
+      "sha256": "ff0c99880a09f81449ad235e5ef7e058e7f6f4c169eac89a9916f833ac7ddd79"
+    },
+    {
+      "path": "README.md",
+      "bytes": 100160,
+      "sha256": "c71a598f8821825f4a7855335e605809a99d8597903c5dc1504ff12fd97b57a6"
     },
     {
       "path": "release_info.py",
@@ -1923,8 +1938,8 @@
     },
     {
       "path": "static/css/app.css",
-      "bytes": 73494,
-      "sha256": "b0b8e476364ec23ae11f1ad0842cafc2a8be44d926c1d94b568454cb5f6270e1"
+      "bytes": 73036,
+      "sha256": "46fb2eb9c178e8b704e88ad4bcd73f301b1f5c86fcdb33dcfa96f458e1a425e1"
     },
     {
       "path": "static/css/dadm.css",
@@ -1958,8 +1973,8 @@
     },
     {
       "path": "static/css/faculty-evaluation.css",
-      "bytes": 17112,
-      "sha256": "1f33bfa3c68965993ceec8e503966c5ca3afd2dbeb708de43c0904091daf3935"
+      "bytes": 14133,
+      "sha256": "0545b214d63dbe83b3173424399db968719c3f353c01c2f518fc007d4e30a26a"
     },
     {
       "path": "static/css/management.css",
@@ -1988,8 +2003,8 @@
     },
     {
       "path": "static/js/app.js",
-      "bytes": 220145,
-      "sha256": "b9af42242d3eb4c0f9e2834d8851c81ba326e3ddc339f1cb05536a13164a2421"
+      "bytes": 219572,
+      "sha256": "ed29ac1a5a463964504d0a1e93bd1b1827fa003e215852184edab7a54091dec0"
     },
     {
       "path": "static/js/dadm.js",
@@ -2098,8 +2113,8 @@
     },
     {
       "path": "static/js/faculty-evaluation.js",
-      "bytes": 61676,
-      "sha256": "95c462d35fc45651609df81350c1a6d694b9d02d3f338b4b99ece50d6e9b83c0"
+      "bytes": 56397,
+      "sha256": "49df3a5e57d9605e6fb0851fcab9bf40ea62b8bf0a1380bc992586e436a6f782"
     },
     {
       "path": "static/js/management.js",
@@ -2228,8 +2243,8 @@
     },
     {
       "path": "templates/index.html",
-      "bytes": 49039,
-      "sha256": "73159ccf6df6fd64b4978326827d769f27ed9fca437cd37729bef630916d817b"
+      "bytes": 48600,
+      "sha256": "1c6795728bb20583bde2fd6855a7fedfe9697dc3eecfa527e1abc6fdb4622cd9"
     },
     {
       "path": "templates/management.html",
@@ -2263,23 +2278,23 @@
     },
     {
       "path": "tests/__pycache__/test_academic_results_v01166.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 8575,
-      "sha256": "454b9b497c4986d4baa311c1c68402b17a912e8aace76e34d436baa0670513f1"
+      "bytes": 13099,
+      "sha256": "0cff1e82514c349c402a19c45a39b2d59df1aa17a0ddb8014f5d824f05b3b559"
     },
     {
       "path": "tests/__pycache__/test_academic_results_v01166.cpython-313.pyc",
-      "bytes": 8394,
-      "sha256": "90265cf6a1b2f344bde370f95252c689f5d9f332fac2dd60fe91803986632f42"
+      "bytes": 12941,
+      "sha256": "4efc1c4f2e301b6afc6e23ee290ff6568edc9e7dbba57e391946dda815027ed3"
     },
     {
       "path": "tests/__pycache__/test_academic_results_v01167.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 6819,
-      "sha256": "5329dd08d12b90c6f031a56cccbc715095114fa45cbcb7c7ea5668815016a190"
+      "bytes": 6902,
+      "sha256": "ed346c6f03cda7d203f09d477b645b600ae543c16e7444de90ae491dde617e4e"
     },
     {
       "path": "tests/__pycache__/test_academic_results_v01167.cpython-313.pyc",
-      "bytes": 6638,
-      "sha256": "7b4c39ab3e7dbcb749362c5dd5059f59ecc40dd77930951bdca7315380c5af58"
+      "bytes": 6744,
+      "sha256": "6c756a70c45aab4cecf29224df69cf83507b8c108d9bd5ed12b54c2761daa3d4"
     },
     {
       "path": "tests/__pycache__/test_dpe_v0120.cpython-313-pytest-9.0.2.pyc",
@@ -2523,13 +2538,13 @@
     },
     {
       "path": "tests/__pycache__/test_faculty_student_v0116.cpython-313-pytest-9.0.2.pyc",
-      "bytes": 8944,
-      "sha256": "c8bd6ca934e43bebd2968ace370cd2fefc2eca9c9d5150c1b85e6fa5b9c4a738"
+      "bytes": 9445,
+      "sha256": "dcf0ce641d4a196151cbf57d3453964ed56b9fdaa95ae31975f65622923fdaf7"
     },
     {
       "path": "tests/__pycache__/test_faculty_student_v0116.cpython-313.pyc",
-      "bytes": 8763,
-      "sha256": "946345d68e0ffab585123db9bb7a67e7e14c585a3e66123140a8813fd991f128"
+      "bytes": 9287,
+      "sha256": "6b181639e3dcc446bf6ea7fd8eb838be005d7221ed5e56253ddb01a9aabb56b6"
     },
     {
       "path": "tests/__pycache__/test_faculty_student_v01162.cpython-313-pytest-9.0.2.pyc",
@@ -2583,13 +2598,13 @@
     },
     {
       "path": "tests/test_academic_results_v01166.py",
-      "bytes": 5143,
-      "sha256": "96f8b11fde87b0c5b8c712859cb482afe1dfcf541f0b44328006d55138c66662"
+      "bytes": 8765,
+      "sha256": "88349bd37268dee07f6e63e966e5b95c543a9487ed0302a9c2b8d76e0380d068"
     },
     {
       "path": "tests/test_academic_results_v01167.py",
-      "bytes": 3574,
-      "sha256": "dcecb7a1a1509a8e845eea4f8a777d808d1ab7719de3d99b3822589bdb9a39bb"
+      "bytes": 3653,
+      "sha256": "fbdbfad528c3750ae7382088410ccf12f4658f44c2992584ac9b4e06fa27279b"
     },
     {
       "path": "tests/test_dpe_v0120.py",
@@ -2713,8 +2728,8 @@
     },
     {
       "path": "tests/test_faculty_student_v0116.py",
-      "bytes": 6821,
-      "sha256": "4024a9578541522d330f85c6948f4c86f6086dac7db6d5b9d46e14e52933bc94"
+      "bytes": 7188,
+      "sha256": "62cd2eae2ea6c92a6ca51f933083eb7edb659c48046c0ad0e052dd53b03a1f6b"
     },
     {
       "path": "tests/test_faculty_student_v01162.py",
