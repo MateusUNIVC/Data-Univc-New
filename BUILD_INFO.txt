@@ -5,16 +5,6 @@ Schema esperado: 49
 Migration ledger: 049_academic_faculty_context_scopes_v0130.sql
 Perfil: production
 
-Patch operacional 2026-09-29 - Parte 8 limpeza de legado docente e hardening de release:
-- frontend antigo da Avaliacao Docente em nota 0-10 removido de static/js/app.js;
-- modulo oficial permanece em faculty-evaluation.js e /api/surveys/faculty-student/*;
-- endpoints antigos /api/avaliacao-docente/opcoes e /api/avaliacao-docente/analise permanecem com HTTP 410;
-- app.js reduzido em 186 linhas de codigo morto;
-- release check agora valida todos os 26 JavaScripts e as referencias <script> dos templates;
-- regressao: 196 testes aprovados, 2 ignorados;
-- sem nova migration; schema permanece 49;
-- detalhes em docs/PART8_FACULTY_LEGACY_RELEASE_HARDENING_2026-09-29.md.
-
 Patch operacional 2026-09-29 - Parte 7 Excel Interativo academico oficial:
 - /api/excel-interativo deixa de ser beta em DTNH/DCS;
 - download oficial: Painel_DTNH_Interativo.xlsx / Painel_DCS_Interativo.xlsx;

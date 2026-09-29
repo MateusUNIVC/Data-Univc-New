@@ -1,7 +1,7 @@
 const state = {
   bootstrap: null,
   dashboard: null,
-  data: { nps: [], resultados: [] },
+  data: { nps: [], avaliacao_docente: [], resultados: [] },
   npsInstitution: [],
   npsInstitutionByCourse: [],
   npsInstitutionSearch: '',
@@ -19,13 +19,18 @@ const state = {
   currentSection: 'dashboard',
   comparisonMetric: 'nps',
   coursePerformancePeriod: 'geral',
-  searches: { nps: '', resultados: '', planos: '', metas: '', disciplinas: '' },
+  searches: { nps: '', avaliacao_docente: '', resultados: '', planos: '', metas: '', disciplinas: '' },
   modalContext: null,
   user: null,
   sessionRefreshTimer: null,
   eventsBound: false,
   pagination: {},
   resultFilters: { periodo: '', curso: '', disciplina: '', resultado: '' },
+  teacherFilters: { periodo: '', curso: '', disciplina: '', professor: '' },
+  teacherOptions: { periodos: [], cursos: [], disciplinas: [], professores: [] },
+  teacherAnalysis: { summary: {}, trend: [], comparison: [], comparison_dimension: 'professor' },
+  teacherServer: { total: 0, page: 1, pageSize: 10, pages: 1 },
+  teacherSearchTimer: null,
   resultView: 'resumo',
   resultSummary: [],
   resultStudentSummary: {},
@@ -471,7 +476,7 @@ function initializeDirectorateState() {
 function resetDirectorateCaches() {
   state.bootstrap = null;
   state.dashboard = null;
-  state.data = { nps: [], resultados: [] };
+  state.data = { nps: [], avaliacao_docente: [], resultados: [] };
   state.npsInstitution = [];
   state.npsInstitutionByCourse = [];
   state.npsInstitutionSearch = '';
@@ -484,9 +489,14 @@ function resetDirectorateCaches() {
   state.goals = [];
   state.schedules = [];
   state.catalogs = { cursos: [], disciplinas: [] };
-  state.searches = { nps: '', resultados: '', planos: '', metas: '', disciplinas: '' };
+  state.searches = { nps: '', avaliacao_docente: '', resultados: '', planos: '', metas: '', disciplinas: '' };
   state.pagination = {};
   state.resultFilters = { periodo: '', curso: '', disciplina: '', resultado: '' };
+  state.teacherFilters = { periodo: '', curso: '', disciplina: '', professor: '' };
+  state.teacherOptions = { periodos: [], cursos: [], disciplinas: [], professores: [] };
+  state.teacherAnalysis = { summary: {}, trend: [], comparison: [], comparison_dimension: 'professor' };
+  state.teacherServer = { total: 0, page: 1, pageSize: 10, pages: 1 };
+  clearTimeout(state.teacherSearchTimer); state.teacherSearchTimer = null;
   window.FacultyEvaluationUI?.reset?.();
   state.resultView = 'resumo';
   state.resultSummary = [];
@@ -767,8 +777,132 @@ function sortedUnique(values) {
     .sort((a,b) => a.localeCompare(b,'pt-BR',{numeric:true,sensitivity:'base'}));
 }
 
-async function loadFacultyEvaluationWorkspace() {
+function teacherFilterQuery({ includePeriod = true, includeSearch = false, includePage = false } = {}) {
+  const params = new URLSearchParams();
+  const f = state.teacherFilters || {};
+  if (includePeriod && f.periodo) params.set('periodo', f.periodo);
+  if (f.curso) params.set('curso', f.curso);
+  if (f.disciplina) params.set('disciplina', f.disciplina);
+  if (f.professor) params.set('professor', f.professor);
+  if (includeSearch && (state.searches.avaliacao_docente || '').trim()) params.set('busca', state.searches.avaliacao_docente.trim());
+  if (includePage) {
+    const cfg = paginationFor('data-avaliacao_docente');
+    params.set('page', String(cfg.page));
+    params.set('page_size', String(cfg.size));
+  }
+  return params;
+}
+
+async function loadTeacherOptions() {
+  const params = new URLSearchParams();
+  if (state.teacherFilters.curso) params.set('curso', state.teacherFilters.curso);
+  if (state.teacherFilters.disciplina) params.set('disciplina', state.teacherFilters.disciplina);
+  const response = await api(`/api/avaliacao-docente/opcoes${params.toString() ? `?${params}` : ''}`);
+  state.teacherOptions = {
+    periodos: response.periodos || [], cursos: response.cursos || [],
+    disciplinas: response.disciplinas || [], professores: response.professores || [],
+  };
+  fillTeacherFilters();
+}
+
+function fillTeacherFilters() {
+  const options = state.teacherOptions || { periodos: [], cursos: [], disciplinas: [], professores: [] };
+  const f = state.teacherFilters || (state.teacherFilters = { periodo:'', curso:'', disciplina:'', professor:'' });
+  const period = $('#teacherPeriodFilter');
+  const course = $('#teacherCourseFilter');
+  const discipline = $('#teacherDisciplineFilter');
+  const professor = $('#teacherProfessorFilter');
+  if (!period || !course || !discipline || !professor) return;
+
+  if (f.periodo && !options.periodos.includes(f.periodo)) f.periodo = '';
+  if (f.curso && !options.cursos.includes(f.curso)) f.curso = '';
+  if (f.disciplina && !options.disciplinas.includes(f.disciplina)) f.disciplina = '';
+  if (f.professor && !options.professores.includes(f.professor)) f.professor = '';
+  period.innerHTML = option('', !f.periodo, 'Todos os semestres') + options.periodos.map(value => option(value, value===f.periodo, formatMonth(value,true))).join('');
+  course.innerHTML = option('', !f.curso, 'Todos os cursos') + options.cursos.map(value => option(value, value===f.curso)).join('');
+  discipline.innerHTML = option('', !f.disciplina, 'Todas as disciplinas') + options.disciplinas.map(value => option(value, value===f.disciplina)).join('');
+  professor.innerHTML = option('', !f.professor, 'Todos os professores') + options.professores.map(value => option(value, value===f.professor)).join('');
+}
+
+async function loadTeacherAnalysis() {
+  const params = teacherFilterQuery();
+  state.teacherAnalysis = await api(`/api/avaliacao-docente/analise${params.toString() ? `?${params}` : ''}`);
+  renderTeacherAnalysis();
+}
+
+async function loadTeacherPage() {
+  const params = teacherFilterQuery({ includeSearch: true, includePage: true });
+  const response = await api(`/api/dados/avaliacao_docente?${params}`);
+  state.data.avaliacao_docente = response.items || [];
+  state.teacherServer = {
+    total: Number(response.total || 0), page: Number(response.page || 1),
+    pageSize: Number(response.page_size || paginationFor('data-avaliacao_docente').size),
+    pages: Number(response.pages || 1),
+  };
+  const cfg = paginationFor('data-avaliacao_docente');
+  cfg.page = state.teacherServer.page;
+  cfg.size = state.teacherServer.pageSize;
+  renderTeacherTableServer();
+}
+
+async function loadTeacherWorkspace() {
+  // Compatibility shim: since v0.11.5 the official KPI 02 is the categorical
+  // faculty module. Historical score records remain read-only in the database.
   await window.FacultyEvaluationUI?.load?.();
+}
+
+function renderTeacherAnalysis() {
+  const targetCards = $('#teacherAnalysisCards');
+  if (!targetCards) return;
+  const summary = state.teacherAnalysis?.summary || {};
+  targetCards.innerHTML = [
+    ['Nota histórica · legado', summary.valor==null?'—':formatNumber(summary.valor,2), `${formatNumber(summary.respondentes||0,0)} resposta(s)`, 'info'],
+    ['Respondentes', formatNumber(summary.respondentes||0,0), 'volume do recorte', 'neutral'],
+    ['Professores', formatNumber(summary.professores||0,0), 'docente(s) no recorte', 'neutral'],
+    ['Disciplinas', formatNumber(summary.disciplinas||0,0), 'disciplina(s) no recorte', 'neutral'],
+  ].map(([label,value,sub,tone])=>`<article class="result-summary-card ${tone}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(sub)}</small></article>`).join('');
+
+  const f = state.teacherFilters || {};
+  const context = [];
+  if (f.professor) context.push(`Professor: ${f.professor}`);
+  if (f.disciplina) context.push(`Disciplina: ${f.disciplina}`);
+  if (f.curso) context.push(`Curso: ${f.curso}`);
+  if (f.periodo) context.push(`Semestre: ${formatMonth(f.periodo,true)}`);
+  const ctx = $('#teacherKpiContext');
+  if (ctx) ctx.textContent = context.length ? context.join(' · ') : 'Todo o histórico de avaliação docente da diretoria';
+
+  renderLineChart($('#chartTeacherKpiEvolution'), state.teacherAnalysis?.trend || [], {decimals:2, metric:'avaliacao_docente', unit:'histórico 0–10'});
+  const title = $('#teacherComparisonTitle');
+  if (title) title.textContent = state.teacherAnalysis?.comparison_dimension === 'disciplina' ? 'Disciplinas do professor' : 'Professores no recorte';
+  renderBarChart($('#chartTeacherKpiComparison'), state.teacherAnalysis?.comparison || [], {decimals:2, metric:'avaliacao_docente', unit:'histórico 0–10', clickFilter:false});
+}
+
+function renderTeacherTableServer() {
+  const dataset = 'avaliacao_docente';
+  const items = state.data.avaliacao_docente || [];
+  const server = state.teacherServer || { total:0, page:1, pageSize:10, pages:1 };
+  const target = $('#table-avaliacao_docente');
+  const count = $('#count-avaliacao_docente');
+  if (!target || !count) return;
+  const start = server.total ? (server.page - 1) * server.pageSize + 1 : 0;
+  const end = server.total ? Math.min(server.total, start + items.length - 1) : 0;
+  count.textContent = server.total ? `${start}–${end} de ${server.total}` : '0 registros';
+  if (!items.length) {
+    target.innerHTML = '<div class="empty-table"><strong>Nenhum registro encontrado</strong>Altere os filtros ou a busca.</div>';
+    return;
+  }
+  const defs = columns.avaliacao_docente;
+  const editable = canEditCurrentDirectorate();
+  target.innerHTML = `<table><thead><tr>${defs.map(c=>`<th class="${c[2]||''}">${escapeHtml(c[1])}</th>`).join('')}${editable?'<th class="actions">Ações</th>':''}</tr></thead><tbody>${items.map(item=>`<tr>${defs.map(c=>{const raw=item[c[0]];const value=c[3]?c[3](raw):escapeHtml(raw||raw===0?raw:'—');return `<td class="${c[2]||''}">${value}</td>`;}).join('')}${editable?`<td class="actions"><button class="row-action" title="Editar" data-edit="${dataset}" data-id="${item.id}">✎</button><button class="row-action delete" title="Excluir" data-delete="${dataset}" data-id="${item.id}">×</button></td>`:''}</tr>`).join('')}</tbody></table>`;
+  attachPagination(target, 'data-avaliacao_docente', server.total, () => loadTeacherPage());
+  $$(`[data-edit="${dataset}"]`,target).forEach(btn=>btn.addEventListener('click',()=>openDataForm(dataset,Number(btn.dataset.id))));
+  $$(`[data-delete="${dataset}"]`,target).forEach(btn=>btn.addEventListener('click',()=>deleteData(dataset,Number(btn.dataset.id))));
+}
+
+function fillConfig() {
+  const config=state.bootstrap?.config || {};
+  $('#configResponsavel').value=config.responsavel || state.user?.name || '';
+  $('#configDiretoria').value=state.activeDirectorate || config.diretoria_exibicao || '';
 }
 
 function bindEvents() {
@@ -839,10 +973,16 @@ function bindEvents() {
   $('#resetNpsFacultyFilters')?.addEventListener('click',()=>{
     state.npsFacultyFilters={periodo:'',window:'6'}; fillNpsFacultyFilters(); resetPagination('nps-faculty'); renderFacultyNps();
   });
+  $('#teacherSeiReadinessButton')?.addEventListener('click', openTeacherSeiReadiness);
   $$('.table-search').forEach(input=>input.addEventListener('input',()=>{
     const dataset=input.dataset.dataset;
     state.searches[dataset]=input.value;
     resetPagination(`data-${dataset}`);
+    if(dataset==='avaliacao_docente'){
+      clearTimeout(state.teacherSearchTimer);
+      state.teacherSearchTimer=setTimeout(()=>loadTeacherPage(),260);
+      return;
+    }
     if(dataset==='resultados'){
       if(state.resultView==='resumo'){renderResultSummaryTable();return;}
       clearTimeout(state.resultSearchTimer);
@@ -851,6 +991,22 @@ function bindEvents() {
     }
     renderDatasetTable(dataset);
   }));
+  ['teacherPeriodFilter','teacherCourseFilter','teacherDisciplineFilter','teacherProfessorFilter'].forEach(id=>{
+    $(`#${id}`)?.addEventListener('change',event=>{
+      const map={teacherPeriodFilter:'periodo',teacherCourseFilter:'curso',teacherDisciplineFilter:'disciplina',teacherProfessorFilter:'professor'};
+      const key=map[id];
+      state.teacherFilters[key]=event.target.value;
+      if(key==='curso'){ state.teacherFilters.disciplina=''; state.teacherFilters.professor=''; }
+      if(key==='disciplina'){ state.teacherFilters.professor=''; }
+      resetPagination('data-avaliacao_docente');
+      loadTeacherWorkspace().catch(error=>toast('Erro ao filtrar avaliação docente',error.message,'error'));
+    });
+  });
+  $('#resetTeacherFilters')?.addEventListener('click',()=>{
+    state.teacherFilters={periodo:'',curso:'',disciplina:'',professor:''};
+    resetPagination('data-avaliacao_docente');
+    loadTeacherWorkspace().catch(error=>toast('Erro ao limpar filtros',error.message,'error'));
+  });
   $('#resultsPeriodFilter')?.addEventListener('change',event=>{
     state.resultFilters.periodo=event.target.value;state.resultSummary=[];state.resultStudentSummary={};resetPagination('data-resultados');loadDataset('resultados',true);
   });
@@ -1452,6 +1608,11 @@ const columns = {
     ['neutros', 'Neutros', 'numeric'], ['detratores', 'Detratores', 'numeric'], ['valor', 'NPS', 'numeric', v => formatNumber(v, 1)],
     ['fonte', 'Fonte'], ['validacao', 'Validação', '', v => badge(v)], ['lancado_por', 'Lançado por']
   ],
+  avaliacao_docente: [
+    ['periodo', 'Semestre', '', v => formatMonth(v,true)], ['curso', 'Curso'], ['disciplina', 'Disciplina'], ['professor', 'Professor'],
+    ['respondentes', 'Respondentes', 'numeric', v => formatNumber(v,0)], ['nota_media', 'Nota histórica · legado', 'numeric', v => formatNumber(v,2)],
+    ['validacao', 'Validação', '', v => badge(v)], ['lancado_por', 'Lançado por']
+  ],
   resultados: [
     ['periodo', 'Semestre', '', v => formatMonth(v,true)], ['curso', 'Curso'], ['disciplina', 'Disciplina'], ['turma', 'Turma'],
     ['matricula', 'Matrícula'], ['aluno', 'Aluno'], ['media', 'Média', 'numeric', v => v == null ? '—' : formatNumber(v,2)],
@@ -1907,7 +2068,7 @@ function renderFacultyNps() {
 
 async function loadDataset(dataset, force = false) {
   if (dataset === 'avaliacao_docente') {
-    try { await loadFacultyEvaluationWorkspace(); }
+    try { await loadTeacherWorkspace(); }
     catch (error) { toast('Erro ao carregar avaliação docente', error.message, 'error'); }
     return;
   }
@@ -1927,16 +2088,18 @@ async function loadDataset(dataset, force = false) {
     } catch (error) { toast('Erro ao carregar resultados', error.message, 'error'); }
     return;
   }
-  if (state.data[dataset].length && !force) { renderDatasetTable(dataset); return; }
+  if (state.data[dataset].length && !force) { if(dataset==='avaliacao_docente'){fillTeacherFilters();renderTeacherAnalysis();} renderDatasetTable(dataset); return; }
   try {
     const response = await api(`/api/dados/${dataset}`);
     state.data[dataset] = response.items;
     if(dataset==='nps') fillNpsCourseFilters();
+    if(dataset==='avaliacao_docente'){ fillTeacherFilters(); renderTeacherAnalysis(); }
     renderDatasetTable(dataset);
   } catch (error) { toast('Erro ao carregar a base', error.message, 'error'); }
 }
 
 function renderDatasetTable(dataset) {
+  if (dataset === 'avaliacao_docente') { renderTeacherTableServer(); return; }
   if (dataset === 'resultados') {
     if (state.resultView === 'resumo') renderResultSummaryTable();
     else renderResultDetailTable();
@@ -1999,10 +2162,21 @@ function openDataForm(dataset, id = null) {
   const courses = state.bootstrap?.courses || [];
   const academicPrefix = ['DTNH','DCS'].includes(state.activeDirectorate) ? state.activeDirectorate : 'DTNH';
   const names = {
+    avaliacao_docente: ['avaliação docente', `${academicPrefix}-02 · KPI`],
     resultados: ['resultado acadêmico', `${academicPrefix}-03 · KPI`],
   };
-  const disciplines = record.curso ? (state.bootstrap?.disciplines?.[record.curso] || []) : Object.values(state.bootstrap?.disciplines || {}).flat();
-  const fields = academicSemesterFields('periodo', record.periodo || currentAcademicSemester()) +
+  let fields = '';
+  if (dataset === 'avaliacao_docente') {
+    const disciplines = record.curso ? (state.bootstrap?.disciplines?.[record.curso] || []) : Object.values(state.bootstrap?.disciplines || {}).flat();
+    fields = academicSemesterFields('periodo', record.periodo || currentAcademicSemester()) +
+      datalistField('curso','Curso',courses,record.curso||'',{placeholder:'Digite ou selecione',help:'Cursos novos são cadastrados automaticamente.'}) +
+      datalistField('disciplina','Disciplina',disciplines,record.disciplina||'',{placeholder:'Digite ou selecione',help:'Disciplinas novas também são cadastradas.'}) +
+      formField('professor','Professor', 'text',record.professor||'',{placeholder:'Nome do docente'}) +
+      formField('respondentes','Respondentes','number',record.respondentes??'',{min:1}) +
+      formField('nota_media','Nota média (0–10)','number',record.nota_media??'',{min:0,max:10,step:'0.01'});
+  } else {
+    const disciplines = record.curso ? (state.bootstrap?.disciplines?.[record.curso] || []) : Object.values(state.bootstrap?.disciplines || {}).flat();
+    fields = academicSemesterFields('periodo', record.periodo || currentAcademicSemester()) +
       datalistField('curso','Curso',courses,record.curso||'',{placeholder:'Digite ou selecione',help:'O curso será cadastrado se ainda não existir.'}) +
       datalistField('disciplina','Disciplina',disciplines,record.disciplina||'',{placeholder:'Digite ou selecione'}) +
       formField('turma','Turma','text',record.turma||'',{placeholder:'Ex.: ADM6NA'}) +
@@ -2010,6 +2184,7 @@ function openDataForm(dataset, id = null) {
       formField('aluno','Aluno','text',record.aluno||'') +
       formField('media','Média final','number',record.media??'',{min:0,max:10,step:'0.01',required:false}) +
       formField('situacao','Situação oficial','text',record.situacao||'',{placeholder:'Aprovado, Reprovado, Reprovado Falta, Cursando…',help:'A situação é a fonte oficial; o sistema não recalcula aprovação pela média.',className:'span-2'});
+  }
   openModal(names[dataset][1], id ? `Editar ${names[dataset][0]}` : `Novo lançamento de ${names[dataset][0]}`, `<form id="dataForm" class="form-grid">${fields}<div class="modal-form-footer span-2"><button type="button" class="button secondary" id="cancelDataForm">Cancelar</button><button type="submit" class="button primary">${id ? 'Salvar alterações' : 'Salvar no banco'}</button></div></form>`);
   state.modalContext = { type: 'data', dataset, id };
   $('#cancelDataForm').addEventListener('click', closeModal);
@@ -2027,7 +2202,7 @@ async function submitDataForm(event) {
     delete payload.periodo_year;
     delete payload.periodo_semester;
   }
-  ['respondentes', 'promotores', 'neutros', 'detratores', 'media'].forEach(key => {
+  ['respondentes', 'promotores', 'neutros', 'detratores', 'nota_media', 'media'].forEach(key => {
     if (payload[key] !== undefined && payload[key] !== '') payload[key] = Number(payload[key]);
   });
   setSaveState('saving', 'Salvando no banco…');
@@ -2105,10 +2280,12 @@ function openImportForm(dataset) {
     ? 'A atualização usa a chave Curso + Disciplina e pode alterar status e vigências.'
     : dataset === 'resultados'
       ? 'Duplicatas são identificadas por semestre + aluno + curso + disciplina + turma. Resultados diferentes do mesmo aluno são preservados. O arquivo pode ser o modelo do Data UNIVC ou o XLSX bruto do Mapa de Nota do SEI.'
-      : 'A atualização usa a chave de período e curso.';
+      : dataset === 'avaliacao_docente'
+        ? 'Duplicatas são identificadas por semestre + curso + disciplina + professor.'
+        : 'A atualização usa a chave de período e curso.';
   const extraHelp = isDisciplineCatalog
     ? '<div class="tip-box"><strong>Pré-requisito:</strong> os cursos informados precisam estar cadastrados. O recorte para METAS é derivado como <b>Curso » Disciplina</b>.</div>'
-    : ['resultados','nps'].includes(dataset)
+    : ['resultados','avaliacao_docente','nps'].includes(dataset)
       ? '<div class="tip-box"><strong>Catálogo automático:</strong> cursos e disciplinas que ainda não existirem serão criados a partir das linhas válidas.</div>'
       : '';
   openModal('Importação em lote', `Importar ${label}`, `<form id="importForm">
@@ -2496,6 +2673,15 @@ function renderNpsSeiCandidateStep() {
       setSaveState('ok',`${copy.title} sincronizado pelo SEI`); toast(`${copy.title} atualizado`, 'A nova fonte oficial já está refletida no histórico.','success');
     }catch(error){toast(`Não foi possível atualizar ${copy.title}`,error.message,'error');}
   });
+}
+
+async function openTeacherSeiReadiness() {
+  try {
+    const data=await api('/api/surveys/faculty/readiness',{blocking:false});
+    const c=data.counts||{};
+    openModal('Avaliação Docente · SEI','Fundação de integração preparada',`<div class="tip-box"><strong>A estrutura já está dentro do Data UNIVC.</strong> Professor, disciplina, curso, turma/oferta e semestre são dimensões independentes. O adaptador do XLSX/ZIP docente será ativado somente depois que existir um relatório real do SEI.</div><div class="help-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:14px 0"><div class="help-card"><span>${formatNumber(c.teachers||0,0)}</span><h3>Docentes normalizados</h3><p>Identidade histórica do professor.</p></div><div class="help-card"><span>${formatNumber(c.academic_offerings||0,0)}</span><h3>Ofertas acadêmicas</h3><p>Semestre × curso × disciplina × turma.</p></div><div class="help-card"><span>${formatNumber(c.teaching_assignments||0,0)}</span><h3>Vínculos docentes</h3><p>Professor associado à oferta.</p></div><div class="help-card"><span>${formatNumber(c.faculty_evaluation_contexts||0,0)}</span><h3>Contextos avaliados</h3><p>Prontos para receber o futuro relatório.</p></div></div><div class="warning-box"><strong>Por que ainda não importamos do SEI?</strong><br>Não existe um relatório docente real validado para confirmar onde o SEI informa professor, disciplina e turma. Inventar essas posições agora colocaria o histórico em risco. O restante da arquitetura já está pronto para receber esse adaptador.</div><div class="modal-form-footer"><button class="button primary" id="closeTeacherReadiness" type="button">Entendi</button></div>`);
+    state.modalContext={type:'teacher-sei-readiness'}; $('#closeTeacherReadiness')?.addEventListener('click',closeModal);
+  } catch(error){toast('Não foi possível verificar a fundação docente',error.message,'error');}
 }
 
 async function loadActions(force = false) {

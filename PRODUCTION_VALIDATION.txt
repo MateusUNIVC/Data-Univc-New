@@ -4,15 +4,6 @@ Base academica: v0.11.6.7
 Schema: 49
 Migration obrigatoria acumulada: 049_academic_faculty_context_scopes_v0130.sql
 
-Parte 8 - Limpeza de legado docente e hardening de release (2026-09-29):
-- frontend legado de avaliacao docente 0-10 removido;
-- endpoints aposentados preservados com HTTP 410;
-- modulo oficial faculty-student preservado;
-- node --check executado nos 26 JavaScripts;
-- 26 referencias de JavaScript nos templates validadas;
-- Pytest: 196 passed, 2 skipped;
-- sem nova migration; schema permanece 49.
-
 Parte 7 - Excel Interativo academico oficial (2026-09-29):
 - /api/excel-interativo oficial para DTNH e DCS;
 - nomes de download sem beta;

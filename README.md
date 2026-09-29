@@ -1,11 +1,5 @@
 ## Patch operacional 29/09/2026 — Parte 6
 
-
-
-## Parte 8 - limpeza de legado docente e hardening de release (29/09/2026)
-
-A interface academica nao carrega mais a implementacao historica da Avaliacao Docente em nota 0-10. O KPI 02 permanece exclusivamente no modulo categórico oficial (`faculty-evaluation.js` / `/api/surveys/faculty-student/*`). Os endpoints antigos continuam respondendo HTTP 410 por compatibilidade. O release check agora executa `node --check` em todos os 26 JavaScripts e valida as referencias de scripts dos templates. Regressao: 196 testes aprovados e 2 ignorados. Schema permanece 49.
-
 - importações de NPS/questionários passam a pré-carregar perguntas e vínculos em conjunto;
 - cursos/contextos já importados são consultados uma única vez por run;
 - agregados e respostas abertas usam escrita em lote, sem um objeto ORM por resposta;
