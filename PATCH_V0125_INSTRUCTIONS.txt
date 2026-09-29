@@ -1,0 +1,46 @@
+Data UNIVC v0.12.5 — PATCH CUMULATIVO DPE
+=========================================
+
+FINALIDADE
+Este patch leva a trilha DPE até a v0.12.5 (v0.12.0 + v0.12.1 + v0.12.2 + v0.12.3 + v0.12.4 + v0.12.5) sem substituir os arquivos acadêmicos recentes que não pertencem à DPE.
+
+BASE DE DESTINO RECOMENDADA
+Aplicar sobre uma árvore COMPLETA Data UNIVC v0.11.6.7, isto é, uma instalação que já contenha integralmente a v0.11.6.6 e o patch v0.11.6.7.
+
+IMPORTANTE
+O ZIP v0.11.6.7 recebido durante o desenvolvimento era apenas um patch e declarava depender da árvore completa v0.11.6.6. Por isso o pacote completo de homologação disponibilizado separadamente continua identificado como BASE_v0.11.6.5.
+
+BANCO
+- Schema esperado: 42.
+- Migration nova na v0.12.5: nenhuma.
+- Última migration obrigatória: database/042_dpe_productivity_v0123.sql.
+- A migration 041 da v0.12.1 continua sendo pré-requisito.
+- Quem já está em v0.12.4/schema 42 não precisa executar migration adicional para a v0.12.5.
+
+APLICAÇÃO
+1. Fazer backup da aplicação e do banco.
+2. Confirmar que a base de destino é a árvore completa mais recente.
+3. Confirmar que as migrations 041 e 042 já foram aplicadas.
+4. Extrair este ZIP na raiz do projeto, preservando os demais arquivos.
+5. Reiniciar a aplicação.
+6. Homologar a navegação DPE em desktop e tela estreita.
+7. Testar teclado nos modais: Tab, Shift+Tab e Esc.
+8. Testar uma ação crítica (por exemplo, estorno ou oficialização) e confirmar o novo diálogo institucional.
+9. Verificar estados de carregamento, erro, sucesso e vazio em Receitas, Despesas, Docentes, Distribuição e Fechamento.
+10. Homologar uma competência real de teste antes de uso em produção.
+
+SEGURANÇA DA FUSÃO
+O patch é limitado à trilha DPE, migrations DPE já existentes, release, testes e documentação específica. Ele não substitui os arquivos acadêmicos compartilhados alterados pelos patches v0.11.6.6/v0.11.6.7, como repository.py, static/js/app.js, static/css/app.css, templates/index.html e docs/CHANGELOG.md.
+
+VALIDAÇÃO DA RELEASE
+- 80 testes aprovados.
+- 7 testes específicos de homologação/acessibilidade da v0.12.5.
+- Sintaxe Python validada.
+- JavaScripts DPE validados com node --check.
+- Página DPE sem IDs HTML duplicados.
+- Diálogos nativos confirm()/prompt() removidos da trilha DPE.
+- Modais com gerenciamento de foco, Esc, Tab e devolução de foco ao acionador.
+- Estados de carregamento/alerta/vazio padronizados.
+- Combobox docente com contrato ARIA e navegação por teclado.
+- Responsividade e prefers-reduced-motion preservados.
+- Nenhuma migration nova; schema permanece 42.

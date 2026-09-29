@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import Protocol
-
 from survey_faculty_models import ParsedFacultyContext
+from survey_faculty_student_parser import parse_faculty_student_workbook
 
 
 class FacultyReportLayoutUnknown(RuntimeError):
-    """Usado enquanto ainda não há um XLSX docente real para mapear com segurança."""
+    """Mantida por compatibilidade com chamadas antigas do foundation."""
 
 
-class FacultyReportAdapter(Protocol):
-    """Contrato do adaptador que será implementado quando houver relatório real."""
+class SEIFacultyStudentReportAdapter:
+    """Adaptador validado para o relatório SEI ``Disciplina/Professor``."""
 
-    def parse(self, content: bytes, *, source_path: str) -> list[ParsedFacultyContext]: ...
+    def parse(self, content: bytes, *, source_path: str) -> list[ParsedFacultyContext]:
+        return [parse_faculty_student_workbook(content, source_path=source_path)]

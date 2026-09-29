@@ -19,3 +19,5 @@ tests/
 *.zip
 uploads/
 debug/
+*.bat
+INICIAR_DPE_DEMO.sh

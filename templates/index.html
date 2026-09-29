@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/static/css/app.css?v={{ app_version }}">
   <link rel="stylesheet" href="/static/css/data-univc-foundation.css?v={{ app_version }}">
   <link rel="stylesheet" href="/static/css/ui-v2.css?v={{ app_version }}">
+  <link rel="stylesheet" href="/static/css/faculty-evaluation.css?v={{ app_version }}">
 </head>
 <body class="ui-v2 ui-v2-academic">
   <div id="loginScreen" class="login-screen">
@@ -252,36 +253,104 @@
         <div class="panel data-panel"><div class="table-toolbar"><div class="search-field"><span>⌕</span><input type="search" id="npsFacultySearch" placeholder="Buscar semestre ou pergunta"></div><div class="toolbar-count" id="count-nps-faculty"></div></div><div class="table-wrap" id="table-nps-faculty"></div></div>
       </section>
 
-      <section id="section-avaliacao_docente" class="page-section data-page" data-dataset="avaliacao_docente">
-        <div class="section-intro compact-intro"><div><span class="eyebrow" data-academic-code="02">DTNH-02</span><h2>Avaliação Docente pelo Aluno</h2><p>Analise a evolução por professor, disciplina, curso e semestre sem perder o histórico consolidado.</p></div><div class="section-actions"><button class="button secondary" id="teacherSeiReadinessButton" type="button">Integração SEI</button><a class="button secondary" href="/api/modelos/avaliacao_docente" download>Modelo Excel</a><button class="button secondary import-button" data-write-action data-dataset="avaliacao_docente">Importar Excel</button><button class="button primary add-button" data-write-action data-dataset="avaliacao_docente">+ Registrar</button></div></div>
-        <div class="kpi-essentials" id="meta-dtnh-02"></div>
-        <div class="analysis-bar kpi-analysis-bar" id="teacherAnalysisFilters" aria-label="Filtros da avaliação docente">
-          <label><span>Semestre</span><select id="teacherPeriodFilter"><option value="">Todos os semestres</option></select></label>
-          <label><span>Curso</span><select id="teacherCourseFilter"><option value="">Todos os cursos</option></select></label>
-          <label><span>Disciplina</span><select id="teacherDisciplineFilter"><option value="">Todas as disciplinas</option></select></label>
-          <label><span>Professor</span><select id="teacherProfessorFilter"><option value="">Todos os professores</option></select></label>
-          <button class="button subtle compact" id="resetTeacherFilters" type="button">Limpar</button>
+      <section id="section-avaliacao_docente" class="page-section faculty-workspace" data-dataset="avaliacao_docente">
+        <div class="section-intro compact-intro faculty-header">
+          <div>
+            <span class="eyebrow" data-academic-code="02">DTNH-02</span>
+            <h2>Avaliação Docente pelo Aluno</h2>
+            <p>Leitura categórica do relatório oficial do SEI, com favorabilidade transparente e histórico por semestre, curso, disciplina e docente.</p>
+          </div>
+          <div class="section-actions">
+            <button class="button secondary" id="facultyMethodologyButton" type="button">Como o indicador é calculado</button>
+            <button class="button secondary" id="facultyFileImportButton" type="button" data-write-action>Usar XLSX/ZIP já baixado</button>
+            <button class="button primary" id="facultyImportButton" type="button" data-write-action>Buscar direto no SEI</button>
+            <input id="facultyImportFile" type="file" accept=".zip,.xlsx" hidden>
+          </div>
         </div>
-        <div id="teacherKpiContext" class="analysis-context"></div>
-        <div id="teacherAnalysisCards" class="academic-result-summary-cards teacher-summary-cards"></div>
-        <div class="dashboard-grid two-columns kpi-chart-grid">
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="02">DTNH-02</span><h3>Evolução da avaliação</h3></div><span class="chart-unit">nota 0–10</span></div><div id="chartTeacherKpiEvolution" class="chart-canvas"></div></article>
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Comparação</span><h3 id="teacherComparisonTitle">Professores no recorte</h3></div><span class="chart-unit">média ponderada</span></div><div id="chartTeacherKpiComparison" class="chart-canvas"></div></article>
+        <div class="faculty-source-status" role="note">
+          <div><strong>Fonte oficial</strong><span>Relatório Disciplina/Professor do SEI, preservando as alternativas originais.</span></div>
+          <div><strong>Leitura desta tela</strong><span>Favorabilidade categórica oficial do KPI 02; metas vigentes são percentuais e aparecem também no Painel Executivo.</span></div>
         </div>
-        <div class="data-source-note"><strong>Fundação SEI preparada:</strong> o banco já representa semestre, curso, disciplina, turma/oferta e professor separadamente. O importador específico de avaliação docente só será ativado depois que existir um XLSX/ZIP real do SEI, evitando assumir um formato que ainda não foi validado. O fluxo manual atual permanece disponível até lá.</div>
-        <div class="panel data-panel"><div class="table-toolbar"><div class="search-field"><span>⌕</span><input type="search" class="table-search" data-dataset="avaliacao_docente" placeholder="Buscar curso, disciplina, professor ou semestre"></div><div class="toolbar-count" id="count-avaliacao_docente"></div></div><div class="table-wrap" id="table-avaliacao_docente"></div></div>
+
+        <div class="faculty-subnav" id="facultyViewTabs" role="tablist" aria-label="Áreas da avaliação docente">
+          <button class="active" type="button" data-faculty-view="overview">Visão Geral</button>
+          <button type="button" data-faculty-view="teachers">Docentes</button>
+          <button type="button" data-faculty-view="disciplines">Disciplinas</button>
+          <button type="button" data-faculty-view="questions">Perguntas</button>
+          <button type="button" data-faculty-view="imports">Importações</button>
+        </div>
+
+        <div class="faculty-filter-shell" id="facultyFilterShell">
+          <div class="faculty-filter-grid">
+            <label><span>Semestre</span><select id="facultySemesterFilter"><option value="">Todos os semestres</option></select></label>
+            <label><span>Curso</span><select id="facultyCourseFilter" data-combobox-placeholder="Buscar curso..."><option value="">Todos os cursos</option></select></label>
+            <label><span>Disciplina</span><select id="facultyDisciplineFilter" data-combobox-placeholder="Buscar disciplina..."><option value="">Todas as disciplinas</option></select></label>
+            <label><span>Docente</span><select id="facultyTeacherFilter" data-combobox-placeholder="Buscar docente..."><option value="">Todos os docentes</option></select></label>
+            <button class="button subtle compact" id="facultyResetFilters" type="button">Limpar filtros</button>
+          </div>
+          <div id="facultyFilterContext" class="faculty-filter-context">Carregando contexto…</div>
+        </div>
+
+        <div id="facultyLoadingState" class="faculty-inline-state hidden"><strong>Atualizando análise</strong><span>Consultando os dados oficiais do módulo.</span></div>
+        <div id="facultyErrorState" class="faculty-inline-state error hidden"></div>
+
+        <div class="faculty-view active" data-faculty-panel="overview">
+          <div id="facultyOverviewCards" class="faculty-metric-grid"></div>
+          <div id="facultyOperationalStatus" class="faculty-operational-status"></div>
+          <div id="facultyMethodWarning" class="faculty-method-warning hidden"></div>
+          <div class="faculty-grid two">
+            <article class="panel faculty-panel">
+              <div class="panel-heading"><div><span class="eyebrow">Composição</span><h3>Distribuição da avaliação docente</h3></div><span class="chart-unit">respostas classificadas</span></div>
+              <div id="facultyComposition" class="faculty-composition"></div>
+            </article>
+            <article class="panel faculty-panel">
+              <div class="panel-heading"><div><span class="eyebrow">Histórico</span><h3>Favorabilidade por semestre</h3><p id="facultyTrendContext">Resultado e meta vigente por período.</p></div><span class="chart-unit">%</span></div>
+              <div id="facultySemesterTrend" class="chart-canvas"></div>
+            </article>
+          </div>
+          <article class="panel faculty-panel faculty-question-summary-panel">
+            <div class="panel-heading"><div><span class="eyebrow">Diagnóstico</span><h3>Leitura das perguntas</h3><p>As perguntas do docente entram na síntese; perguntas contextuais permanecem visíveis separadamente.</p></div></div>
+            <div id="facultyQuestionHighlights" class="faculty-question-highlights"></div>
+          </article>
+        </div>
+
+        <div class="faculty-view" data-faculty-panel="teachers">
+          <div class="faculty-view-toolbar"><div><span class="eyebrow">Docentes</span><h3>Desempenho por professor</h3><p>Selecione um docente para abrir disciplinas, cursos e respostas por pergunta.</p></div><div class="search-field"><span>⌕</span><input id="facultyTeacherSearch" type="search" placeholder="Buscar docente"></div></div>
+          <div id="facultyTeachersList" class="faculty-entity-list"></div>
+        </div>
+
+        <div class="faculty-view" data-faculty-panel="disciplines">
+          <div class="faculty-view-toolbar"><div><span class="eyebrow">Disciplinas</span><h3>Desempenho por disciplina</h3><p>Disciplinas homônimas de cursos diferentes permanecem separadas.</p></div><div class="search-field"><span>⌕</span><input id="facultyDisciplineSearch" type="search" placeholder="Buscar disciplina ou curso"></div></div>
+          <div id="facultyDisciplinesList" class="faculty-entity-list"></div>
+        </div>
+
+        <div class="faculty-view" data-faculty-panel="questions">
+          <div class="faculty-view-toolbar"><div><span class="eyebrow">Questionário</span><h3>Distribuição por pergunta</h3><p>Veja a escala original do SEI antes de qualquer indicador derivado.</p></div><div class="faculty-scope-toggle" id="facultyQuestionScope"><button class="active" type="button" data-question-scope="all">Todas</button><button type="button" data-question-scope="teacher">Docente</button><button type="button" data-question-scope="contextual">Contextuais</button></div></div>
+          <div id="facultyQuestionsList" class="faculty-question-list"></div>
+        </div>
+
+        <div class="faculty-view" data-faculty-panel="imports">
+          <div class="faculty-view-toolbar"><div><span class="eyebrow">Rastreabilidade</span><h3>Importações e qualidade da malha</h3><p>Consulte os lotes já persistidos e os alertas de identidade antes de usar o indicador.</p></div><div class="section-actions"><button class="button secondary" id="facultyFileImportButtonSecondary" type="button" data-write-action>Usar arquivo baixado</button><button class="button primary" id="facultyImportButtonSecondary" type="button" data-write-action>Buscar no SEI</button></div></div>
+          <div id="facultyIdentityQuality" class="faculty-quality-grid"></div>
+          <div id="facultyQualityDetails" class="faculty-quality-details"></div>
+          <article class="panel faculty-panel">
+            <div class="panel-heading"><div><span class="eyebrow">Histórico</span><h3>Lotes importados</h3></div></div>
+            <div id="facultyImportHistory" class="table-wrap"></div>
+          </article>
+        </div>
       </section>
       <section id="section-resultados" class="page-section data-page" data-dataset="resultados">
-        <div class="section-intro compact-intro"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h2>Aprovação, Notas e Motivos de Reprovação</h2><p>Compare a evolução da taxa e da quantidade de aprovações por curso e disciplina ao longo dos semestres.</p></div><div class="section-actions"><a class="button secondary" href="/api/modelos/resultados" download>Modelo Excel</a><button class="button secondary import-button" data-write-action data-dataset="resultados">Importar Excel/SEI</button><button class="button secondary" id="seiImportButton" data-write-action>Buscar direto no SEI</button><button class="button primary add-button" data-write-action data-dataset="resultados">+ Registrar linha</button></div></div>
+        <div class="section-intro compact-intro"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h2>Aprovação, Notas e Motivos de Reprovação</h2><p>Acompanhe resultados por disciplina e também a quantidade de alunos distintos no semestre. Os cards de situação podem ser clicados para abrir os alunos e disciplinas correspondentes.</p></div><div class="section-actions"><a class="button secondary" href="/api/modelos/resultados" download>Modelo Excel</a><button class="button secondary import-button" data-write-action data-dataset="resultados">Importar Excel/SEI</button><button class="button secondary" id="seiImportButton" data-write-action>Buscar direto no SEI</button><button class="button primary add-button" data-write-action data-dataset="resultados">+ Registrar linha</button></div></div>
         <div class="kpi-essentials" id="meta-dtnh-03"></div>
         <div id="resultsTrendContext" class="analysis-context"></div>
         <div class="dashboard-grid two-columns kpi-chart-grid">
           <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Taxa de aprovação — evolução</h3></div><span class="chart-unit">%</span></div><div id="chartResultsApprovalTrend" class="chart-canvas"></div></article>
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Alunos aprovados — evolução</h3></div><span class="chart-unit">alunos distintos</span></div><div id="chartResultsApprovedTrend" class="chart-canvas"></div></article>
+          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Alunos distintos — evolução</h3></div><span class="chart-unit">pessoas no recorte</span></div><div id="chartResultsApprovedTrend" class="chart-canvas"></div></article>
         </div>
-        <div class="data-source-note"><strong>Base detalhada preservada, análise agregada:</strong> os registros aluno-disciplina continuam no banco para auditoria, correções e bloqueio de duplicatas, porém os cálculos e a visão padrão usam somente consolidações por semestre, curso e disciplina. Assim o navegador não precisa receber milhares de linhas para calcular aprovações, reprovações e médias.</div>
+        <div class="data-source-note"><strong>Alunos e resultados são medidas diferentes:</strong> “alunos distintos” conta matrículas únicas no recorte. Na leitura gerencial, qualquer reprovação coloca o aluno em “Com reprovação”; sem reprovação e com ao menos um resultado aprovado, ele fica em “Aprovados”, mesmo que outra disciplina ainda esteja sem situação final. Casos formados somente por resultados sem classificação aparecem apenas como alerta de qualidade. A taxa de aprovação continua sendo calculada sobre resultados disciplinares finalizados. Reprovação por nota e por falta contam alunos distintos e podem se sobrepor.</div>
         <div class="results-view-tabs segmented-control" id="resultsViewTabs"><button class="active" data-results-view="resumo">Resumo por disciplina</button><button data-results-view="detalhes">Registros individuais</button></div>
         <div class="academic-result-summary-cards" id="resultsSummaryCards"></div>
+        <div class="results-active-filter hidden" id="resultsActiveFilter"></div>
         <div class="panel data-panel"><div class="table-toolbar results-toolbar"><div class="results-filter-row"><div class="search-field"><span>⌕</span><input type="search" class="table-search" data-dataset="resultados" placeholder="Buscar curso, disciplina, aluno, matrícula, turma ou situação"></div><label class="table-filter"><span>Semestre</span><select id="resultsPeriodFilter"><option value="">Todos os semestres</option></select></label><label class="table-filter"><span>Curso</span><select id="resultsCourseFilter"><option value="">Todos os cursos</option></select></label><label class="table-filter"><span>Disciplina</span><select id="resultsDisciplineFilter" disabled><option value="">Todas as disciplinas</option></select></label></div><div class="toolbar-count" id="count-resultados"></div></div><div class="table-wrap" id="table-resultados"></div></div>
       </section>
       <section id="section-planos" class="page-section">
@@ -493,6 +562,7 @@
   <script src="/static/js/data-univc-identity.js?v={{ app_version }}"></script>
   <script src="/static/js/data-univc-ui.js?v={{ app_version }}"></script>
   <script src="/static/js/app.js?v={{ app_version }}"></script>
+  <script src="/static/js/faculty-evaluation.js?v={{ app_version }}"></script>
   <script src="/static/js/ui-v2.js?v={{ app_version }}"></script>
 </body>
 </html>

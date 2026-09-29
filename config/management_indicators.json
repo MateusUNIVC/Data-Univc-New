@@ -1,5 +1,5 @@
 {
-  "version": "0.7.8",
+  "version": "0.13.0-dev.5",
   "directorates": {
     "DADM": {
       "name": "Diretoria Administrativa",
@@ -218,6 +218,440 @@
       "comparison_policy": "previous_period_and_year_over_year",
       "indicators": [
         {
+          "code": "DPE-RESULT",
+          "name": "Resultados Econômicos",
+          "short_name": "Resultados",
+          "objective": "Acompanhar resultado e margem institucional e por curso diretamente do Cost Engine.",
+          "periodicity": "monthly",
+          "primary_metric": "institutional_margin_pct",
+          "primary_unit": "%",
+          "source": "Cost Engine DPE consolidado: ledger de receitas, ledger de despesas e cálculo oficial de distribuição.",
+          "responsible": "DPE",
+          "formula_text": "Resultado institucional = receita total − despesas totais; margem institucional = resultado ÷ receita total; resultado do curso = receita atribuída − custo atribuído.",
+          "dimensions": [
+            "course",
+            "academic_directorate"
+          ],
+          "fields": [],
+          "metrics": [
+            {
+              "key": "institutional_result",
+              "label": "Resultado institucional",
+              "unit": "R$",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "institutional_margin_pct",
+              "label": "Margem institucional",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target": 10,
+              "attention": 0
+            },
+            {
+              "key": "coverage_index",
+              "label": "Índice de cobertura",
+              "unit": "x",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target": 1.11,
+              "attention": 1.05
+            },
+            {
+              "key": "course_result",
+              "label": "Resultado do curso",
+              "unit": "R$",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [
+                "course",
+                "academic_directorate"
+              ],
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "course_margin_pct",
+              "label": "Margem do curso",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [
+                "course",
+                "academic_directorate"
+              ],
+              "target": 15,
+              "attention": 0
+            },
+            {
+              "key": "course_margin_12m_pct",
+              "label": "Margem do curso em 12 meses",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "historical_compatibility",
+              "dimensions": [
+                "course",
+                "academic_directorate"
+              ],
+              "targetable": false,
+              "actionable": false,
+              "legacy_metric": true,
+              "target": 15,
+              "attention": 0
+            },
+            {
+              "key": "coverage_index_12m",
+              "label": "Índice de cobertura em 12 meses",
+              "unit": "x",
+              "direction": "higher",
+              "aggregation": "historical_compatibility",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "legacy_metric": true,
+              "target": 1.11,
+              "attention": 1.05
+            },
+            {
+              "key": "institutional_margin_12m_pct",
+              "label": "Margem institucional em 12 meses",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "historical_compatibility",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "legacy_metric": true,
+              "target": 10,
+              "attention": 0
+            }
+          ],
+          "notes": "Valores atuais são calculados automaticamente; não existe lançamento manual de KPI."
+        },
+        {
+          "code": "DPE-REVENUE",
+          "name": "Receitas",
+          "short_name": "Receitas",
+          "objective": "Acompanhar metas sobre receitas registradas no ledger oficial da competência.",
+          "periodicity": "monthly",
+          "primary_metric": "total_revenue",
+          "primary_unit": "R$",
+          "source": "dpe_revenue_entries / ledger oficial de receitas.",
+          "responsible": "DPE",
+          "formula_text": "Receitas são lidas diretamente dos lançamentos oficiais, com distinção entre institucional e atribuída a curso.",
+          "dimensions": [
+            "course",
+            "academic_directorate"
+          ],
+          "fields": [],
+          "metrics": [
+            {
+              "key": "total_revenue",
+              "label": "Receita total",
+              "unit": "R$",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "institutional_revenue",
+              "label": "Receita institucional",
+              "unit": "R$",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "course_revenue",
+              "label": "Receita atribuída ao curso",
+              "unit": "R$",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [
+                "course",
+                "academic_directorate"
+              ],
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "revenue_per_student",
+              "label": "Receita por aluno ativo",
+              "unit": "R$",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [
+                "course",
+                "academic_directorate"
+              ],
+              "target": null,
+              "attention": null
+            }
+          ],
+          "notes": "Sem receita bruta, bolsas, deduções ou pagantes como fonte paralela."
+        },
+        {
+          "code": "DPE-EXPENSE",
+          "name": "Despesas e Custos",
+          "short_name": "Despesas",
+          "objective": "Acompanhar metas de despesa institucional e custos atribuídos aos cursos.",
+          "periodicity": "monthly",
+          "primary_metric": "total_expense",
+          "primary_unit": "R$",
+          "source": "Ledger oficial de despesas e cálculo oficial de distribuição.",
+          "responsible": "DPE",
+          "formula_text": "Despesa total inclui diretas, compartilhadas e institucionais; custo do curso usa somente valores efetivamente atribuídos ao curso.",
+          "dimensions": [
+            "course",
+            "academic_directorate"
+          ],
+          "fields": [],
+          "metrics": [
+            {
+              "key": "total_expense",
+              "label": "Despesa total",
+              "unit": "R$",
+              "direction": "lower",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "institutional_expense",
+              "label": "Despesa institucional",
+              "unit": "R$",
+              "direction": "lower",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "allocatable_expense",
+              "label": "Despesa distribuível",
+              "unit": "R$",
+              "direction": "lower",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "course_total_cost",
+              "label": "Custo total do curso",
+              "unit": "R$",
+              "direction": "lower",
+              "aggregation": "runtime",
+              "dimensions": [
+                "course",
+                "academic_directorate"
+              ],
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "payroll_on_revenue_pct",
+              "label": "Folha total sobre receita",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "historical_compatibility",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "legacy_metric": true,
+              "target": 55,
+              "attention": 58
+            },
+            {
+              "key": "administrative_payroll_pct",
+              "label": "Folha administrativa sobre receita",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "historical_compatibility",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "legacy_metric": true,
+              "target": 17,
+              "attention": null
+            },
+            {
+              "key": "payroll_monthly_change_pct",
+              "label": "Variação mensal da folha",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "historical_compatibility",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "legacy_metric": true,
+              "target": 2,
+              "attention": null
+            }
+          ],
+          "notes": "Métricas antigas de folha permanecem apenas para metas históricas migradas, sem aceitar novos cadastros."
+        },
+        {
+          "code": "DPE-TEACHING",
+          "name": "Docência",
+          "short_name": "Docência",
+          "objective": "Acompanhar custo e carga docente reconciliados com a competência.",
+          "periodicity": "monthly",
+          "primary_metric": "teaching_cost",
+          "primary_unit": "R$",
+          "source": "Perfis/vínculos DPE, atividades docentes e custos de folha conciliados.",
+          "responsible": "DPE",
+          "formula_text": "Custo docente vem do financeiro reconciliado; carga vem das atividades docentes registradas.",
+          "dimensions": [
+            "course",
+            "academic_directorate"
+          ],
+          "fields": [],
+          "metrics": [
+            {
+              "key": "teaching_cost",
+              "label": "Custo docente",
+              "unit": "R$",
+              "direction": "lower",
+              "aggregation": "runtime",
+              "dimensions": [
+                "course",
+                "academic_directorate"
+              ],
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "total_workload_hours",
+              "label": "Carga docente total da competência",
+              "unit": "h",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "avg_workload_hours_per_teacher",
+              "label": "Carga média por docente na competência",
+              "unit": "h",
+              "direction": "range",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target_min": null,
+              "target_max": null,
+              "attention_min": null,
+              "attention_max": null
+            },
+            {
+              "key": "teacher_count",
+              "label": "Docentes na competência",
+              "unit": "docentes",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "avg_hours_per_teacher",
+              "label": "CH média por docente (contrato histórico)",
+              "unit": "h/semana",
+              "direction": "range",
+              "aggregation": "historical_compatibility",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "legacy_metric": true,
+              "target_min": 12,
+              "target_max": 20,
+              "attention_min": null,
+              "attention_max": null
+            },
+            {
+              "key": "faculty_payroll_pct",
+              "label": "Folha docente sobre receita",
+              "unit": "%",
+              "direction": "lower",
+              "aggregation": "historical_compatibility",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "legacy_metric": true,
+              "target": 38,
+              "attention": null
+            }
+          ],
+          "notes": "O custo não é criado pelo cadastro do docente; ele vem das despesas conciliadas."
+        },
+        {
+          "code": "DPE-ALLOCATION",
+          "name": "Distribuição de Custos",
+          "short_name": "Distribuição",
+          "objective": "Acompanhar a qualidade do cálculo oficial de distribuição.",
+          "periodicity": "monthly",
+          "primary_metric": "reconciliation_pct",
+          "primary_unit": "%",
+          "source": "Versão oficial atual do motor de distribuição.",
+          "responsible": "DPE",
+          "formula_text": "Reconciliação = valor distribuído ÷ valor distribuível; pendência = valor distribuível − valor distribuído.",
+          "dimensions": [],
+          "fields": [],
+          "metrics": [
+            {
+              "key": "allocated_expense",
+              "label": "Despesa distribuída",
+              "unit": "R$",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "targetable": false,
+              "actionable": false,
+              "target": null,
+              "attention": null
+            },
+            {
+              "key": "unallocated_expense",
+              "label": "Despesa não distribuída",
+              "unit": "R$",
+              "direction": "lower",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target": 0,
+              "attention": null
+            },
+            {
+              "key": "reconciliation_pct",
+              "label": "Reconciliação da distribuição",
+              "unit": "%",
+              "direction": "higher",
+              "aggregation": "runtime",
+              "dimensions": [],
+              "target": 100,
+              "attention": 99.5
+            }
+          ],
+          "notes": "Só existe apuração quando há cálculo oficial atual para a competência."
+        },
+        {
           "code": "DPE-01",
           "name": "Margem Líquida por Curso",
           "short_name": "Margem líquida",
@@ -319,7 +753,11 @@
               "attention_max": null
             }
           ],
-          "notes": "A receita por curso é opcional porque a receita institucional também inclui EAD, semipresencial, cursos técnicos, mestrado e outras origens. Carga horária não integra a etapa operacional v0.7.7."
+          "notes": "A receita por curso é opcional porque a receita institucional também inclui EAD, semipresencial, cursos técnicos, mestrado e outras origens. Carga horária não integra a etapa operacional v0.7.7.",
+          "legacy": true,
+          "targetable": false,
+          "actionable": false,
+          "legacy_reason": "Contrato histórico de medições/Excel; não usar para novas metas ou planos."
         },
         {
           "code": "DPE-02",
@@ -421,7 +859,11 @@
               "attention": null
             }
           ],
-          "notes": "O painel deve exibir o mês, o acumulado móvel de doze meses e a comparação com o mesmo mês do ano anterior. No máximo dois meses consecutivos abaixo de 1,00."
+          "notes": "O painel deve exibir o mês, o acumulado móvel de doze meses e a comparação com o mesmo mês do ano anterior. No máximo dois meses consecutivos abaixo de 1,00.",
+          "legacy": true,
+          "targetable": false,
+          "actionable": false,
+          "legacy_reason": "Contrato histórico de medições/Excel; não usar para novas metas ou planos."
         },
         {
           "code": "DPE-03",
@@ -529,7 +971,11 @@
               "attention": null
             }
           ],
-          "notes": "Provisões de décimo terceiro e férias devem ser apropriadas mensalmente, nunca apenas no caixa."
+          "notes": "Provisões de décimo terceiro e férias devem ser apropriadas mensalmente, nunca apenas no caixa.",
+          "legacy": true,
+          "targetable": false,
+          "actionable": false,
+          "legacy_reason": "Contrato histórico de medições/Excel; não usar para novas metas ou planos."
         }
       ]
     },

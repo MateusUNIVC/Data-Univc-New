@@ -375,7 +375,12 @@ class ManagementRepository:
         indicator_code = str(payload.get("indicator_code") or "").strip().upper()
         metric_key = str(payload.get("metric_key") or "").strip()
         spec = indicator_spec(self.directorate_code, indicator_code)
+        if self.directorate_code == "DPE" and spec.get("legacy"):
+            raise ManagementValidationError("Este indicador pertence ao contrato histórico da DPE e não aceita novas metas.")
         metric = metric_spec(self.directorate_code, indicator_code, metric_key)
+        if self.directorate_code == "DPE" and (metric.get("legacy_metric") or metric.get("targetable") is False):
+            raise ManagementValidationError("Esta métrica é histórica ou informativa e não aceita novas metas.")
+        self._validate_dpe_metric_dimensions(metric, payload.get("dimensions"))
         valid_from = validate_period(self.directorate_code, payload.get("valid_from"))
         valid_to = payload.get("valid_to")
         if valid_to:
@@ -414,6 +419,21 @@ class ManagementRepository:
         self.db.commit()
         self.db.refresh(row)
         return self.target_to_dict(row)
+
+    def _validate_dpe_metric_dimensions(self, metric: dict[str, Any], dimensions: Any) -> None:
+        if self.directorate_code != "DPE":
+            return
+        raw = dimensions or {}
+        if not isinstance(raw, dict):
+            return
+        allowed = set(metric.get("dimensions") or [])
+        used = {str(key) for key, value in raw.items() if str(value or "").strip()}
+        invalid = sorted(used - allowed)
+        if invalid:
+            raise ManagementValidationError(
+                "Esta métrica não utiliza as dimensões informadas.",
+                {"dimensions": "Remova: " + ", ".join(invalid)},
+            )
 
     @staticmethod
     def _optional_float(value: Any) -> float | None:
@@ -455,9 +475,16 @@ class ManagementRepository:
         self._require_write()
         indicator_code = str(payload.get("indicator_code") or "").strip().upper()
         spec = indicator_spec(self.directorate_code, indicator_code)
+        if self.directorate_code == "DPE" and spec.get("legacy"):
+            raise ManagementValidationError("Este indicador pertence ao contrato histórico da DPE e não aceita novos planos de ação.")
         metric_key = str(payload.get("metric_key") or "").strip() or None
-        if metric_key:
-            metric_spec(self.directorate_code, indicator_code, metric_key)
+        if self.directorate_code == "DPE" and not metric_key:
+            raise ManagementValidationError("Selecione a métrica da DPE que originou o plano de ação.")
+        metric = metric_spec(self.directorate_code, indicator_code, metric_key) if metric_key else None
+        if self.directorate_code == "DPE" and metric and (metric.get("legacy_metric") or metric.get("actionable") is False or metric.get("targetable") is False):
+            raise ManagementValidationError("Esta métrica é histórica ou apenas informativa e não aceita novos planos de ação.")
+        if metric:
+            self._validate_dpe_metric_dimensions(metric, payload.get("dimensions"))
         period = validate_period(self.directorate_code, payload.get("period"))
         _, dimension_key, dimension_label = canonical_dimensions(spec, payload.get("dimensions"))
         required = {

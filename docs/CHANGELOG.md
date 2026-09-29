@@ -1,3 +1,530 @@
+# v0.13.0 — Production
+
+- promove a árvore reconciliada v0.13.0-dev.15 para produção sem novas mudanças de domínio;
+- base acadêmica oficial v0.11.6.7;
+- schema 48;
+- habilita rate limit de login na configuração de produção;
+- mantém `AUTH_DISABLED=false`, `COOKIE_SECURE=true` e API docs desabilitadas;
+- release destinada à homologação final no VPS e promoção imediata após smoke de infraestrutura.
+
+# v0.13.0-dev.15 — Reconciliação global com base acadêmica v0.11.6.7
+
+- integra a árvore acadêmica completa v0.11.6.7 sobre a DPE v0.13.0-dev.14;
+- incorpora os ajustes v0.11.6.6 de compatibilidade SEI em Resultados Acadêmicos;
+- incorpora a classificação gerencial por aluno da v0.11.6.7;
+- preserva schema 48 e todas as migrations DPE 041–048;
+- resolve o bloqueador global de base acadêmica identificado no DPE-01;
+- adiciona regressão específica para garantir simultaneamente DPE moderna e classificação acadêmica v0.11.6.7.
+
+---
+
+# v0.13.0-dev.14 — DPE-14 · Auditoria final e bloqueio do legado
+
+- remove importador, modelos de importação e builder Excel históricos da DPE;
+- bloqueia superfícies genéricas de dashboard/medições/Excel para DPE;
+- remove cálculos DPE-01/02/03 restantes do runtime genérico;
+- impede que seeds auxiliares recriem medições antigas;
+- adiciona verificador canônico de release;
+- preserva referências antigas somente para migration/auditoria de dados históricos;
+- schema 48 mantido; 152 testes aprovados.
+
+Detalhes: `docs/DPE_14_FINAL_AUDIT_v0130dev14.md`.
+
+---
+
+# v0.13.0-dev.5 — DPE-05 · Cursos e contextos opcionais
+
+- Remove a restrição da DPE a cursos presenciais.
+- Curso passa a ser a entidade principal da experiência.
+- Novo contexto-base automático permite que um curso funcione sem cadastrar uma “oferta”.
+- Contextos adicionais tornam-se opcionais para turma, turno, unidade, local ou modalidade específica.
+- Competências materializam contextos adicionais quando existirem e usam o contexto-base apenas quando o curso não estiver desdobrado, evitando dupla contagem.
+- Snapshots preservam explicitamente o tipo de contexto para histórico.
+- APIs e telas passam a trabalhar com cursos de todas as modalidades.
+- Mantém `offering_id` e a tabela histórica internamente para compatibilidade com rateio, docência, economics e fechamentos já existentes.
+
+# v0.13.0-dev.4 — DPE-04 · Consolidação do domínio
+
+- estabelece um vocabulário canônico da DPE em `dpe_domain.py`;
+- adiciona `/api/dpe/domain` com entidades, estados da competência e grupos de gestão oficiais;
+- cria os grupos `DPE-RESULT`, `DPE-REVENUE`, `DPE-EXPENSE`, `DPE-TEACHING` e `DPE-ALLOCATION`;
+- marca DPE-01/02/03 como contrato histórico de compatibilidade para medições/Excel;
+- bloqueia novas metas e planos de ação nos códigos históricos;
+- migration 044 arquiva metas/planos antigos e remapeia somente equivalências semânticas seguras;
+- preserva métricas antigas sem equivalência exata como histórico em vez de converter por aproximação;
+- mantém Cost Engine como fonte operacional oficial;
+- schema esperado passa a 44;
+- suíte completa: 98 testes aprovados.
+
+Detalhes: `docs/DPE_04_DOMAIN_CONSOLIDATION_v0130dev4.md`.
+
+---
+
+# v0.13.0-dev.3 — DPE-03 · Backend legado aposentado
+
+- remove APIs, repositories, modelos ORM e seeds da DPE v0.4 e Finance v0.7.7;
+- remove o Excel v0.4 e seus templates antigos;
+- cria a migration 043, que arquiva qualquer linha legada antes de excluir as oito tabelas antigas;
+- remove DPE-04/DPE-05 do metadata runtime;
+- preserva temporariamente DPE-01/02/03 de gestão, Metas e Planos para a próxima etapa de domínio;
+- mantém Cost Engine, rateio, docência, economics, analytics, fechamento, snapshots e auditoria;
+- adiciona aposentadoria equivalente para SQLite local;
+- suíte completa: 92 testes aprovados.
+
+Detalhes: `docs/DPE_03_BACKEND_LEGACY_RETIREMENT_v0130dev3.md`.
+
+---
+
+# v0.12.5 — DPE · Homologação e Refinamento
+
+## v0.12.5.1 — DPE Demo + Navigation Hotfix
+
+- Corrige a tela de Receitas permanecendo visivel ao navegar para outras areas.
+- Adiciona protecao CSS para garantir que somente a `page-section.active` seja exibida.
+- Entrega a base local `univc_dpe_demo.db` pre-populada para homologacao visual.
+- Sem migration nova; schema 42.
+
+
+- consolida acessibilidade estrutural e navegação por teclado na DPE;
+- adiciona skip link, `aria-busy`, status de carregamento e feedback acessível;
+- adiciona gerenciamento de foco, focus trap, Esc e devolução de foco nos modais;
+- substitui diálogos nativos `confirm()`/`prompt()` por confirmação institucional com justificativa opcional/obrigatória;
+- padroniza alertas, erros de formulário e estados vazios;
+- refina combobox docente e abas com contratos ARIA e teclado;
+- adiciona tooltips de conceitos gerenciais;
+- melhora responsividade, densidade de tabelas, formulários e modais;
+- preserva `prefers-reduced-motion`;
+- nenhuma migration nova; schema permanece 42;
+- última migration obrigatória continua sendo `042_dpe_productivity_v0123.sql`;
+- suíte acumulada da base de homologação: 80 testes aprovados.
+
+Detalhes: `docs/DPE_HOMOLOGATION_REFINEMENT_v0125.md`.
+
+---
+
+# v0.12.4 — DPE · Fechamento e Governança
+
+- transforma Fechamento em checklist operacional com pendências específicas e acionáveis;
+- adiciona conciliação docente e resultado econômico ao checklist;
+- exige revisão explícita dos alertas atuais antes de liberar o fechamento;
+- registra cada revisão de alerta no `audit_log`;
+- adiciona ação controlada `CALCULATED -> REVIEW` para correção antes do fechamento, preservando o run anterior como `SUPERSEDED`;
+- amplia auditoria `before/after` das operações críticas da DPE;
+- exibe trilha de auditoria da competência diretamente na tela de Fechamento;
+- preserva eventos imutáveis de fechamento/reabertura e bloqueio de edição em mês fechado;
+- nenhuma migration nova; schema permanece 42;
+- última migration obrigatória continua sendo `042_dpe_productivity_v0123.sql`;
+- suíte acumulada da base de homologação: 73 testes aprovados.
+
+Detalhes: `docs/DPE_CLOSURE_GOVERNANCE_v0124.md`.
+
+---
+
+# v0.12.3 — DPE · Produtividade operacional
+
+- implementa importação real de Excel para despesas, com modelo, staging, preview, validação e commit atômico;
+- bloqueia duplicatas por chave externa e assinatura econômica antes de chegar ao ledger;
+- adiciona cópia controlada de receitas/alunos e quadro docente entre competências, com prévia;
+- remapeia dados copiados pela oferta acadêmica estável em vez de reutilizar IDs de snapshot mensal;
+- adiciona despesas recorrentes idempotentes e vinculação opcional a política de distribuição;
+- adiciona classificação em massa de despesas;
+- adiciona prévia e aplicação em massa de políticas reutilizáveis;
+- mantém a grade atômica de Receitas como editor em massa oficial;
+- adiciona migration 042 `dpe_productivity_v0123.sql`;
+- schema esperado passa a 42;
+- suíte acumulada da base de homologação: 68 testes aprovados.
+
+Detalhes: `docs/DPE_PRODUCTIVITY_v0123.md`.
+
+---
+
+# v0.12.2 — DPE · Financial Analytics
+
+- adiciona camada analítica somente leitura sobre a fonte oficial do Cost Engine;
+- adiciona cards de Receita bruta, Receita líquida, Despesas, Resultado, Margem operacional, Ticket líquido e Alunos pagantes com comparação mensal;
+- adiciona evolução de Receita líquida × Despesas × Resultado e Margem operacional;
+- adiciona despesas por categoria, por setor e comparação de categorias contra o mês anterior;
+- adiciona Receita, Resultado, Margem e Ticket por curso;
+- adiciona Custo por aluno × Ticket e composição Docentes/Diretos/Compartilhados;
+- adiciona histórico do curso com Receita × Custo × Resultado;
+- adiciona waterfall reconciliado da receita bruta ao resultado;
+- usa apenas Allocation Run oficial, reconciliado e com fingerprint atual para custos/resultados por curso;
+- não infere overhead administrativo sem classificação contábil explícita;
+- nenhuma migration nova; schema permanece 41;
+- suíte acumulada da base de homologação: 61 testes aprovados.
+
+Detalhes: `docs/DPE_ANALYTICS_v0122.md`.
+
+---
+
+# v0.12.1 — DPE · Distribuição de Custos · mesa de trabalho e políticas
+
+- transforma Distribuição de custos em mesa de trabalho com destino, critério e situação visíveis;
+- adiciona busca e filtro operacional de despesas;
+- substitui a seleção extensa de destinos por seletor pesquisável;
+- mantém prévia obrigatória antes de salvar a configuração;
+- adiciona prévia consolidada da competência sem persistir novo Allocation Run;
+- compara custo confirmado, nova prévia, receita, resultado e margem por curso/oferta;
+- cria políticas reutilizáveis de distribuição com sugestão automática controlada pelo usuário;
+- preserva histórico ao resolver destinos estáveis para os snapshots de cada competência;
+- adiciona migration 041 `dpe_allocation_policies_v0121.sql`;
+- schema esperado passa a 41;
+- suíte acumulada da base de homologação: 53 testes aprovados.
+
+Detalhes: `docs/DPE_COST_DISTRIBUTION_v0121.md`.
+
+---
+
+# v0.12.0 — DPE · Financial Operations · fluxo operacional
+
+- restringe novas competencias da DPE a cursos oficiais ativos e presenciais de DTNH/DCS;
+- transforma Receitas em area operacional propria;
+- adiciona grade mensal de alunos/receitas com gravacao atomica em lote;
+- preserva calculo automatico de receita liquida e ticket;
+- reorganiza Cursos para leitura economica;
+- redesenha distribuicao docente com curso + horas e reconciliacao em tempo real;
+- adiciona busca para professor, disciplina e curso na operacao docente;
+- explicita Categoria, Setor, Destino economico e Criterio na experiencia de despesas;
+- preserva Allocation Engine, snapshots, fechamento, auditoria e compatibilidade SQLite/PostgreSQL;
+- adiciona testes automatizados DPE;
+- nenhuma migration nova; schema 40.
+
+Detalhes: `docs/DPE_FINANCIAL_OPERATIONS_v0120.md`.
+
+> Observacao de release: o ZIP completo de homologacao desta entrega parte da arvore completa v0.11.6.5. O patch DPE separado deve ser aplicado sobre a arvore completa v0.11.6.7 para preservar integralmente v0.11.6.6/v0.11.6.7.
+
+---
+
+# v0.11.6.5 — DTNH/DCS · Resultados Acadêmicos · leitura por aluno
+
+- separa contagens de pessoas das contagens aluno-disciplina;
+- adiciona resumo reconciliável de alunos distintos;
+- cards de reprovação aplicam filtros server-side e abrem os registros correspondentes;
+- gráfico histórico mostra alunos distintos e composição do status no tooltip;
+- seleção inicial passa ao semestre mais recente;
+- nenhuma migration; schema 40.
+
+Detalhes: `docs/ACADEMIC_RESULTS_STUDENT_UX_v01165.md`.
+
+---
+
+# v0.11.6.4 — DTNH/DCS · Resultados Acadêmicos · importação protegida
+
+- troca o parser monolítico do relatório de notas por inspeção + streaming em `read_only=True`;
+- persiste resultados em lotes configuráveis (500 por padrão);
+- libera o cache de alunos entre lotes para conter RAM;
+- torna a reexecução segura por idempotência dos vínculos já gravados;
+- interface SEI processa um curso por request e exibe progresso por curso;
+- endpoint pesado do SEI roda fora do event loop;
+- upload manual de Resultados também é deslocado para thread pool e usa lotes;
+- nenhuma migration nova; schema 40.
+
+Detalhes: `docs/ACADEMIC_RESULTS_IMPORT_HARDENING_v01164.md`.
+
+---
+
+# v0.11.6.3 — DTNH/DCS · Avaliação Docente · ZIP final do SEI + comboboxes
+
+- Corrige o fluxo direto do SEI para executar a segunda geração obrigatória do relatório `Disciplina/Professor`.
+- Detecta `formQuestionarioSelecionar` após a primeira conclusão e usa somente o botão global `formQuestionarioSelecionar:botaoGerarRelatorioEmPDF4`.
+- Executa novo ciclo `pool2 → encerrar → oncomplete2` antes de procurar `DownloadRelatorioSV`.
+- Mantém fallback compatível com relatórios que já retornem download após a primeira fase.
+- Transforma Curso, Disciplina e Docente em comboboxes pesquisáveis sem alterar o contrato dos filtros encadeados.
+- Adiciona busca sem acentos/caixa, teclado, limpar seleção e lista rolável.
+- Adiciona testes específicos da segunda fase e dos comboboxes.
+- Schema permanece 40.
+
+Detalhes: `docs/FACULTY_SEI_PHASE2_COMBOBOX_v01163.md`.
+
+---
+
+# v0.11.6.2 — DTNH/DCS · Avaliação Docente · acesso direto ao SEI
+
+- Corrige o botão da Avaliação Docente que abria o seletor de arquivos apesar de indicar importação pelo SEI.
+- Separa **Buscar direto no SEI** de **Usar XLSX/ZIP já baixado**.
+- Conecta a interface aos contratos `/api/surveys/sei/login`, `/api/surveys/sei/evaluations/search`, `/api/surveys/sei/evaluations/select`, `/api/surveys/faculty-student/sei/prepare` e `/api/surveys/faculty-student/sei/report/generate`.
+- Mantém a prévia e a importação categórica já existentes.
+- Schema permanece 40.
+
+# v0.11.5 — Avaliação Docente · Consolidação do KPI 02 em favorabilidade
+
+- Torna `faculty_favorability_pct_v1` a métrica oficial do KPI 02 no Painel Executivo.
+- Remove `teacher_evaluations` da fonte factual do snapshot acadêmico; a tabela continua preservada para auditoria.
+- Agrega o indicador por contagens de respostas favoráveis/classificadas e preserva bloqueio quando existe categoria não mapeada.
+- Aposenta escrita manual e endpoints antigos de análise 0–10 com HTTP 410.
+- Mantém leitura da base histórica identificada explicitamente como `legacy_score_0_10`.
+- Adiciona `goals.metric_version`; metas 02 existentes são marcadas como legadas e deixam de ser aplicadas ao percentual.
+- Exige novas metas 02 entre 0% e 100%, com atenção menor ou igual à meta.
+- Atualiza dashboard, comparações e Excel V2/V3 para favorabilidade.
+- Adiciona testes de consolidação do KPI e smoke test das duas exportações acadêmicas.
+- Migration 040 obrigatória; schema 40.
+
+Detalhes: `docs/FACULTY_KPI_CONSOLIDATION_v0115.md`.
+
+---
+
+# v0.11.4 — Avaliação Docente pelo Discente · Interface analítica
+
+- Substitui, dentro da área Avaliação Docente, a experiência manual baseada em nota 0–10 pela leitura categórica da API `faculty-student`.
+- Organiza a navegação em Visão Geral, Docentes, Disciplinas, Perguntas e Importações.
+- Adiciona filtros encadeados por semestre, curso, disciplina e docente.
+- Exibe favorabilidade como indicador derivado, mantendo a distribuição original do SEI e os avisos de metodologia.
+- Abre detalhes de docente e disciplina sem perder a identidade Curso × Disciplina × Professor × Semestre.
+- Integra o pipeline seguro ZIP/XLSX com prévia, confirmação de semestre e resolução controlada de curso ambíguo.
+- Adiciona histórico de lotes persistidos e diagnóstico de qualidade da malha acadêmica.
+- Mantém o KPI 02 legado do Painel Executivo temporariamente para compatibilidade; sua substituição integral fica para a próxima etapa.
+- Adiciona testes da nova interface/contrato e verificador de ponta a ponta em banco temporário.
+- Sem migration nova; schema 39 permanece canônico.
+
+Detalhes: `docs/FACULTY_ANALYTICS_UI_v0114.md`.
+
+---
+
+# v0.11.3 — Avaliação Docente pelo Discente · Motor analítico e API de consulta
+
+- Cria motor de favorabilidade sem converter respostas categóricas para nota 0–10.
+- Mantém distribuição original e expõe classificação de cada alternativa.
+- Exclui `Não sei` do denominador classificado, preservando sua contagem.
+- Bloqueia percentuais sintéticos quando surge categoria futura ainda não mapeada.
+- Separa perguntas de docente de itens contextuais; a pergunta 9 `UNIVC EAD` não compõe a síntese do professor.
+- Expõe `respondent_participations` com aviso explícito de que não representa alunos únicos.
+- Adiciona endpoints de filtros, overview, perguntas, professores, disciplinas, cursos e comparação por semestre.
+- Adiciona testes da camada analítica e verificador em SQLite temporário.
+- Varredura do lote real com 603 XLSX encontrou zero alternativa não mapeada.
+- Sem migration nova; schema 39 permanece canônico.
+
+---
+
+# v0.11.2 — Avaliação Docente pelo Discente · Identidade acadêmica e resolução controlada
+
+- Adiciona normalização estrita de identidade para professor, disciplina, oferta e turma sem fuzzy matching.
+- Preview de cursos ambíguos passa a expor `candidate_ids` e `candidate_courses`.
+- Importação aceita `course_resolutions` por caminho do XLSX e valida o ID contra a lista permitida.
+- `Educação Física` continua sem alias global; cada contexto precisa de decisão explícita quando ainda não resolvido.
+- Resolução aplicada fica auditada em `survey_imports.metadata_json`.
+- Reimportação reconhece resolução ambígua já persistida e marca o contexto como `already_imported`.
+- `faculty_context_semantic_key` passa a considerar `class_group`.
+- Adiciona endpoints `faculty-student/identity/catalog` e `faculty-student/identity/quality`.
+- Mantém 137 contextos automáticos DTNH, 179 DCS e 18 resolvíveis no lote real de homologação.
+- Sem migration nova; schema 39 permanece canônico.
+
+---
+
+# v0.11.1 — Avaliação Docente pelo Discente · Ingestão endurecida e importação segura
+
+- Corrige a classificação da pasta real `GRADUACAO_(SAO_MATEUSES)` do ZIP do SEI.
+- Torna o fast reject conservador e mantém o conteúdo do XLSX como validação final de unidade.
+- Preview passa a expor arquivos abertos/validados/rejeitados e divergências de escopo.
+- Confirma no lote real 603 XLSX de Graduação, 134 fora da unidade e 0 erros de parser na Graduação.
+- Normaliza e valida semestre explicitamente sem inferência por data.
+- Marca `Educação Física` sem habilitação como resolução manual obrigatória no DCS.
+- Adiciona estado `already_imported` no preview.
+- Reforça idempotência por identidade lógica da avaliação e por atribuição docente, inclusive em ZIP regenerado com SHA/report ID diferentes.
+- Adiciona testes de regressão e script de verificação da ingestão.
+- Sem migration nova; schema 39 permanece canônico.
+
+---
+
+# v0.11.0 — Avaliação Docente pelo Discente · Adaptador SEI e escopo de Graduação
+
+- Adiciona fluxo SEI `faculty-student` específico para discente avaliando docente.
+- Bloqueia o relatório em Graduação São Mateus, Disciplina/Professor, todos os turnos e todas as perguntas.
+- Implementa parser do XLSX real preservando contexto docente e distribuição de respostas.
+- Rejeita unidade/modalidade/curso fora do escopo de DTNH ou DCS.
+- Exige confirmação do semestre quando o título não identifica `.1`/`.2` explicitamente.
+- Suporta ZIPs docentes grandes sem alterar limites do importador genérico.
+- Corrige criação de disciplina para registrar vigência inicial no semestre importado.
+- Reimportação é idempotente e não permite mover contextos existentes para outro semestre.
+- KPI 02 legado permanece ativo até a camada analítica e o novo frontend serem concluídos.
+- Sem migration nova; schema 39 permanece canônico.
+
+---
+
+# v0.10.7 — DPE UX Polish, Responsividade e Consistência Institucional
+
+- Padroniza tabs internas de Despesas, Docentes e Cursos.
+- Corrige ID duplicado da Visão geral.
+- Melhora legibilidade de textos auxiliares e densidade de informação.
+- Refina topbar, tabelas, formulários e modais em mobile.
+- Permite fechar modais por Esc e clique no fundo.
+- Humaniza termos técnicos remanescentes na governança e nos cadastros avançados.
+- Adiciona ajustes de foco, ARIA e redução de movimento.
+- Schema permanece 39, sem migration nova.
+
+---
+
+# v0.10.6 — DPE Fechamento Guiado
+
+- Fechamento passa a responder diretamente se o mes esta pronto ou quais ajustes ainda faltam.
+- Checklist principal reorganizado em etapas de negocio com botao Resolver por etapa.
+- Pendencias executivas reaproveitam a deduplicacao da Visao geral e evitam cascatas tecnicas.
+- Alertas nao bloqueantes ficam separados dos bloqueios.
+- Calculo oficial, checklist tecnico e historico ficam em detalhes sob demanda.
+- Fechar e reabrir mes mantem as mesmas regras de auditoria com linguagem simplificada.
+- Sem migration nova; schema 39 permanece canonico.
+
+# v0.10.5 — DPE Despesas com Entrada Progressiva
+
+- Despesas dividido em Lancamentos, Importacoes e Categorias e setores.
+- Novo formulario de despesa usa divulgacao progressiva e mostra somente os campos essenciais no primeiro nivel.
+- Origem, documento, referencia e observacoes deixam de poluir a entrada principal.
+- Distribuicao sugerida pela categoria fica explicada, mas continua sendo revisada na area Distribuicao de custos.
+- Tabela mensal e filtros foram reduzidos para priorizar leitura e conferencia.
+- Importacoes e cadastros estruturais ficam fora do fluxo principal de lancamento.
+- Sem migration nova; schema 39 permanece canonico.
+
+# v0.10.4 — DPE Distribuição de Custos Explicável
+
+- Critérios de distribuição passam a ser apresentados em linguagem de negócio, com explicação, base usada e exemplo.
+- Nova prévia por despesa calcula percentuais e valores por curso antes de salvar a configuração.
+- Preview reaproveita o mesmo algoritmo do cálculo oficial e não persiste alterações.
+- Sugestão original da categoria e ajustes posteriores ficam diferenciados na interface.
+- Rateio manual separado entre modo percentual e valor, com validação de fechamento.
+- Pendências reais de alunos, receita, folha ou configuração passam a aparecer na lista antes do recálculo.
+- Resultado por curso ganha composição detalhada até despesa, critério, base, percentual e valor.
+- Bases e histórico de cálculos ficam em divulgação progressiva dentro de Detalhes do cálculo.
+- Sem migration nova; schema 39 permanece canônico.
+
+# v0.10.3 — DPE Cursos e Receitas UX Rebuild
+
+- Cursos separado em analise de resultado e preenchimento mensal de alunos/receita.
+- Resultado passa a ser hierarquico: curso consolidado primeiro, ofertas sob demanda.
+- Ticket, custo por aluno, resultado e margem deixam a tabela de entrada e permanecem como calculos.
+- Cadastro de cursos/ofertas fica hierarquico e acessivel a partir da area Cursos, sem duplicar a sidebar.
+- Formularios economicos escondem dados de integracao/origem em Informacoes adicionais.
+- Linguagem principal troca produto economico por curso sem alterar o backend.
+- Sem migration nova; schema 39 permanece canonico.
+
+# v0.10.2 — DPE Docentes UX Rebuild
+
+- Docentes dividido em Aulas e carga, Folha docente, Professores e Disciplinas.
+- Uma unica tarefa fica visivel por vez, reduzindo carga cognitiva.
+- Cadastro permanente separado das associacoes mensais professor-disciplina-turma-curso.
+- Folha docente ganha estado de conferencia explicito e acoes mais claras.
+- Formularios de professor, disciplina e atividade passam a esconder campos tecnicos em areas avancadas.
+- Sem migration nova; schema 39 permanece canonico.
+
+# v0.10.1 — DPE Decision-Oriented Overview
+
+- Visão geral reduzida a quatro KPIs de decisão: receita líquida, despesas do mês, resultado e margem.
+- Resultado executivo passa a considerar todas as despesas oficiais do mês, e não apenas custos já distribuídos.
+- Alunos, ticket, cobertura da distribuição e conciliação da folha passam a contexto secundário.
+- Pendências ganham títulos em linguagem de negócio e ações diretas para a tela correta.
+- Pendências técnicas em cascata são deduplicadas para evitar vários alertas sobre a mesma causa.
+- Workflow e progresso continuam disponíveis, mas ficam recolhidos por padrão em `Ver andamento do mês`.
+- Sem migration nova; schema 39 permanece canônico.
+
+# v0.10.0 — DPE UX Information Architecture Rebase
+
+- Navegação principal reduzida a Visão geral, Despesas, Cursos, Docentes, Distribuição de custos e Fechamento.
+- Mês de trabalho vira contexto global no topo.
+- Cadastros, períodos, metas e governança deixam o caminho principal.
+- Linguagem técnica é progressivamente substituída por termos de negócio, sem alterar o backend financeiro.
+- Sem migration nova; schema 39 permanece canônico.
+
+# v0.9.6.21 — DPE Frontend Alignment & Local Demo
+
+- DPE V2 alinhada visualmente à fundação UI das demais diretorias.
+- Ambiente local isolado com autenticação desativada somente em desenvolvimento.
+- Seed fictício completo para 16 cursos/produtos, 20 ofertas, professores, docência, folha, despesas, economia e rateio.
+- Scripts Windows para iniciar e restaurar a demonstração.
+- Schema permanece em 39; nenhuma migration nova.
+
+## v0.9.6.20 — DPE V2 Consolidated Experience
+
+- Cost Engine passa a ser a navegação e o painel executivo principal da DPE.
+- Nova visão mensal unificada com KPIs econômicos, progresso do workflow, próxima ação, checklist e resultado por oferta.
+- Novo endpoint read-only `/api/dpe/cost-engine/v2-overview`, sem duplicar fonte de verdade.
+- Competência selecionada no painel é propagada para Despesas, Docência, Economia, Rateio e Fechamento ao navegar pelo workflow.
+- Base financeira, indicadores DPE-01/02/03 e arquivos anteriores ficam recolhidos em **Histórico e legado**.
+- Consultas pesadas do legado passam a ser lazy-loaded apenas quando uma tela histórica é aberta.
+- Governança e Central de arquivos passam a orientar explicitamente novos lançamentos para o Cost Engine.
+- Sem migration nova; schema `39` permanece canônico.
+
+## v0.9.6.19 — DPE Month Close & Audit
+
+- Nova área **Fechamento e auditoria** na DPE.
+- Checklist formal de fechamento mensal com itens PASS/WARNING/BLOCKER.
+- Fechamento exige competência `CALCULATED`, versão oficial atual e rateio integralmente reconciliado.
+- Alunos ativos, receita líquida e base de ticket são verificados antes do encerramento.
+- Receita estimada e lotes pendentes em staging aparecem como alertas de governança.
+- Fechamento cria evento imutável com snapshot do checklist e da versão oficial utilizada.
+- Reabertura de competência fechada exige justificativa, volta o mês para `REVIEW` e mantém todo o histórico anterior.
+- Reabertura exige novo cálculo e nova oficialização antes de um novo fechamento.
+- Ações de fechar/reabrir também alimentam o log geral de auditoria.
+- Migration 039 e schema 39.
+
+## v0.9.6.18 — DPE Offering Economics
+
+- Base econômica mensal oficial por oferta para alunos, receita e ticket médio.
+- STUDENTS usa alunos ativos; REVENUE usa receita líquida.
+- Consolida resultado econômico por produto, modalidade e turno sem perder o detalhe da oferta.
+- Fingerprint do rateio passa a incorporar dados econômicos e bloqueia oficialização de cálculo obsoleto.
+- Nova área `Receita, alunos e ticket` na DPE.
+- Migration 038 e schema 38.
+
+## v0.9.6.17 — DPE Allocation Engine
+
+- Atividades docentes ganham vigência intramês para registrar substituições e simultaneidade de professores sem perder histórico.
+- Nova área **Motor de rateio** na DPE.
+- Execução dos drivers `DIRECT`, `TEACHER_HOURS`, `OFFERING_HOURS`, `STUDENTS`, `REVENUE`, `EQUAL` e `MANUAL`.
+- Base de horas por oferta pode ser derivada das atividades docentes; alunos e receita já possuem base mensal auditável por oferta.
+- Configuração de destinos elegíveis por despesa e suporte a valor/percentual manual.
+- Cálculos versionados, imutáveis e rastreáveis até despesa + oferta + regra + base matemática.
+- Pendências geram versões `BLOCKED`; somente a versão mais recente, conciliada e com fingerprint atual pode ser oficializada.
+- Oficialização congela a competência em `CALCULATED`.
+- Migration 037 e schema 37.
+
+## v0.9.6.16 — DPE Teaching Workload
+
+- Nova área operacional **Docência e carga horária** na DPE.
+- Reutilização do cadastro institucional de professores (`teachers`) com aliases seguros para conciliação futura.
+- Disciplinas econômicas, snapshots mensais de professor e atividades docentes por competência.
+- Divisão obrigatoriamente balanceada da carga horária entre uma ou mais ofertas econômicas.
+- Suporte explícito a aulas compartilhadas entre cursos/ofertas.
+- Conciliação de despesas `PAYROLL` com sugestões por nome/alias e confirmação humana obrigatória.
+- Vínculos de folha guardam snapshot histórico e são invalidados quando dados críticos da despesa mudam.
+- Migration 036 e schema 36.
+
+## v0.9.6.15 — DPE Expense Intake Center
+
+- Nova Central de Despesas para o DPE Cost Engine, sem substituir a base financeira legada.
+- Ledger normalizado por competência com categoria obrigatória, centro de custo opcional, tipo `GENERAL`/`PAYROLL`, origem e snapshot histórico da classificação.
+- CRUD governado de centros de custo e categorias, com hierarquia e regra de rateio padrão.
+- Staging neutro em lotes/linhas para futuros conectores Excel/API/requisição.
+- Estorno auditável no lugar de exclusão física.
+- Migration 035 e schema 35.
+
+## v0.9.6.14 — DPE Economic Catalog & Competences
+
+### DPE Cost Engine
+- habilita a superfície de escrita do catálogo econômico;
+- produtos e ofertas econômicas passam a ser administráveis pela DPE;
+- oferta distingue modalidade, turno e campus/unidade/polo;
+- competências mensais materializam as ofertas válidas e preservam snapshot histórico;
+- exclusões manuais de oferta são preservadas ao atualizar o snapshot;
+- nesta etapa o workflow fica limitado a `DRAFT`/`REVIEW`; cálculo e fechamento continuam reservados às próximas releases;
+- interface ganha as áreas Competências e Catálogo econômico;
+- financeiro/indicadores legados permanecem intactos.
+
+### Schema
+- sem migration nova; schema `34` permanece canônico.
+
+## v0.9.6.13 — DPE Cost Engine Foundation
+
+### DPE
+- cria a fundação do novo motor mensal de custeio sem remover o financeiro legado;
+- introduz competência, produto, oferta econômica, centro de custo, categoria e regras de rateio;
+- oferta passa a distinguir modalidade, turno, campus/unidade/polo;
+- `source_course_id` é opcional, removendo a dependência estrutural de DTNH/DCS para o catálogo econômico;
+- snapshot mensal de ofertas prepara a preservação histórica por competência;
+- cadastra sete drivers de sistema sem executar rateio nesta etapa;
+- adiciona API técnica somente de leitura para homologação da fundação.
+
+### Schema
+- nova migration `034_dpe_cost_engine_foundation_v09613.sql`;
+- `SCHEMA_VERSION = 34`.
+
 ## v0.9.6.12 — DPE Reactivation & Mobile Navigation
 
 ### DPE

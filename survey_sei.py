@@ -906,7 +906,107 @@ class SEIInstitutionalEvaluationConnector:
                 return "xlsx"
         return "zip"
 
-    def generate_report(self, *, max_wait_seconds: int = 300, poll_interval: float = 1.5) -> DownloadedReport:
+    @classmethod
+    def _bulk_report_source(cls, text: str) -> str | None:
+        """Localiza o botão GLOBAL da segunda geração do SEI.
+
+        O SEI também renderiza um botão com o mesmo sufixo em cada linha de
+        curso. Para o pacote ZIP precisamos obrigatoriamente do botão global
+        ``formQuestionarioSelecionar:botaoGerarRelatorioEmPDF4``.
+        """
+        preferred = "formQuestionarioSelecionar:botaoGerarRelatorioEmPDF4"
+        for soup in cls._soups(text):
+            form = soup.find("form", attrs={"id": "formQuestionarioSelecionar"})
+            if not form:
+                form = soup.find("form", attrs={"name": "formQuestionarioSelecionar"})
+            if not form:
+                continue
+
+            exact = form.find(attrs={"id": preferred}) or form.find(attrs={"name": preferred})
+            if exact:
+                return preferred
+
+            for element in form.find_all(["a", "button", "input"]):
+                source = str(element.get("id") or element.get("name") or "")
+                if not source:
+                    continue
+                if ":questionarioRelVOs:" in source:
+                    continue
+                if source.endswith(":botaoGerarRelatorioEmPDF4"):
+                    return source
+        return None
+
+    @classmethod
+    def _has_bulk_report_stage(cls, text: str) -> bool:
+        return cls._bulk_report_source(text) is not None
+
+    def _wait_report_processing(
+        self,
+        *,
+        max_wait_seconds: int,
+        poll_interval: float,
+        stage_label: str,
+    ) -> requests.Response:
+        deadline = time.monotonic() + max_wait_seconds
+        done = False
+        while time.monotonic() < deadline:
+            pool = self._ajax_post(
+                REPORT_URL,
+                self._component_payload("statusPanelBaixa", "statusPanelBaixa:statusPanelBaixa_pool2"),
+                referer=REPORT_URL,
+            )
+            progress = self.parse_progress(pool.text)
+            if progress:
+                self.last_progress = {**progress, "stage": stage_label}
+
+            encerrado = self._ajax_post(
+                REPORT_URL,
+                self._component_payload("statusPanelBaixa", "statusPanelBaixa:statusPanelBaixa_encerrar"),
+                referer=REPORT_URL,
+            )
+            progress = self.parse_progress(encerrado.text)
+            if progress:
+                self.last_progress = {**progress, "stage": stage_label}
+
+            if "executarOncomplete2();" in encerrado.text or "executarOncomplete2();" in pool.text:
+                done = True
+                break
+            time.sleep(poll_interval)
+
+        if not done:
+            raise SEIConnectorError(
+                f"O SEI não concluiu {stage_label} em {max_wait_seconds} segundos."
+            )
+
+        return self._ajax_post(
+            REPORT_URL,
+            self._component_payload("statusPanelBaixa", "statusPanelBaixa:statusPanelBaixa_oncomplete2"),
+            referer=REPORT_URL,
+        )
+
+    def _start_bulk_report_generation(self, text: str) -> requests.Response:
+        source = self._bulk_report_source(text)
+        if not source:
+            raise SEIConnectorError(
+                "O SEI terminou a preparação, mas não apresentou o botão global da segunda geração."
+            )
+        values = self._form_values(text, "formQuestionarioSelecionar")
+        return self._ajax_post(
+            REPORT_URL,
+            self._click_payload("formQuestionarioSelecionar", source, values),
+            referer=REPORT_URL,
+        )
+
+    def generate_report(self, *, max_wait_seconds: int = 600, poll_interval: float = 1.5) -> DownloadedReport:
+        """Gera e baixa o relatório, incluindo a segunda fase do SEI quando necessária.
+
+        No fluxo Disciplina/Professor observado no SEI, o primeiro
+        ``botaoGerarRelatorioEmExcel`` apenas prepara a relação de relatórios.
+        O ZIP só é criado depois de um segundo clique global em
+        ``formQuestionarioSelecionar:botaoGerarRelatorioEmPDF4`` e de um novo
+        ciclo statusPanelBaixa. Fluxos antigos que já devolvem
+        ``DownloadRelatorioSV`` após a primeira fase continuam suportados.
+        """
         with self.lock:
             if not self.metadata or self.metadata.question_count <= 0:
                 raise SEIConnectorError("Prepare as perguntas antes de gerar o relatório.")
@@ -920,47 +1020,38 @@ class SEIInstitutionalEvaluationConnector:
                 ),
                 referer=REPORT_URL,
             )
-            self.last_progress = self.parse_progress(response.text)
+            progress = self.parse_progress(response.text)
+            if progress:
+                self.last_progress = {**progress, "stage": "preparação dos relatórios"}
 
-            deadline = time.monotonic() + max_wait_seconds
-            done = False
-            while time.monotonic() < deadline:
-                pool = self._ajax_post(
-                    REPORT_URL,
-                    self._component_payload("statusPanelBaixa", "statusPanelBaixa:statusPanelBaixa_pool2"),
-                    referer=REPORT_URL,
-                )
-                progress = self.parse_progress(pool.text)
-                if progress:
-                    self.last_progress = progress
-
-                encerrado = self._ajax_post(
-                    REPORT_URL,
-                    self._component_payload("statusPanelBaixa", "statusPanelBaixa:statusPanelBaixa_encerrar"),
-                    referer=REPORT_URL,
-                )
-                progress = self.parse_progress(encerrado.text)
-                if progress:
-                    self.last_progress = progress
-
-                if "executarOncomplete2();" in encerrado.text or "executarOncomplete2();" in pool.text:
-                    done = True
-                    break
-                time.sleep(poll_interval)
-
-            if not done:
-                raise SEIConnectorError(
-                    f"O SEI não concluiu o relatório em {max_wait_seconds} segundos."
-                )
-
-            final = self._ajax_post(
-                REPORT_URL,
-                self._component_payload("statusPanelBaixa", "statusPanelBaixa:statusPanelBaixa_oncomplete2"),
-                referer=REPORT_URL,
+            final = self._wait_report_processing(
+                max_wait_seconds=max_wait_seconds,
+                poll_interval=poll_interval,
+                stage_label="a preparação dos relatórios",
             )
             download_path = self._download_path(final.text)
+
+            # Avaliação Docente: a primeira conclusão abre o painel de cursos.
+            # O HAR real mostra que somente o botão GLOBAL deste formulário
+            # inicia a geração dos XLSX e, depois, do ZIP final.
+            if not download_path and self._has_bulk_report_stage(final.text):
+                phase2 = self._start_bulk_report_generation(final.text)
+                progress = self.parse_progress(phase2.text)
+                if progress:
+                    self.last_progress = {**progress, "stage": "geração do pacote XLSX"}
+
+                final = self._wait_report_processing(
+                    max_wait_seconds=max_wait_seconds,
+                    poll_interval=poll_interval,
+                    stage_label="a geração do pacote XLSX",
+                )
+                download_path = self._download_path(final.text)
+
             if not download_path:
-                raise SEIConnectorError("O SEI concluiu o processamento, mas não informou o arquivo final.")
+                raise SEIConnectorError(
+                    "O SEI concluiu o processamento, mas não informou o ZIP/XLSX final. "
+                    "A segunda etapa de geração também não produziu DownloadRelatorioSV."
+                )
 
             download_url = urljoin(BASE, download_path)
             file_response = self.session.get(

@@ -25,7 +25,7 @@ const state = {
   sessionRefreshTimer: null,
   eventsBound: false,
   pagination: {},
-  resultFilters: { periodo: '', curso: '', disciplina: '' },
+  resultFilters: { periodo: '', curso: '', disciplina: '', resultado: '' },
   teacherFilters: { periodo: '', curso: '', disciplina: '', professor: '' },
   teacherOptions: { periodos: [], cursos: [], disciplinas: [], professores: [] },
   teacherAnalysis: { summary: {}, trend: [], comparison: [], comparison_dimension: 'professor' },
@@ -33,10 +33,12 @@ const state = {
   teacherSearchTimer: null,
   resultView: 'resumo',
   resultSummary: [],
+  resultStudentSummary: {},
   resultTrend: [],
   resultTrendKey: '',
   resultServer: { total: 0, page: 1, pageSize: 50, pages: 1 },
   resultSearchTimer: null,
+  resultPeriodInitialized: false,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -352,7 +354,8 @@ function navigate(section) {
   if (section==='nps-institution') loadInstitutionNps();
   else if (section==='nps-course') loadDataset('nps');
   else if (section==='nps-faculty') loadFacultyNps();
-  else if (['avaliacao_docente','resultados'].includes(section)) loadDataset(section);
+  else if (section==='avaliacao_docente') window.FacultyEvaluationUI?.load();
+  else if (section==='resultados') loadDataset(section);
   if (section==='planos') loadActions();
   if (section==='metas') loadGoals();
   if (section==='cadastros') loadCatalogs();
@@ -488,17 +491,20 @@ function resetDirectorateCaches() {
   state.catalogs = { cursos: [], disciplinas: [] };
   state.searches = { nps: '', avaliacao_docente: '', resultados: '', planos: '', metas: '', disciplinas: '' };
   state.pagination = {};
-  state.resultFilters = { periodo: '', curso: '', disciplina: '' };
+  state.resultFilters = { periodo: '', curso: '', disciplina: '', resultado: '' };
   state.teacherFilters = { periodo: '', curso: '', disciplina: '', professor: '' };
   state.teacherOptions = { periodos: [], cursos: [], disciplinas: [], professores: [] };
   state.teacherAnalysis = { summary: {}, trend: [], comparison: [], comparison_dimension: 'professor' };
   state.teacherServer = { total: 0, page: 1, pageSize: 10, pages: 1 };
   clearTimeout(state.teacherSearchTimer); state.teacherSearchTimer = null;
+  window.FacultyEvaluationUI?.reset?.();
   state.resultView = 'resumo';
   state.resultSummary = [];
+  state.resultStudentSummary = {};
   state.resultTrend = [];
   state.resultTrendKey = '';
   state.resultServer = { total: 0, page: 1, pageSize: 50, pages: 1 };
+  state.resultPeriodInitialized = false;
 }
 
 function renderDirectorateSelector() {
@@ -520,7 +526,6 @@ function renderKpiEssentials() {
     [`${academicPrefix}-01A`]: ['#meta-nps-institution'],
     [`${academicPrefix}-01B`]: ['#meta-nps-course'],
     [`${academicPrefix}-01C`]: ['#meta-nps-faculty'],
-    [`${academicPrefix}-02`]: ['#meta-dtnh-02'],
     [`${academicPrefix}-03`]: ['#meta-dtnh-03'],
   };
   const goalMap = {
@@ -839,10 +844,9 @@ async function loadTeacherPage() {
 }
 
 async function loadTeacherWorkspace() {
-  await loadTeacherOptions();
-  // Options may invalidate a selection after an edit/delete. Fetch analytics and
-  // the table only after the canonical filter state has been reconciled.
-  await Promise.all([loadTeacherAnalysis(), loadTeacherPage()]);
+  // Compatibility shim: since v0.11.5 the official KPI 02 is the categorical
+  // faculty module. Historical score records remain read-only in the database.
+  await window.FacultyEvaluationUI?.load?.();
 }
 
 function renderTeacherAnalysis() {
@@ -850,7 +854,7 @@ function renderTeacherAnalysis() {
   if (!targetCards) return;
   const summary = state.teacherAnalysis?.summary || {};
   targetCards.innerHTML = [
-    ['Média ponderada', summary.valor==null?'—':formatNumber(summary.valor,2), `${formatNumber(summary.respondentes||0,0)} resposta(s)`, 'info'],
+    ['Nota histórica · legado', summary.valor==null?'—':formatNumber(summary.valor,2), `${formatNumber(summary.respondentes||0,0)} resposta(s)`, 'info'],
     ['Respondentes', formatNumber(summary.respondentes||0,0), 'volume do recorte', 'neutral'],
     ['Professores', formatNumber(summary.professores||0,0), 'docente(s) no recorte', 'neutral'],
     ['Disciplinas', formatNumber(summary.disciplinas||0,0), 'disciplina(s) no recorte', 'neutral'],
@@ -865,10 +869,10 @@ function renderTeacherAnalysis() {
   const ctx = $('#teacherKpiContext');
   if (ctx) ctx.textContent = context.length ? context.join(' · ') : 'Todo o histórico de avaliação docente da diretoria';
 
-  renderLineChart($('#chartTeacherKpiEvolution'), state.teacherAnalysis?.trend || [], {decimals:2, metric:'avaliacao_docente', unit:'nota 0–10'});
+  renderLineChart($('#chartTeacherKpiEvolution'), state.teacherAnalysis?.trend || [], {decimals:2, metric:'avaliacao_docente', unit:'histórico 0–10'});
   const title = $('#teacherComparisonTitle');
   if (title) title.textContent = state.teacherAnalysis?.comparison_dimension === 'disciplina' ? 'Disciplinas do professor' : 'Professores no recorte';
-  renderBarChart($('#chartTeacherKpiComparison'), state.teacherAnalysis?.comparison || [], {decimals:2, metric:'avaliacao_docente', unit:'nota 0–10', clickFilter:false});
+  renderBarChart($('#chartTeacherKpiComparison'), state.teacherAnalysis?.comparison || [], {decimals:2, metric:'avaliacao_docente', unit:'histórico 0–10', clickFilter:false});
 }
 
 function renderTeacherTableServer() {
@@ -1002,20 +1006,22 @@ function bindEvents() {
     loadTeacherWorkspace().catch(error=>toast('Erro ao limpar filtros',error.message,'error'));
   });
   $('#resultsPeriodFilter')?.addEventListener('change',event=>{
-    state.resultFilters.periodo=event.target.value;state.resultSummary=[];resetPagination('data-resultados');loadDataset('resultados',true);
+    state.resultFilters.periodo=event.target.value;state.resultSummary=[];state.resultStudentSummary={};resetPagination('data-resultados');loadDataset('resultados',true);
   });
   $('#resultsCourseFilter')?.addEventListener('change',event=>{
-    state.resultFilters.curso=event.target.value;state.resultFilters.disciplina='';state.resultSummary=[];state.resultTrendKey='';updateResultDisciplineOptions();resetPagination('data-resultados');loadDataset('resultados',true);
+    state.resultFilters.curso=event.target.value;state.resultFilters.disciplina='';state.resultSummary=[];state.resultStudentSummary={};state.resultTrendKey='';updateResultDisciplineOptions();resetPagination('data-resultados');loadDataset('resultados',true);
   });
   $('#resultsDisciplineFilter')?.addEventListener('change',event=>{
-    state.resultFilters.disciplina=event.target.value;state.resultSummary=[];state.resultTrendKey='';resetPagination('data-resultados');loadDataset('resultados',true);
+    state.resultFilters.disciplina=event.target.value;state.resultSummary=[];state.resultStudentSummary={};state.resultTrendKey='';resetPagination('data-resultados');loadDataset('resultados',true);
   });
   $$('#resultsViewTabs [data-results-view]').forEach(button=>button.addEventListener('click',()=>{
     state.resultView=button.dataset.resultsView;
+    if(state.resultView==='resumo') state.resultFilters.resultado='';
     $$('#resultsViewTabs [data-results-view]').forEach(x=>x.classList.toggle('active',x===button));
     resetPagination('data-resultados');
     const search=$('.table-search[data-dataset="resultados"]');
     if(search)search.placeholder=state.resultView==='resumo'?'Buscar curso, disciplina ou semestre':'Buscar aluno, matrícula, curso, disciplina, turma ou situação';
+    renderResultActiveFilter();
     loadDataset('resultados',true);
   }));
   $('#addActionButton')?.addEventListener('click',()=>openActionForm());
@@ -1165,7 +1171,7 @@ function renderDtnhDashboard() {
   const facultySource = facultyNps.fonte ? ` · ${facultyNps.fonte}` : '';
   const facultyVariation = facultyNps.comparacao == null ? goalSummary(facultyNps.meta_info) : `${facultyNps.variacao >= 0 ? '+' : ''}${formatNumber(facultyNps.variacao,1)} p.p. vs. ${npsCompareLabel}`;
   const facultySub = `${facultyVariation} · ${facultyVolume} · institucional/anônimo${facultySource}`;
-  const teacherSub = c.avaliacao_docente.comparacao == null ? goalSummary(c.avaliacao_docente.meta_info) : `${c.avaliacao_docente.variacao >= 0 ? '+' : ''}${formatNumber(c.avaliacao_docente.variacao,2)} ponto(s) vs. ${compareLabel}`;
+  const teacherSub = c.avaliacao_docente.comparacao == null ? goalSummary(c.avaliacao_docente.meta_info) : `${c.avaliacao_docente.variacao >= 0 ? '+' : ''}${formatNumber(c.avaliacao_docente.variacao,1)} p.p. vs. ${compareLabel}`;
   const apprSub = c.aprovacao.comparacao == null ? goalSummary(c.aprovacao.meta_info) : `${c.aprovacao.variacao >= 0 ? '+' : ''}${formatNumber(c.aprovacao.variacao,1)} p.p. vs. ${compareLabel}`;
   const details = c.aprovacao.finalizados ? ` · ${formatNumber(c.aprovacao.finalizados,0)} resultado(s) finalizado(s)` : '';
   const grid = $('#metricGrid');
@@ -1173,7 +1179,7 @@ function renderDtnhDashboard() {
     metricCard('NPS da Instituição · Alunos','01A',institution.valor==null?'—':formatNumber(institution.valor,1),institutionSub,institution.status),
     metricCard('NPS do Curso','01B',courseNps.valor==null?'—':formatNumber(courseNps.valor,1),npsSub,courseNps.status),
     metricCard('NPS da Instituição · Docentes','01C',facultyNps.valor==null?'—':formatNumber(facultyNps.valor,1),facultySub,facultyNps.status),
-    metricCard('Avaliação docente','02',c.avaliacao_docente.valor==null?'—':formatNumber(c.avaliacao_docente.valor,2),teacherSub,c.avaliacao_docente.status),
+    metricCard('Favorabilidade docente','02',c.avaliacao_docente.valor==null?'—':`${formatNumber(c.avaliacao_docente.valor,1)}%`,`${teacherSub} · ${formatNumber(c.avaliacao_docente.respondentes || 0,0)} participação(ões)`,c.avaliacao_docente.status),
     metricCard('Taxa de aprovação','03',c.aprovacao.valor==null?'—':`${formatNumber(c.aprovacao.valor,1)}%`,`${apprSub}${details}`,c.aprovacao.status),
   ].join('');
   const outcomeGrid=$('#academicOutcomeGrid');
@@ -1192,7 +1198,7 @@ function renderDtnhDashboard() {
   renderLineChart($('#chartNpsInstitutionExecutive'), d.series?.nps_institution_semestral || [], { suffix:'', decimals:1, metric:'nps', unit:'pontos' });
   renderLineChart($('#chartNps'), d.series?.nps_course_semestral || d.series?.nps_semestral || d.series?.nps || [], { suffix:'', decimals:1, metric:'nps', unit:'pontos' });
   renderLineChart($('#chartNpsFacultyExecutive'), d.series?.nps_faculty_semestral || [], { suffix:'', decimals:1, metric:'nps', unit:'pontos' });
-  renderLineChart($('#chartAvaliacaoDocente'), d.series?.avaliacao_docente || [], { suffix:'', decimals:2, metric:'avaliacao_docente', unit:'nota 0–10' });
+  renderLineChart($('#chartAvaliacaoDocente'), d.series?.avaliacao_docente || [], { suffix:'%', decimals:1, metric:'avaliacao_docente', unit:'favorabilidade' });
   renderLineChart($('#chartAprovacao'), d.series?.aprovacao || [], { suffix:'%', decimals:1, metric:'aprovacao', unit:'%' });
   const insights=$('#insightsList');
   if (insights) insights.innerHTML = (d.insights || []).length ? d.insights.slice(0,5).map(item=>`<div class="insight-item ${escapeHtml(item.nivel)}"><span class="insight-dot">•</span><div><strong>${escapeHtml(item.titulo)}</strong><p>${escapeHtml(item.texto)}</p></div></div>`).join('') : '<div class="chart-empty">Sem alertas para o contexto atual.</div>';
@@ -1221,11 +1227,11 @@ function chartTooltipContent(point, opts = {}) {
       const suffix = opts.metaUnit.includes('/') ? opts.metaUnit.slice(opts.metaUnit.indexOf('/')) : '';
       metaText = `${formatCurrency(point.meta)}${suffix}`;
     } else if (opts.metric==='nps') metaText = `${formatNumber(point.meta,1)} pontos`;
-    else if (opts.metric==='avaliacao_docente') metaText = `${formatNumber(point.meta,2)} / 10`;
+    else if (opts.metric==='avaliacao_docente') metaText = `${formatNumber(point.meta,1)}%`;
     else metaText = `${formatNumber(point.meta,1)}%`;
     lines.push(`<div class="chart-tip-row"><span>Meta do período</span><b>${escapeHtml(metaText)}</b></div>`);
     if(point.limite_superior!==null&&point.limite_superior!==undefined){
-      const upperText=opts.metric==='nps'?`${formatNumber(point.limite_superior,1)} pontos`:opts.metric==='avaliacao_docente'?`${formatNumber(point.limite_superior,2)} / 10`:`${formatNumber(point.limite_superior,1)}%`;
+      const upperText=opts.metric==='nps'?`${formatNumber(point.limite_superior,1)} pontos`:opts.metric==='avaliacao_docente'?`${formatNumber(point.limite_superior,1)}%`:`${formatNumber(point.limite_superior,1)}%`;
       lines.push(`<div class="chart-tip-row"><span>Limite superior</span><b>${escapeHtml(upperText)}</b></div>`);
     }
     if(point.meta_recorte)lines.push(`<div class="chart-tip-row"><span>Origem</span><b>${escapeHtml(point.meta_recorte)}</b></div>`);
@@ -1233,9 +1239,10 @@ function chartTooltipContent(point, opts = {}) {
   }
   if(point.status)lines.push(`<div class="chart-tip-row"><span>Status</span><b>${escapeHtml(point.status)}</b></div>`);
   if(opts.metric==='nps'&&point.respondentes!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Respondentes</span><b>${formatNumber(point.respondentes,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Promotores</span><b>${formatNumber(point.promotores,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Neutros</span><b>${formatNumber(point.neutros,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Detratores</span><b>${formatNumber(point.detratores,0)}</b></div>`);if(point.fonte)lines.push(`<div class="chart-tip-row"><span>Fonte</span><b>${escapeHtml(point.fonte)}</b></div>`);}
-  if(opts.metric==='avaliacao_docente'&&point.respondentes!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Respondentes</span><b>${formatNumber(point.respondentes,0)}</b></div>`);if(point.professores!==undefined)lines.push(`<div class="chart-tip-row"><span>Professores</span><b>${formatNumber(point.professores,0)}</b></div>`);if(point.disciplinas!==undefined)lines.push(`<div class="chart-tip-row"><span>Disciplinas</span><b>${formatNumber(point.disciplinas,0)}</b></div>`);}
+  if(opts.metric==='avaliacao_docente'&&point.respondentes!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Participações</span><b>${formatNumber(point.respondentes,0)}</b></div>`);if(point.classificados!==undefined)lines.push(`<div class="chart-tip-row"><span>Respostas classificadas</span><b>${formatNumber(point.classificados,0)}</b></div>`);if(point.favoraveis!==undefined)lines.push(`<div class="chart-tip-row"><span>Favoráveis</span><b>${formatNumber(point.favoraveis,0)}</b></div>`);if(point.nao_mapeados)lines.push(`<div class="chart-tip-row"><span>Categorias não mapeadas</span><b>${formatNumber(point.nao_mapeados,0)}</b></div>`);}
   if(opts.metric==='aprovacao'&&point.aprovados!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Aprovados</span><b>${formatNumber(point.aprovados,0)}</b></div>`);if(point.finalizados!==undefined)lines.push(`<div class="chart-tip-row"><span>Finalizados</span><b>${formatNumber(point.finalizados,0)}</b></div>`);if(point.reprovados!==undefined)lines.push(`<div class="chart-tip-row"><span>Reprovados</span><b>${formatNumber(point.reprovados,0)}</b></div>`);}
   if(opts.metric==='alunos_aprovados'&&point.alunos_aprovados!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Alunos aprovados</span><b>${formatNumber(point.alunos_aprovados,0)}</b></div>`);if(point.alunos_finalizados!==undefined)lines.push(`<div class="chart-tip-row"><span>Alunos com resultado final</span><b>${formatNumber(point.alunos_finalizados,0)}</b></div>`);if(point.aprovados!==undefined)lines.push(`<div class="chart-tip-row"><span>Aprovações disciplinares</span><b>${formatNumber(point.aprovados,0)}</b></div>`);}
+  if(opts.metric==='alunos_distintos'&&point.alunos_distintos!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Alunos distintos</span><b>${formatNumber(point.alunos_distintos,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Aprovados</span><b>${formatNumber(point.alunos_aprovados??point.alunos_aprovados_integralmente??0,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Com reprovação</span><b>${formatNumber(point.alunos_com_reprovacao||0,0)}</b></div>`);if(point.alunos_sem_classificacao)lines.push(`<div class="chart-tip-row"><span>Sem resultado classificável</span><b>${formatNumber(point.alunos_sem_classificacao,0)}</b></div>`);}
   if(opts.metric==='matriculas'&&point.variacao!==null&&point.variacao!==undefined){lines.push(`<div class="chart-tip-row"><span>Variação vs. mês anterior</span><b>${point.variacao>=0?'+':''}${formatNumber(point.variacao,1)}%</b></div>`);if(point.valor_anterior!==null&&point.valor_anterior!==undefined)lines.push(`<div class="chart-tip-row"><span>Mês anterior</span><b>${formatNumber(point.valor_anterior,0)}</b></div>`);}
   if(opts.metric==='frequencia'&&point.presencas_previstas!==undefined){lines.push('<div class="chart-tip-divider"></div>');lines.push(`<div class="chart-tip-row"><span>Presenças previstas</span><b>${formatNumber(point.presencas_previstas,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Presenças registradas</span><b>${formatNumber(point.presencas_registradas,0)}</b></div>`);lines.push(`<div class="chart-tip-row"><span>Disciplinas lançadas</span><b>${formatNumber(point.disciplinas,0)}</b></div>`);}
   if(point.alunos_inicio!==undefined) lines.push(`<div class="chart-tip-row"><span>Alunos no início</span><b>${formatNumber(point.alunos_inicio,0)}</b></div>`);
@@ -1555,7 +1562,7 @@ function renderCourseComparison() {
   const opts = metric === 'nps'
     ? { suffix: '', decimals: 1, metric: 'nps', statusLegend: true }
     : metric === 'avaliacao_docente'
-      ? { suffix: '', decimals: 2, metric: 'avaliacao_docente' }
+      ? { suffix: '%', decimals: 1, metric: 'avaliacao_docente' }
       : { suffix: '%', decimals: 1, metric: 'aprovacao' };
   renderBarChart($('#chartCourseComparison'), data, opts);
   const rows = [...data].sort((a, b) => (b.valor ?? -Infinity) - (a.valor ?? -Infinity));
@@ -1563,7 +1570,7 @@ function renderCourseComparison() {
   if (!target) return;
   const key = `course-comparison-${metric}-${selected}`;
   const page = paginate(rows, key);
-  const unit = metric === 'aprovacao' ? '%' : metric === 'nps' ? ' pts' : '';
+  const unit = metric === 'aprovacao' || metric === 'avaliacao_docente' ? '%' : metric === 'nps' ? ' pts' : '';
   const contextLabel=selected==='geral'?'Todo histórico':formatMonth(selected,true);
   const showNpsGoal = metric === 'nps' && rows.some(item => item.status);
   target.innerHTML = rows.length ? `<table><thead><tr><th>Curso</th><th>Período</th><th class="numeric">Resultado</th>${showNpsGoal?'<th class="numeric">Meta</th><th>Status</th>':''}</tr></thead><tbody>${page.rows.map(item => `<tr><td>${escapeHtml(item.curso)}</td><td>${escapeHtml(contextLabel)}</td><td class="numeric"><strong>${formatNumber(item.valor, opts.decimals)}${unit}</strong></td>${showNpsGoal?`<td class="numeric">${item.meta==null?'—':`${formatNumber(item.meta,1)} pts`}</td><td>${badge(item.status,item.status||'Sem meta')}</td>`:''}</tr>`).join('')}</tbody></table>` : `<div class="empty-table">Sem dados por curso em ${escapeHtml(contextLabel)}.</div>`;
@@ -1578,7 +1585,7 @@ const columns = {
   ],
   avaliacao_docente: [
     ['periodo', 'Semestre', '', v => formatMonth(v,true)], ['curso', 'Curso'], ['disciplina', 'Disciplina'], ['professor', 'Professor'],
-    ['respondentes', 'Respondentes', 'numeric', v => formatNumber(v,0)], ['nota_media', 'Nota média', 'numeric', v => formatNumber(v,2)],
+    ['respondentes', 'Respondentes', 'numeric', v => formatNumber(v,0)], ['nota_media', 'Nota histórica · legado', 'numeric', v => formatNumber(v,2)],
     ['validacao', 'Validação', '', v => badge(v)], ['lancado_por', 'Lançado por']
   ],
   resultados: [
@@ -1590,11 +1597,12 @@ const columns = {
 };
 
 
-function resultFilterQuery({ includeSearch = false } = {}) {
+function resultFilterQuery({ includeSearch = false, includeOutcome = false } = {}) {
   const params = new URLSearchParams();
   if (state.resultFilters.periodo) params.set('periodo', state.resultFilters.periodo);
   if (state.resultFilters.curso) params.set('curso', state.resultFilters.curso);
   if (state.resultFilters.disciplina) params.set('disciplina', state.resultFilters.disciplina);
+  if (includeOutcome && state.resultFilters.resultado) params.set('resultado', state.resultFilters.resultado);
   if (includeSearch && (state.searches.resultados || '').trim()) params.set('busca', state.searches.resultados.trim());
   return params;
 }
@@ -1605,6 +1613,13 @@ async function loadResultSummary(force = false) {
   const response = await api(`/api/resultados/resumo${params.toString() ? `?${params}` : ''}`);
   state.resultSummary = response.items || [];
   return state.resultSummary;
+}
+
+async function loadResultStudentSummary(force = false) {
+  if (Object.keys(state.resultStudentSummary || {}).length && !force) return state.resultStudentSummary;
+  const params = resultFilterQuery();
+  state.resultStudentSummary = await api(`/api/resultados/alunos-resumo${params.toString() ? `?${params}` : ''}`);
+  return state.resultStudentSummary;
 }
 
 function visibleResultSummary() {
@@ -1636,7 +1651,7 @@ function renderResultTrend() {
     valor:item.taxa_aprovacao,
   }));
   renderLineChart($('#chartResultsApprovalTrend'),series,{suffix:'%',decimals:1,metric:'aprovacao',unit:'%'});
-  renderLineChart($('#chartResultsApprovedTrend'),series.map(item=>({...item,valor:item.alunos_aprovados})),{decimals:0,metric:'alunos_aprovados',unit:'alunos distintos'});
+  renderLineChart($('#chartResultsApprovedTrend'),series.map(item=>({...item,valor:item.alunos_distintos})),{decimals:0,metric:'alunos_distintos',unit:'alunos distintos'});
   const pieces=[];
   if(state.resultFilters.curso)pieces.push(`Curso: ${state.resultFilters.curso}`);
   if(state.resultFilters.disciplina)pieces.push(`Disciplina: ${state.resultFilters.disciplina}`);
@@ -1644,24 +1659,81 @@ function renderResultTrend() {
   const ctx=$('#resultsTrendContext');if(ctx)ctx.textContent=pieces.length?`${pieces.join(' · ')} · gráficos mostram todo o histórico do recorte`:'Gráficos mostram todo o histórico consolidado da diretoria';
 }
 
+const RESULT_OUTCOME_LABELS={
+  '':'Todos os registros',
+  aluno_aprovado:'Alunos aprovados',
+  aluno_reprovado:'Alunos com reprovação',
+  aluno_pendente:'Alunos sem resultado classificável',
+  nota:'Reprovação por nota',
+  falta:'Reprovação por falta',
+  outro:'Outras reprovações',
+  aprovado:'Resultados aprovados',
+  reprovado:'Resultados reprovados',
+  andamento:'Resultados em andamento',
+};
+
+function renderResultActiveFilter(){
+  const target=$('#resultsActiveFilter');
+  if(!target)return;
+  const outcome=state.resultFilters.resultado||'';
+  if(state.resultView!=='detalhes'||!outcome){target.classList.add('hidden');target.innerHTML='';return;}
+  target.classList.remove('hidden');
+  target.innerHTML=`<span>Filtro rápido ativo:</span><strong>${escapeHtml(RESULT_OUTCOME_LABELS[outcome]||outcome)}</strong><button type="button" class="result-filter-clear">× Limpar</button>`;
+  $('.result-filter-clear',target)?.addEventListener('click',async()=>{
+    state.resultFilters.resultado='';
+    resetPagination('data-resultados');
+    renderResultActiveFilter();
+    renderResultSummaryCards();
+    await loadResultDetails();
+  });
+}
+
+function bindResultSummaryCardActions(target){
+  $$('[data-result-outcome]',target).forEach(card=>card.addEventListener('click',async()=>{
+    const outcome=card.dataset.resultOutcome||'';
+    state.resultFilters.resultado=outcome;
+    state.resultView='detalhes';
+    $$('#resultsViewTabs [data-results-view]').forEach(button=>button.classList.toggle('active',button.dataset.resultsView==='detalhes'));
+    const search=$('.table-search[data-dataset="resultados"]');
+    if(search)search.placeholder='Buscar aluno, matrícula, curso, disciplina, turma ou situação';
+    resetPagination('data-resultados');
+    renderResultActiveFilter();
+    renderResultSummaryCards();
+    await loadResultDetails();
+    $('#table-resultados')?.scrollIntoView({behavior:'smooth',block:'start'});
+  }));
+}
+
 function renderResultSummaryCards(items = visibleResultSummary()) {
   const target = $('#resultsSummaryCards');
   if (!target) return;
+  const students=state.resultStudentSummary||{};
   const finalized = items.reduce((sum, row) => sum + Number(row.finalizados || 0), 0);
   const approved = items.reduce((sum, row) => sum + Number(row.aprovados || 0), 0);
-  const failedGrade = items.reduce((sum, row) => sum + Number(row.reprovados_nota || 0), 0);
-  const failedAbsence = items.reduce((sum, row) => sum + Number(row.reprovados_falta || 0), 0);
   const gradeCount = items.reduce((sum, row) => sum + Number(row.notas_contagem || 0), 0);
   const gradeSum = items.reduce((sum, row) => sum + Number(row.soma_notas ?? (Number(row.media_notas || 0) * Number(row.notas_contagem || 0))), 0);
   const avg = gradeCount ? gradeSum / gradeCount : null;
   const rate = finalized ? approved / finalized * 100 : null;
-  target.innerHTML = [
-    ['Taxa de aprovação', rate == null ? '—' : `${formatNumber(rate,1)}%`, `${formatNumber(finalized,0)} resultado(s) finalizado(s)`, 'success'],
-    ['Aprovações', formatNumber(approved,0), 'situação oficial aprovada', 'success'],
-    ['Reprovação por nota', formatNumber(failedGrade,0), 'reprovações sem indicação de falta', failedGrade ? 'danger' : 'neutral'],
-    ['Reprovação por falta', formatNumber(failedAbsence,0), 'reprovações por falta/frequência', failedAbsence ? 'warning' : 'neutral'],
-    ['Média das notas', avg == null ? '—' : formatNumber(avg,2), `${formatNumber(gradeCount,0)} nota(s) disponível(is)`, 'info'],
-  ].map(([label,value,sub,tone]) => `<article class="result-summary-card ${tone}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(sub)}</small></article>`).join('');
+  const active=state.resultFilters.resultado||'';
+  const cards=[
+    {label:'Alunos distintos',value:formatNumber(students.alunos_distintos||0,0),sub:'matrículas únicas com resultado no recorte',tone:'info'},
+    {label:'Aprovados',value:formatNumber(students.alunos_aprovados??students.alunos_aprovados_integralmente??0,0),sub:'sem reprovação e com ao menos um resultado aprovado',tone:'success',outcome:'aluno_aprovado'},
+    {label:'Com reprovação',value:formatNumber(students.alunos_com_reprovacao||0,0),sub:'alunos distintos com ao menos uma reprovação',tone:(students.alunos_com_reprovacao||0)?'danger':'neutral',outcome:'aluno_reprovado'},
+    {label:'Reprovação por nota',value:formatNumber(students.alunos_reprovados_nota||0,0),sub:'alunos distintos · clique para ver disciplinas',tone:(students.alunos_reprovados_nota||0)?'danger':'neutral',outcome:'nota'},
+    {label:'Reprovação por falta',value:formatNumber(students.alunos_reprovados_falta||0,0),sub:'alunos distintos · clique para ver disciplinas',tone:(students.alunos_reprovados_falta||0)?'warning':'neutral',outcome:'falta'},
+    {label:'Taxa de aprovação',value:rate==null?'—':`${formatNumber(rate,1)}%`,sub:`${formatNumber(finalized,0)} resultados disciplinares finalizados`,tone:'success'},
+    {label:'Média das notas',value:avg==null?'—':formatNumber(avg,2),sub:`${formatNumber(gradeCount,0)} nota(s) disponível(is)`,tone:'info'},
+  ];
+  const qualityPending=Number(students.alunos_sem_classificacao||0);
+  const qualityNote=qualityPending?`<div class="result-summary-quality"><strong>⚠ ${formatNumber(qualityPending,0)} aluno(s) ainda sem resultado classificável.</strong><span>Eles possuem apenas registros sem situação final e não são forçados como aprovados ou reprovados.</span></div>`:'';
+  target.innerHTML=cards.map(card=>{
+    const clickable=Object.prototype.hasOwnProperty.call(card,'outcome');
+    const selected=clickable && active===card.outcome && state.resultView==='detalhes';
+    const tag=clickable?'button':'article';
+    const attrs=clickable?` type="button" data-result-outcome="${escapeHtml(card.outcome)}" aria-pressed="${selected?'true':'false'}"`:'';
+    return `<${tag} class="result-summary-card ${card.tone}${clickable?' actionable':''}${selected?' active-filter':''}"${attrs}><span>${escapeHtml(card.label)}</span><strong>${escapeHtml(card.value)}</strong><small>${escapeHtml(card.sub)}</small>${clickable?'<em>Ver registros</em>':''}</${tag}>`;
+  }).join('')+qualityNote;
+  bindResultSummaryCardActions(target);
 }
 
 function renderResultSummaryTable() {
@@ -1694,7 +1766,7 @@ function renderResultSummaryTable() {
 
 async function loadResultDetails() {
   const cfg = paginationFor('data-resultados');
-  const params = resultFilterQuery({ includeSearch: true });
+  const params = resultFilterQuery({ includeSearch: true, includeOutcome: true });
   params.set('page', cfg.page);
   params.set('page_size', cfg.size);
   const response = await api(`/api/dados/resultados?${params}`);
@@ -1718,7 +1790,11 @@ function renderResultDetailTable() {
   const cfg = paginationFor('data-resultados');
   const start = total ? (cfg.page - 1) * cfg.size : 0;
   const count = $('#count-resultados');
-  if (count) count.textContent = total ? `${start + 1}–${Math.min(total, start + items.length)} de ${total} registros` : '0 registros';
+  if (count) {
+    const outcome=state.resultFilters.resultado||'';
+    const suffix=outcome?` · ${RESULT_OUTCOME_LABELS[outcome]||outcome}`:'';
+    count.textContent = total ? `${start + 1}–${Math.min(total, start + items.length)} de ${total} registros${suffix}` : `0 registros${suffix}`;
+  }
   if (!target) return;
   if (!items.length) {
     target.innerHTML = '<div class="empty-table"><strong>Nenhum registro encontrado</strong>Altere os filtros ou a busca.</div>';
@@ -1975,8 +2051,15 @@ async function loadDataset(dataset, force = false) {
   }
   if (dataset === 'resultados') {
     try {
-      await Promise.all([loadResultSummary(force), loadResultTrend(force)]);
+      if(!state.resultPeriodInitialized){
+        const periods=[...(state.dashboard?.periodos?.semestrais||[])].sort((a,b)=>periodStartKey(a)-periodStartKey(b));
+        if(periods.length) state.resultFilters.periodo=periods.at(-1);
+        state.resultPeriodInitialized=true;
+        fillResultFilters();
+      }
+      await Promise.all([loadResultSummary(force), loadResultStudentSummary(force), loadResultTrend(force)]);
       renderResultTrend();
+      renderResultActiveFilter();
       if (state.resultView === 'resumo') renderResultSummaryTable();
       else await loadResultDetails();
     } catch (error) { toast('Erro ao carregar resultados', error.message, 'error'); }
@@ -2051,6 +2134,7 @@ function closeModal() {
 
 function openDataForm(dataset, id = null) {
   if (dataset === 'nps') { openNpsSeiImportForm('course'); return; }
+  if (dataset === 'avaliacao_docente') { window.FacultyEvaluationUI?.triggerImport?.(); return; }
   const record = id ? state.data[dataset].find(x => x.id === id) : {};
   const courses = state.bootstrap?.courses || [];
   const academicPrefix = ['DTNH','DCS'].includes(state.activeDirectorate) ? state.activeDirectorate : 'DTNH';
@@ -2227,7 +2311,7 @@ function openSeiImportForm() {
     ${formField('ano','Ano','number',new Date().getFullYear(),{min:2020,max:2100})}
     ${selectField('semestre','Semestre',['1','2'],currentSemester)}
     <div class="field span-2"><span>Cursos a consultar</span><div class="sei-course-actions"><button type="button" class="button subtle compact" id="selectAllSeiCourses">Selecionar todos</button><button type="button" class="button subtle compact" id="clearSeiCourses">Limpar seleção</button></div>${courseChecks}<small>${escapeHtml(help)} Cursos, disciplinas e alunos ainda inexistentes serão cadastrados automaticamente.</small><div class="field-error"></div></div>
-    <div class="tip-box span-2"><strong>Integridade:</strong> cada vínculo aluno-disciplina é importado separadamente. Só uma duplicata exata do mesmo semestre, curso, disciplina, turma e matrícula é ignorada.</div>
+    <div class="tip-box span-2"><strong>Importação protegida:</strong> os cursos são processados um por vez e os vínculos aluno-disciplina são gravados em lotes. Se uma etapa for interrompida, os cursos/lotes já confirmados permanecem no banco e podem ser reenviados sem duplicação.</div>
     <div id="seiImportResult" class="span-2"></div>
     <div class="modal-form-footer span-2"><button type="button" class="button secondary" id="cancelSeiImport">Cancelar</button><button type="submit" class="button primary">Consultar e importar</button></div>
   </form>`);
@@ -2244,18 +2328,65 @@ async function submitSeiImport(event) {
   const raw=Object.fromEntries(new FormData(form).entries());
   const courses=$$('input[name="curso_sei"]:checked',form).map(input=>input.value);
   if(!courses.length){toast('Selecione pelo menos um curso','Marque um ou mais cursos antes de consultar o SEI.','warning');return;}
-  const payload={usuario:raw.usuario,senha:raw.senha,ano:String(raw.ano||''),semestre:String(raw.semestre||''),cursos:courses};
-  setSaveState('saving','Consultando o SEI…');
+  const submitButton=form.querySelector('button[type="submit"]');
+  if(submitButton)submitButton.disabled=true;
+  const resultBox=$('#seiImportResult');
+  const totals={inseridos:0,atualizados:0,ignorados:0,erros:[],reports:[],failures:[],warnings:[],batches:0,read:0};
+  setSaveState('saving','Importando curso por curso…');
+
   try {
-    const result=await api('/api/sei/importar-resultados',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),loadingTitle:'Consultando o SEI',loadingMessage:`Autenticando e processando ${courses.length} curso(s). Cada resultado aluno-disciplina será validado separadamente.`});
-    const failures=result.falhas_sei||[]; const errors=result.erros||[]; const reports=result.relatorios_importados||[];
-    const read=reports.reduce((sum,item)=>sum+Number(item.registros_lidos||0),0);
-    const reportDetails=reports.length?`<ul class="sei-sync-details">${reports.map(item=>{const periodo=(item.ano_xlsx&&item.semestre_xlsx)?`${item.ano_xlsx}/${item.semestre_xlsx}`:'período não identificado';return `<li><strong>${escapeHtml(item.curso)}</strong> → XLSX: ${escapeHtml(item.curso_sei_xlsx||'curso não informado')} · período ${escapeHtml(periodo)} · ${Number(item.registros_lidos||0)} registro(s) · identidade ${item.identidade_validada?'validada':'não validada'} por ${escapeHtml(item.identidade_validada_por||'campo Curso:')}</li>`}).join('')}</ul>`:'';
-    $('#seiImportResult').innerHTML=`<div class="import-result"><strong>Sincronização processada</strong><div>Build Data UNIVC: <strong>${escapeHtml(result.versao||'não informado')}</strong> · fingerprint <code>${escapeHtml(result.build||'não informado')}</code></div><div>Política Educação Física: <code>${escapeHtml(result.educacao_fisica_policy||'não informada')}</code></div><div>${read} registro(s) lido(s) nos relatórios.</div><div>${result.inseridos||0} novo(s), ${result.ignorados||0} duplicado(s) exato(s) ignorado(s), ${result.atualizados||0} atualizado(s).</div><div>${reports.length} relatório(s) do SEI importado(s).</div>${reportDetails}${failures.length?`<ul>${failures.slice(0,10).map(x=>`<li>${escapeHtml(x.curso)}: ${escapeHtml(x.erro)}</li>`).join('')}</ul>`:''}${errors.length?`<small>${errors.length} linha(s) não puderam ser gravadas. Consulte o resumo para identificar a causa.</small>`:''}</div>`;
+    for(let index=0;index<courses.length;index+=1){
+      const course=courses[index];
+      const beforePct=Math.round((index/courses.length)*100);
+      window.DataUNIVC?.progress?.render(resultBox,{
+        percent:beforePct,
+        title:'Importando resultados acadêmicos',
+        message:`Curso ${index+1} de ${courses.length}: ${course}`,
+        stage:'Consultando o SEI, lendo o XLSX em streaming e gravando em lotes.',
+        meta:[{label:'Concluídos',value:index},{label:'Restantes',value:courses.length-index}],
+      });
+      const payload={usuario:raw.usuario,senha:raw.senha,ano:String(raw.ano||''),semestre:String(raw.semestre||''),cursos:[course]};
+      try {
+        const result=await api('/api/sei/importar-resultados',{
+          method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),
+          blocking:false,
+          loadingTitle:`Importando ${course}`,
+          loadingMessage:`Curso ${index+1} de ${courses.length}. O progresso detalhado permanece visível no próprio formulário.`,
+        });
+        const reports=result.relatorios_importados||[];
+        const failures=result.falhas_sei||[];
+        totals.inseridos+=Number(result.inseridos||0);
+        totals.atualizados+=Number(result.atualizados||0);
+        totals.ignorados+=Number(result.ignorados||0);
+        totals.erros.push(...(result.erros||[]));
+        totals.reports.push(...reports);
+        totals.failures.push(...failures);
+        totals.warnings.push(...(result.avisos_parser||[]));
+        totals.read+=reports.reduce((sum,item)=>sum+Number(item.registros_lidos||0),0);
+        totals.batches+=reports.reduce((sum,item)=>sum+Number(item.lotes_processados||0),0);
+      } catch(error) {
+        totals.failures.push({curso:course,erro:error.message||'Falha inesperada durante a importação.'});
+      }
+      const pct=Math.round(((index+1)/courses.length)*100);
+      window.DataUNIVC?.progress?.render(resultBox,{
+        percent:pct,
+        title:'Importando resultados acadêmicos',
+        message:`${index+1} de ${courses.length} curso(s) processado(s).`,
+        stage:totals.failures.length?'A importação continuará nos demais cursos apesar das falhas.':'Os cursos concluídos já estão persistidos no banco.',
+        meta:[{label:'Registros lidos',value:totals.read},{label:'Novos',value:totals.inseridos},{label:'Duplicados',value:totals.ignorados}],
+      });
+    }
+
+    const reportDetails=totals.reports.length?`<ul class="sei-sync-details">${totals.reports.map(item=>{const periodo=(item.ano_xlsx&&item.semestre_xlsx)?`${item.ano_xlsx}/${item.semestre_xlsx}`:'período não identificado';return `<li><strong>${escapeHtml(item.curso)}</strong> → ${Number(item.registros_lidos||0)} registro(s) · ${Number(item.lotes_processados||0)} lote(s) · XLSX ${escapeHtml(item.curso_sei_xlsx||'curso não informado')} · período ${escapeHtml(periodo)}</li>`}).join('')}</ul>`:'';
+    resultBox.className='span-2';
+    resultBox.innerHTML=`<div class="import-result"><strong>Sincronização processada curso por curso</strong><div>${totals.read} registro(s) lido(s) nos relatórios.</div><div>${totals.inseridos} novo(s), ${totals.ignorados} duplicado(s) ignorado(s), ${totals.atualizados} atualizado(s).</div><div>${totals.reports.length} curso(s) concluído(s) · ${totals.batches} lote(s) gravado(s).</div><small>Cada curso é confirmado separadamente. Se houver interrupção, execute novamente: os vínculos já existentes serão ignorados pela chave de identidade.</small>${reportDetails}${totals.failures.length?`<ul>${totals.failures.map(x=>`<li><strong>${escapeHtml(x.curso||'Curso')}</strong>: ${escapeHtml(x.erro||'Falha')}</li>`).join('')}</ul>`:''}${totals.erros.length?`<small>${totals.erros.length} linha(s) não puderam ser gravadas. Os demais lotes foram preservados.</small>`:''}</div>`;
     state.data.resultados=[]; await loadDataset('resultados',true); await refreshBootstrapAfterCatalogChange(); fillResultFilters(); await loadDashboard();
-    setSaveState('ok','Banco sincronizado'); toast('Importação do SEI concluída',failures.length?'Parte dos cursos apresentou falha; confira o resumo.':'Todos os relatórios disponíveis foram processados.',failures.length?'warning':'success');
+    setSaveState(totals.failures.length?'error':'ok',totals.failures.length?'Importação concluída com pendências':'Banco sincronizado');
+    toast('Importação do SEI concluída',totals.failures.length?'Alguns cursos falharam; os cursos já concluídos foram preservados.':'Todos os cursos selecionados foram processados.',totals.failures.length?'warning':'success');
     $('#field-senha').value='';
-  } catch(error) { setSaveState('error','Falha na integração'); showFormErrors(form,error.fields); toast('Não foi possível consultar o SEI',error.message,'error'); }
+  } finally {
+    if(submitButton)submitButton.disabled=false;
+  }
 }
 
 
@@ -2592,8 +2723,9 @@ function quickAdd() {
   if(state.currentSection==='nps-institution'){openNpsSeiImportForm('institution');return;}
   if(state.currentSection==='nps-course'){openNpsSeiImportForm('course');return;}
   if(state.currentSection==='nps-faculty'){openNpsSeiImportForm('faculty');return;}
-  if(['avaliacao_docente','resultados'].includes(state.currentSection)){openDataForm(state.currentSection);return;}
-  openModal('Registro de KPI','Qual base acadêmica deseja alimentar?',`<div class="help-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:0"><button class="help-card" data-quick="nps-institution"><span>01A</span><h3>NPS da Instituição</h3><p>Pergunta oficial sobre recomendar o UNIVC.</p></button><button class="help-card" data-quick="nps-course"><span>01B</span><h3>NPS do Curso</h3><p>Pergunta oficial sobre recomendar o próprio curso.</p></button><button class="help-card" data-quick="nps-faculty"><span>01C</span><h3>NPS · Docentes</h3><p>Recomendação institucional anônima pelo corpo docente.</p></button><button class="help-card" data-quick="avaliacao_docente"><span>02</span><h3>Avaliação docente</h3><p>Nota do professor pelo aluno.</p></button><button class="help-card" data-quick="resultados"><span>03</span><h3>Aprovação e notas</h3><p>Resultado por aluno e disciplina.</p></button></div>`);$$('[data-quick]').forEach(btn=>btn.addEventListener('click',()=>{const dataset=btn.dataset.quick;closeModal();navigate(dataset);setTimeout(()=>dataset==='nps-institution'?openNpsSeiImportForm('institution'):dataset==='nps-course'?openNpsSeiImportForm('course'):dataset==='nps-faculty'?openNpsSeiImportForm('faculty'):openDataForm(dataset),120);}));
+  if(state.currentSection==='avaliacao_docente'){window.FacultyEvaluationUI?.triggerImport?.();return;}
+  if(state.currentSection==='resultados'){openDataForm(state.currentSection);return;}
+  openModal('Registro de KPI','Qual base acadêmica deseja alimentar?',`<div class="help-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:0"><button class="help-card" data-quick="nps-institution"><span>01A</span><h3>NPS da Instituição</h3><p>Pergunta oficial sobre recomendar o UNIVC.</p></button><button class="help-card" data-quick="nps-course"><span>01B</span><h3>NPS do Curso</h3><p>Pergunta oficial sobre recomendar o próprio curso.</p></button><button class="help-card" data-quick="nps-faculty"><span>01C</span><h3>NPS · Docentes</h3><p>Recomendação institucional anônima pelo corpo docente.</p></button><button class="help-card" data-quick="avaliacao_docente"><span>02</span><h3>Favorabilidade docente</h3><p>Importe o relatório Disciplina/Professor do SEI.</p></button><button class="help-card" data-quick="resultados"><span>03</span><h3>Aprovação e notas</h3><p>Resultado por aluno e disciplina.</p></button></div>`);$$('[data-quick]').forEach(btn=>btn.addEventListener('click',()=>{const dataset=btn.dataset.quick;closeModal();navigate(dataset);setTimeout(()=>dataset==='nps-institution'?openNpsSeiImportForm('institution'):dataset==='nps-course'?openNpsSeiImportForm('course'):dataset==='nps-faculty'?openNpsSeiImportForm('faculty'):dataset==='avaliacao_docente'?window.FacultyEvaluationUI?.triggerImport?.():openDataForm(dataset),120);}));
 }
 
 async function refreshBootstrapAfterCatalogChange() {
@@ -2776,6 +2908,7 @@ function renderGoals() {
   // em julho/2026, mesmo que a base acadêmica mais recente ainda seja SEM1.
   const todayKey=currentPeriodKey();
   const statusForGoal=goal=>{
+    if(goal.legacy_metric)return{label:'Meta legada · revisar',kind:'warning',active:false};
     const key=periodStartKey(goal.vigencia);
     if(key<0)return{label:'Vigência inválida',kind:'danger',active:false};
     if(key>todayKey)return{label:'Futura',kind:'info',active:false};
@@ -2809,9 +2942,11 @@ function goalRecortes(indicatorCode = '') {
 function openGoalForm(id = null) {
   if(!canEditCurrentDirectorate()){toast('Somente leitura','Metas só podem ser alteradas na sua diretoria principal.','warning');return;}
   const g=id?state.goals.find(x=>x.id===id):{};const indicators=(state.bootstrap?.indicators||[]).map(item=>item.code);const selected=g.indicador||indicators[0]||'';
+  const legacyFacultyGoal=Boolean(g.legacy_metric);
   const defaultVigencia=g.vigencia||currentAcademicSemester();
   const vigencyField=formField('vigencia','Início da vigência','text',defaultVigencia,{placeholder:'2026-SEM2 ou 2026-07',help:'Semestre começa em janeiro/julho. Use AAAA-SEM1, AAAA-SEM2 ou AAAA-MM.'});
-  const body=`<form id="goalForm" class="form-grid">${selectField('indicador','KPI',indicators,selected)}${vigencyField}${selectField('recorte','Recorte',goalRecortes(selected),g.recorte||'TOTAL',{className:'span-2'})}${formField('meta','Meta','number',g.meta??'',{step:'0.01'})}${formField('atencao','Limiar de atenção','number',g.atencao??'',{step:'0.01'})}${formField('limite_superior','Limite superior, opcional','number',g.limite_superior??'',{step:'0.01',required:false,className:'span-2'})}${textareaField('justificativa','Justificativa da meta',g.justificativa||'',{className:'span-2',required:false})}<div class="tip-box span-2" id="goalHelp"></div><div class="modal-form-footer span-2"><button type="button" class="button secondary" id="cancelGoal">Cancelar</button><button type="submit" class="button primary">${id?'Salvar alterações':'Criar meta'}</button></div></form>`;
+  const legacyNotice=legacyFacultyGoal?'<div class="warning-box span-2"><strong>Esta meta foi criada quando o KPI 02 era nota 0–10.</strong> Ela está preservada apenas para histórico e não é aplicada ao Painel Executivo. Informe abaixo uma nova meta percentual de favorabilidade para convertê-la conscientemente.</div>':'';
+  const body=`<form id="goalForm" class="form-grid">${legacyNotice}${selectField('indicador','KPI',indicators,selected)}${vigencyField}${selectField('recorte','Recorte',goalRecortes(selected),g.recorte||'TOTAL',{className:'span-2'})}${formField('meta','Meta','number',legacyFacultyGoal?'':(g.meta??''),{step:'0.01'})}${formField('atencao','Limiar de atenção','number',legacyFacultyGoal?'':(g.atencao??''),{step:'0.01'})}${formField('limite_superior','Limite superior, opcional','number',legacyFacultyGoal?'':(g.limite_superior??''),{step:'0.01',required:false,className:'span-2'})}${textareaField('justificativa','Justificativa da meta',g.justificativa||'',{className:'span-2',required:false})}<div class="tip-box span-2" id="goalHelp"></div><div class="modal-form-footer span-2"><button type="button" class="button secondary" id="cancelGoal">Cancelar</button><button type="submit" class="button primary">${id?'Salvar alterações':'Criar meta'}</button></div></form>`;
   openModal('Governança de KPI',id?'Editar meta':'Nova meta',body);state.modalContext={type:'goal',id};
   const updateRecortes=()=>{
     const code=$('#field-indicador')?.value||'';
@@ -2869,7 +3004,7 @@ function renderQuality() {
   const q=state.dashboard.cards.qualidade;
   const items=[
     ['KPI · NPS discente',q.nps,'respondentes, categorias e duplicidade'],
-    ['KPI · Avaliação docente',q.avaliacao_docente,'professor, disciplina, respondentes e escala'],
+    ['KPI · Favorabilidade docente',q.avaliacao_docente,'identidade acadêmica, categorias e escala'],
     ['KPI · Aprovação e notas',q.resultados,'aluno, turma, situação oficial e duplicidade'],
   ];
   $('#qualityCards').innerHTML=items.map(([label,value,sub])=>metricCard(label,value?'!':'✓',String(value),sub,value?`${value} pendência(s)`:'Dados disponíveis')).join('');

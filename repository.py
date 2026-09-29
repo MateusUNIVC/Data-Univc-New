@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import gc
 import json
+import os
 import unicodedata
 from decimal import Decimal, InvalidOperation
 from datetime import date, datetime
@@ -14,17 +16,18 @@ from sqlalchemy.orm import Session, joinedload
 
 from models import (
     AcademicResult, AcademicStudent, ActionPlan, Attendance, AuditLog, Course, DadmActiveStudents, DadmAdministrativeCost,
-    DadmAttrition, DadmInfrastructure, Discipline, Directorate, DpeBudgetExecution, DpeCashMovement,
-    DpeOperatingResult, Enrollment, Goal, NpsInstitution, NpsInstitutionFaculty, NpsStudent, Profile, AppUser, TeacherEvaluation,
+    DadmAttrition, DadmInfrastructure, Discipline, Directorate, Enrollment, Goal, NpsInstitution, NpsInstitutionFaculty, NpsStudent, Profile, AppUser, TeacherEvaluation,
 )
 from schemas import (
     ACADEMIC_DIRECTORATES, ACADEMIC_UI_DATASETS, DADM_HEADER_ALIASES, DADM_MODALITIES, DATASETS, DISCIPLINE_HEADER_ALIASES,
-    DPE_CASH_MOVEMENT_TYPES, DPE_HEADER_ALIASES, DPE_RESULT_SCOPE_TYPES, HEADER_ALIASES,
+    HEADER_ALIASES,
     IMPLEMENTED_KPIS, KPI_META, MONTH_RE, SEMESTER_RE, RepositoryError, ValidationError, norm_header,
 )
 from auth.objects import require_object_for_directorate
-from security import UserContext
-from academic_excel_parser import classificacao_aprovacao, ler_registros, motivo_reprovacao
+from security import DirectorateScope, UserContext
+from academic_excel_parser import (
+    classificacao_aprovacao, inspecionar_relatorio, iterar_registros, motivo_reprovacao,
+)
 from academic_catalog import canonical_course_name, course_name_matches, is_ambiguous_course_name
 from analytics import active_goal, goal_info, status_for
 
@@ -35,6 +38,14 @@ DATASET_MODEL = {"nps": NpsStudent, "avaliacao_docente": TeacherEvaluation, "res
 # pelo campo Curso: do XLSX. Nome/código da turma e turno do seletor do SEI nunca
 # participam dessa decisão. Este identificador também é exposto no diagnóstico do build.
 EDUCACAO_FISICA_IDENTITY_POLICY = "xlsx-course-field-only-v3"
+FACULTY_GOAL_METRIC_VERSION = "faculty_favorability_pct_v1"
+FACULTY_GOAL_LEGACY_VERSION = "legacy_score_0_10"
+
+try:
+    ACADEMIC_RESULT_IMPORT_BATCH_SIZE = int(os.getenv("ACADEMIC_RESULT_IMPORT_BATCH_SIZE", "500"))
+except ValueError:
+    ACADEMIC_RESULT_IMPORT_BATCH_SIZE = 500
+ACADEMIC_RESULT_IMPORT_BATCH_SIZE = max(100, min(2000, ACADEMIC_RESULT_IMPORT_BATCH_SIZE))
 
 
 class DatabaseRepository:
@@ -917,13 +928,72 @@ class DatabaseRepository:
         page = max(1, int(page or 1))
         page_size = min(100, max(10, int(page_size or 50)))
 
-        conditions = [AcademicResult.directorate_id == self.directorate_id]
+        scope_conditions = [AcademicResult.directorate_id == self.directorate_id]
         if filters.get("periodo"):
-            conditions.append(AcademicResult.period == self._semester_from_period(filters["periodo"]))
+            scope_conditions.append(AcademicResult.period == self._semester_from_period(filters["periodo"]))
         if filters.get("curso"):
-            conditions.append(Course.name == str(filters["curso"]).strip())
+            scope_conditions.append(Course.name == str(filters["curso"]).strip())
         if filters.get("disciplina"):
-            conditions.append(Discipline.name == str(filters["disciplina"]).strip())
+            scope_conditions.append(Discipline.name == str(filters["disciplina"]).strip())
+
+        conditions = list(scope_conditions)
+        outcome = str(filters.get("resultado") or "").strip().lower()
+        if outcome in {"aluno_aprovado", "aluno_reprovado", "aluno_pendente"}:
+            failed_case = case((AcademicResult.approved.is_(False), 1), else_=0)
+            pending_case = case((AcademicResult.approved.is_(None), 1), else_=0)
+            approved_case = case((AcademicResult.approved.is_(True), 1), else_=0)
+            student_scope = (
+                select(
+                    AcademicResult.student_id.label("student_id"),
+                    func.sum(failed_case).label("failed_count"),
+                    func.sum(pending_case).label("pending_count"),
+                    func.sum(approved_case).label("approved_count"),
+                )
+                .join(Course, AcademicResult.course_id == Course.id)
+                .join(Discipline, AcademicResult.discipline_id == Discipline.id)
+                .where(*scope_conditions)
+                .group_by(AcademicResult.student_id)
+                .subquery()
+            )
+            if outcome == "aluno_aprovado":
+                # Classificacao gerencial v0.11.6.7: uma disciplina ainda sem
+                # situacao final nao cria um terceiro grupo. Se o aluno nao tem
+                # reprovação e já possui ao menos um resultado aprovado, ele
+                # permanece no grupo Aprovados. Casos compostos somente por
+                # resultados sem classificacao ficam como pendencia tecnica.
+                eligible_students = select(student_scope.c.student_id).where(
+                    student_scope.c.failed_count == 0,
+                    student_scope.c.approved_count > 0,
+                )
+                conditions.extend([AcademicResult.student_id.in_(eligible_students), AcademicResult.approved.is_(True)])
+            elif outcome == "aluno_reprovado":
+                eligible_students = select(student_scope.c.student_id).where(student_scope.c.failed_count > 0)
+                conditions.extend([AcademicResult.student_id.in_(eligible_students), AcademicResult.approved.is_(False)])
+            else:
+                # Compatibilidade do filtro legado: agora representa apenas
+                # alunos ainda impossiveis de classificar (somente pendencias).
+                eligible_students = select(student_scope.c.student_id).where(
+                    student_scope.c.failed_count == 0,
+                    student_scope.c.approved_count == 0,
+                    student_scope.c.pending_count > 0,
+                )
+                conditions.extend([AcademicResult.student_id.in_(eligible_students), AcademicResult.approved.is_(None)])
+        elif outcome == "aprovado":
+            conditions.append(AcademicResult.approved.is_(True))
+        elif outcome == "reprovado":
+            conditions.append(AcademicResult.approved.is_(False))
+        elif outcome == "nota":
+            conditions.extend([AcademicResult.approved.is_(False), AcademicResult.failure_reason == "nota"])
+        elif outcome == "falta":
+            conditions.extend([AcademicResult.approved.is_(False), AcademicResult.failure_reason == "falta"])
+        elif outcome == "outro":
+            conditions.extend([
+                AcademicResult.approved.is_(False),
+                or_(AcademicResult.failure_reason.is_(None), ~AcademicResult.failure_reason.in_(["nota", "falta"])),
+            ])
+        elif outcome == "andamento":
+            conditions.append(AcademicResult.approved.is_(None))
+
         if filters.get("busca"):
             like = f"%{str(filters['busca']).strip()}%"
             conditions.append(or_(
@@ -979,6 +1049,95 @@ class DatabaseRepository:
             "page": page,
             "page_size": page_size,
             "pages": pages,
+        }
+
+    def academic_result_student_summary(self, filters: dict[str, str] | None = None) -> dict[str, Any]:
+        """Resumo gerencial por estudante no recorte acadêmico selecionado.
+
+        A classificação principal possui somente dois grupos quando há evidência
+        suficiente: aprovado ou com reprovação. Qualquer reprovação prevalece.
+        Um resultado ainda sem situação final não retira o aluno de Aprovados se
+        já existe ao menos uma aprovação e nenhuma reprovação no recorte.
+
+        Alunos que possuem somente resultados sem classificação continuam sendo
+        contabilizados como pendência de qualidade do dado, sem virar um terceiro
+        card gerencial. Motivos de reprovação podem se sobrepor quando o mesmo
+        aluno reprova por causas diferentes em disciplinas distintas.
+        """
+        filters = filters or {}
+        conditions = [AcademicResult.directorate_id == self.directorate_id]
+        if filters.get("periodo"):
+            conditions.append(AcademicResult.period == self._semester_from_period(filters["periodo"]))
+        if filters.get("curso"):
+            conditions.append(Course.name == str(filters["curso"]).strip())
+        if filters.get("disciplina"):
+            conditions.append(Discipline.name == str(filters["disciplina"]).strip())
+
+        failed_case = case((AcademicResult.approved.is_(False), 1), else_=0)
+        pending_case = case((AcademicResult.approved.is_(None), 1), else_=0)
+        approved_case = case((AcademicResult.approved.is_(True), 1), else_=0)
+        grade_case = case((and_(AcademicResult.approved.is_(False), AcademicResult.failure_reason == "nota"), 1), else_=0)
+        absence_case = case((and_(AcademicResult.approved.is_(False), AcademicResult.failure_reason == "falta"), 1), else_=0)
+        other_case = case((and_(
+            AcademicResult.approved.is_(False),
+            or_(AcademicResult.failure_reason.is_(None), ~AcademicResult.failure_reason.in_(["nota", "falta"])),
+        ), 1), else_=0)
+
+        per_student = (
+            select(
+                AcademicResult.student_id.label("student_id"),
+                func.count(AcademicResult.id).label("result_count"),
+                func.sum(approved_case).label("approved_count"),
+                func.sum(failed_case).label("failed_count"),
+                func.sum(pending_case).label("pending_count"),
+                func.sum(grade_case).label("grade_fail_count"),
+                func.sum(absence_case).label("absence_fail_count"),
+                func.sum(other_case).label("other_fail_count"),
+            )
+            .join(Course, AcademicResult.course_id == Course.id)
+            .join(Discipline, AcademicResult.discipline_id == Discipline.id)
+            .where(*conditions)
+            .group_by(AcademicResult.student_id)
+            .subquery()
+        )
+
+        q = select(
+            func.count(per_student.c.student_id).label("students_total"),
+            func.sum(case((and_(per_student.c.failed_count == 0, per_student.c.approved_count > 0), 1), else_=0)).label("students_approved"),
+            func.sum(case((per_student.c.failed_count > 0, 1), else_=0)).label("students_failed"),
+            func.sum(case((and_(per_student.c.failed_count == 0, per_student.c.approved_count == 0, per_student.c.pending_count > 0), 1), else_=0)).label("students_unclassified"),
+            func.sum(case((per_student.c.pending_count > 0, 1), else_=0)).label("students_with_pending"),
+            func.sum(case((per_student.c.grade_fail_count > 0, 1), else_=0)).label("students_failed_grade"),
+            func.sum(case((per_student.c.absence_fail_count > 0, 1), else_=0)).label("students_failed_absence"),
+            func.sum(case((per_student.c.other_fail_count > 0, 1), else_=0)).label("students_failed_other"),
+            func.sum(per_student.c.result_count).label("result_records"),
+        )
+        row = self.db.execute(q).one()
+        total = int(row.students_total or 0)
+        approved = int(row.students_approved or 0)
+        failed = int(row.students_failed or 0)
+        unclassified = int(row.students_unclassified or 0)
+        with_pending = int(row.students_with_pending or 0)
+        return {
+            "alunos_distintos": total,
+            "alunos_aprovados": approved,
+            # Alias mantido para não quebrar consumidores anteriores da 0.11.6.5.
+            "alunos_aprovados_integralmente": approved,
+            "alunos_com_reprovacao": failed,
+            "alunos_sem_classificacao": unclassified,
+            # Campo legado: agora representa apenas quem ainda não possui nenhum
+            # resultado classificável, e não todo aluno com alguma pendência.
+            "alunos_sem_fechamento": unclassified,
+            "alunos_com_resultado_pendente": with_pending,
+            "alunos_reprovados_nota": int(row.students_failed_grade or 0),
+            "alunos_reprovados_falta": int(row.students_failed_absence or 0),
+            "alunos_reprovados_outro": int(row.students_failed_other or 0),
+            "resultados_disciplinares": int(row.result_records or 0),
+            "reconciliado": total == approved + failed + unclassified,
+            "classificados": approved + failed,
+            "criterio_aprovado": "sem_reprovacao_e_com_ao_menos_um_resultado_aprovado",
+            "criterio_reprovado": "ao_menos_uma_reprovacao_no_recorte",
+            "motivos_podem_sobrepor": True,
         }
 
     def academic_result_summary(self, filters: dict[str, str] | None = None) -> list[dict[str, Any]]:
@@ -1057,11 +1216,11 @@ class DatabaseRepository:
         return result
 
     def academic_result_trend(self, filters: dict[str, str] | None = None) -> list[dict[str, Any]]:
-        """Série semestral de aprovação no recorte acadêmico.
+        """Série semestral de aprovação e população discente no recorte.
 
-        Diferentemente do resumo por disciplina, esta consulta agrega diretamente
-        por semestre. Isso permite contar estudantes distintos sem somar o mesmo
-        aluno várias vezes quando o recorte inclui mais de uma disciplina.
+        Mantém a taxa oficial por resultados disciplinares e acrescenta uma
+        leitura por estudante, evitando confundir aprovações em disciplinas com
+        pessoas distintas.
         """
         filters = filters or {}
         conditions = [AcademicResult.directorate_id == self.directorate_id]
@@ -1072,22 +1231,13 @@ class DatabaseRepository:
 
         finalized_case = case((AcademicResult.approved.is_not(None), 1), else_=0)
         approved_case = case((AcademicResult.approved.is_(True), 1), else_=0)
-        approved_student_case = case(
-            (AcademicResult.approved.is_(True), AcademicResult.student_id),
-            else_=None,
-        )
-        finalized_student_case = case(
-            (AcademicResult.approved.is_not(None), AcademicResult.student_id),
-            else_=None,
-        )
-
-        q = (
+        row_q = (
             select(
                 AcademicResult.period.label("periodo"),
                 func.sum(finalized_case).label("finalizados"),
                 func.sum(approved_case).label("aprovacoes"),
-                func.count(func.distinct(approved_student_case)).label("alunos_aprovados"),
-                func.count(func.distinct(finalized_student_case)).label("alunos_finalizados"),
+                func.count(func.distinct(case((AcademicResult.approved.is_(True), AcademicResult.student_id), else_=None))).label("students_any_approved"),
+                func.count(func.distinct(case((AcademicResult.approved.is_not(None), AcademicResult.student_id), else_=None))).label("students_any_finalized"),
             )
             .join(Course, AcademicResult.course_id == Course.id)
             .join(Discipline, AcademicResult.discipline_id == Discipline.id)
@@ -1095,59 +1245,102 @@ class DatabaseRepository:
             .group_by(AcademicResult.period)
             .order_by(AcademicResult.period.asc())
         )
-        rows = self.db.execute(q).all()
+        row_metrics = {
+            row.periodo: {
+                "finalizados": int(row.finalizados or 0),
+                "aprovacoes": int(row.aprovacoes or 0),
+                "students_any_approved": int(row.students_any_approved or 0),
+                "students_any_finalized": int(row.students_any_finalized or 0),
+            }
+            for row in self.db.execute(row_q).all()
+        }
+
+        failed_case = case((AcademicResult.approved.is_(False), 1), else_=0)
+        pending_case = case((AcademicResult.approved.is_(None), 1), else_=0)
+        grade_case = case((and_(AcademicResult.approved.is_(False), AcademicResult.failure_reason == "nota"), 1), else_=0)
+        absence_case = case((and_(AcademicResult.approved.is_(False), AcademicResult.failure_reason == "falta"), 1), else_=0)
+        per_student_period = (
+            select(
+                AcademicResult.period.label("periodo"),
+                AcademicResult.student_id.label("student_id"),
+                func.sum(approved_case).label("approved_count"),
+                func.sum(failed_case).label("failed_count"),
+                func.sum(pending_case).label("pending_count"),
+                func.sum(grade_case).label("grade_fail_count"),
+                func.sum(absence_case).label("absence_fail_count"),
+            )
+            .join(Course, AcademicResult.course_id == Course.id)
+            .join(Discipline, AcademicResult.discipline_id == Discipline.id)
+            .where(*conditions)
+            .group_by(AcademicResult.period, AcademicResult.student_id)
+            .subquery()
+        )
+        student_q = (
+            select(
+                per_student_period.c.periodo,
+                func.count(per_student_period.c.student_id).label("students_total"),
+                func.sum(case((and_(per_student_period.c.failed_count == 0, per_student_period.c.approved_count > 0), 1), else_=0)).label("students_approved"),
+                func.sum(case((per_student_period.c.failed_count > 0, 1), else_=0)).label("students_failed"),
+                func.sum(case((and_(per_student_period.c.failed_count == 0, per_student_period.c.approved_count == 0, per_student_period.c.pending_count > 0), 1), else_=0)).label("students_unclassified"),
+                func.sum(case((per_student_period.c.pending_count > 0, 1), else_=0)).label("students_with_pending"),
+                func.sum(case((per_student_period.c.grade_fail_count > 0, 1), else_=0)).label("students_failed_grade"),
+                func.sum(case((per_student_period.c.absence_fail_count > 0, 1), else_=0)).label("students_failed_absence"),
+            )
+            .group_by(per_student_period.c.periodo)
+            .order_by(per_student_period.c.periodo.asc())
+        )
+        student_metrics = {row.periodo: row for row in self.db.execute(student_q).all()}
+
+        periods = sorted(set(row_metrics) | set(student_metrics))
         result: list[dict[str, Any]] = []
-        for row in rows:
-            finalized = int(row.finalizados or 0)
-            approvals = int(row.aprovacoes or 0)
+        for period in periods:
+            row = row_metrics.get(period, {"finalizados": 0, "aprovacoes": 0})
+            students = student_metrics.get(period)
+            finalized = int(row.get("finalizados") or 0)
+            approvals = int(row.get("aprovacoes") or 0)
+            students_total = int(students.students_total or 0) if students else 0
+            students_approved = int(students.students_approved or 0) if students else 0
+            students_failed = int(students.students_failed or 0) if students else 0
+            students_unclassified = int(students.students_unclassified or 0) if students else 0
+            students_with_pending = int(students.students_with_pending or 0) if students else 0
             result.append({
-                "periodo": row.periodo,
+                "periodo": period,
                 "finalizados": finalized,
                 "aprovados": approvals,
                 "reprovados": max(0, finalized - approvals),
                 "taxa_aprovacao": round(approvals / finalized * 100, 2) if finalized else None,
-                "alunos_aprovados": int(row.alunos_aprovados or 0),
-                "alunos_finalizados": int(row.alunos_finalizados or 0),
+                # Quantidade de pessoas e classificação gerencial v0.11.6.7.
+                "alunos_finalizados": int(row.get("students_any_finalized") or 0),
+                "alunos_com_alguma_aprovacao": int(row.get("students_any_approved") or 0),
+                "alunos_distintos": students_total,
+                "alunos_aprovados": students_approved,
+                "alunos_aprovados_integralmente": students_approved,
+                "alunos_com_reprovacao": students_failed,
+                "alunos_sem_classificacao": students_unclassified,
+                "alunos_sem_fechamento": students_unclassified,
+                "alunos_com_resultado_pendente": students_with_pending,
+                "alunos_reprovados_nota": int(students.students_failed_grade or 0) if students else 0,
+                "alunos_reprovados_falta": int(students.students_failed_absence or 0) if students else 0,
             })
         return result
 
     def teacher_evaluation_dashboard_summary(self) -> list[dict[str, Any]]:
-        """Aggregate Faculty Evaluation for the executive dashboard in SQL.
+        """KPI 02 oficial projetado da Avaliacao Institucional Discente -> Docente.
 
-        The dashboard never needs professor-level rows; it needs weighted scores by
-        semester/course/discipline. Collapsing at this grain preserves every current
-        dashboard calculation while keeping raw evaluation volume out of Python.
+        Desde v0.11.5 o Painel Executivo nao consulta mais ``teacher_evaluations``.
+        A tabela historica permanece no banco apenas para rastreabilidade.
         """
-        weighted = func.sum(TeacherEvaluation.average_score * TeacherEvaluation.respondents)
-        respondents = func.sum(TeacherEvaluation.respondents)
-        rows = self.db.execute(
-            select(
-                TeacherEvaluation.period,
-                Course.name,
-                Discipline.name,
-                weighted,
-                respondents,
-            )
-            .join(Course, TeacherEvaluation.course_id == Course.id)
-            .join(Discipline, TeacherEvaluation.discipline_id == Discipline.id)
-            .where(TeacherEvaluation.directorate_id == self.directorate_id)
-            .group_by(TeacherEvaluation.period, Course.name, Discipline.name)
-            .order_by(TeacherEvaluation.period.desc(), Course.name, Discipline.name)
-        ).all()
-        return [
-            {
-                "agregado": True,
-                "periodo": period,
-                "curso": course_name,
-                "disciplina": discipline_name,
-                "professor": "",
-                "respondentes": int(total_respondents or 0),
-                "nota_media": self._teacher_weighted_value(weighted_sum, total_respondents),
-                "valor": self._teacher_weighted_value(weighted_sum, total_respondents),
-                "validacao": "OK",
-            }
-            for period, course_name, discipline_name, weighted_sum, total_respondents in rows
-        ]
+        from survey_repository import SurveyRepository
+
+        scope = DirectorateScope(
+            user=self.ctx,
+            directorate_id=self.directorate_id,
+            directorate_code=self.directorate_code,
+            directorate_name=self.directorate_name,
+            can_write=self.ctx.can_edit(self.directorate_code),
+            is_home=self.ctx.directorate_id == self.directorate_id,
+        )
+        return SurveyRepository(self.db, scope).faculty_dashboard_projection()
 
     def academic_institution_nps_history(self) -> list[dict[str, Any]]:
         """NPS institucional dos alunos, agregado entre DTNH e DCS por semestre.
@@ -1367,16 +1560,25 @@ class DatabaseRepository:
         for r in rows:
             meta = KPI_META.get(r.indicator_code, {})
             unit = meta.get("unit") or ("%" if r.indicator_code.endswith(("-02", "-03")) else "pontos")
+            metric_version = str(r.metric_version or "") or None
+            legacy_metric = r.indicator_code in {"DTNH-02", "DCS-02"} and metric_version != FACULTY_GOAL_METRIC_VERSION
             out.append({
                 "id": r.id, "indicador": r.indicator_code, "recorte": r.scope_label,
                 "vigencia": r.valid_from, "meta": r.target, "atencao": r.attention,
                 "limite_superior": r.upper_limit, "justificativa": r.justification or "",
-                "unidade": unit, "direcao": meta.get("direction", "higher"),
+                "unidade": "nota" if legacy_metric else unit, "direcao": meta.get("direction", "higher"),
+                "metric_version": metric_version, "legacy_metric": legacy_metric,
             })
         return out
 
     def get_metas(self):
-        return [{k: v for k, v in x.items() if k != "id" and k != "unidade"} for x in self.list_goals()]
+        # Metas 02 anteriores a v0.11.5 eram expressas em nota 0-10. Elas sao
+        # preservadas na governanca, mas nunca participam do KPI percentual.
+        return [
+            {k: v for k, v in x.items() if k not in {"id", "unidade", "legacy_metric"}}
+            for x in self.list_goals()
+            if not x.get("legacy_metric")
+        ]
 
     def _validate_goal(self, payload, ignore_id=None):
         code = str(payload.get("indicador") or "").strip(); recorte = str(payload.get("recorte") or "").strip(); vigencia = str(payload.get("vigencia") or "").strip(); errors = {}
@@ -1402,21 +1604,27 @@ class DatabaseRepository:
             else:
                 try: clean[field] = float(val)
                 except (TypeError, ValueError): errors[field] = "Informe um número."
-        if code == "DPE-04" and clean.get("limite_superior") is None:
-            errors["limite_superior"] = "Para DPE-04, informe o limite superior da faixa (ex.: 105)."
-        if code == "DPE-04" and clean.get("meta") is not None and clean.get("limite_superior") is not None and clean["limite_superior"] <= clean["meta"]:
-            errors["limite_superior"] = "O limite superior deve ser maior que o limite inferior da meta."
+        if code in {"DTNH-02", "DCS-02"}:
+            for field in ("meta", "atencao", "limite_superior"):
+                value = clean.get(field)
+                if value is not None and not 0 <= value <= 100:
+                    errors[field] = "A favorabilidade deve estar entre 0% e 100%."
+            if clean.get("meta") is not None and clean.get("atencao") is not None and clean["atencao"] > clean["meta"]:
+                errors["atencao"] = "Para favorabilidade, o limiar de atenção deve ser menor ou igual à meta."
+            clean["metric_version"] = FACULTY_GOAL_METRIC_VERSION
+        else:
+            clean["metric_version"] = None
         if errors: raise ValidationError("Revise os campos destacados.", errors)
         return clean
 
     def create_goal(self, payload):
-        c = self._validate_goal(payload); row = Goal(directorate_id=self.directorate_id, indicator_code=c["indicador"], scope_label=c["recorte"], valid_from=c["vigencia"], target=c["meta"], attention=c["atencao"], upper_limit=c["limite_superior"], justification=c["justificativa"])
+        c = self._validate_goal(payload); row = Goal(directorate_id=self.directorate_id, indicator_code=c["indicador"], scope_label=c["recorte"], valid_from=c["vigencia"], target=c["meta"], attention=c["atencao"], upper_limit=c["limite_superior"], justification=c["justificativa"], metric_version=c["metric_version"])
         self.db.add(row); self.db.flush(); self._audit("create", "goal", row.id, payload); self._commit(); return next(x for x in self.list_goals() if x["id"] == row.id)
 
     def update_goal(self, row_id, payload):
         row = require_object_for_directorate(self.db, Goal, row_id, self.directorate_id, label="Meta")
-        c = self._validate_goal(payload, row_id); row.indicator_code=c["indicador"]; row.scope_label=c["recorte"]; row.valid_from=c["vigencia"]; row.target=c["meta"]; row.attention=c["atencao"]; row.upper_limit=c["limite_superior"]; row.justification=c["justificativa"]
-        self._audit("update", "goal", row.id, payload); self._commit(); return next(x for x in self.list_goals() if x["id"] == row.id)
+        c = self._validate_goal(payload, row_id); row.indicator_code=c["indicador"]; row.scope_label=c["recorte"]; row.valid_from=c["vigencia"]; row.target=c["meta"]; row.attention=c["atencao"]; row.upper_limit=c["limite_superior"]; row.justification=c["justificativa"]; row.metric_version=c["metric_version"]
+        self._audit("update", "goal", row.id, payload); self._commit(); return next(x for x in self.list_goals() if x["id"]==row.id)
 
     def delete_goal(self, row_id):
         row = require_object_for_directorate(self.db, Goal, row_id, self.directorate_id, label="Meta")
@@ -2029,190 +2237,7 @@ class DatabaseRepository:
     # Their dimensions are financial/managerial: recorte, diretoria/centro
     # de custo, conta e natureza do movimento.
     # ------------------------------------------------------------------
-    def _ensure_dpe(self):
-        if self.directorate_code != "DPE":
-            raise RepositoryError("Este conjunto de dados pertence à DPE.")
 
-    @staticmethod
-    def _normalize_choice(value: Any, choices: tuple[str, ...]) -> str:
-        text = str(value or "").strip()
-        folded = norm_header(text)
-        for item in choices:
-            if folded == norm_header(item):
-                return item
-        return text
-
-    def dpe_reference_options(self) -> dict[str, Any]:
-        self._ensure_dpe()
-        directorates = self.db.scalars(select(Directorate).order_by(Directorate.code)).all()
-        result_rows = self.db.scalars(
-            select(DpeOperatingResult).where(DpeOperatingResult.directorate_id == self.directorate_id)
-        ).all()
-        budget_rows = self.db.scalars(
-            select(DpeBudgetExecution).where(DpeBudgetExecution.directorate_id == self.directorate_id)
-        ).all()
-        cash_rows = self.db.scalars(
-            select(DpeCashMovement).where(DpeCashMovement.directorate_id == self.directorate_id)
-        ).all()
-        return {
-            "tipos_recorte": list(DPE_RESULT_SCOPE_TYPES),
-            "tipos_movimento": list(DPE_CASH_MOVEMENT_TYPES),
-            "diretorias": [{"code": d.code, "name": d.name, "active": d.active} for d in directorates],
-            "recortes": sorted({r.scope_label for r in result_rows if r.scope_label}),
-            "centros_custo": sorted({r.cost_center for r in budget_rows if r.cost_center}),
-            "contas": sorted({r.account for r in cash_rows if r.account}),
-            "naturezas": sorted({r.nature for r in cash_rows if r.nature}),
-        }
-
-    def _validate_dpe_result(self, payload: dict[str, Any]) -> dict[str, Any]:
-        self._ensure_dpe(); errors: dict[str, str] = {}
-        period = str(payload.get("periodo") or "").strip()
-        scope_type = self._normalize_choice(payload.get("tipo_recorte"), DPE_RESULT_SCOPE_TYPES)
-        scope_label = str(payload.get("recorte") or "").strip()[:180]
-        if not MONTH_RE.match(period): errors["periodo"] = "Selecione uma competência mensal válida (AAAA-MM)."
-        if scope_type not in DPE_RESULT_SCOPE_TYPES: errors["tipo_recorte"] = "Selecione um tipo de recorte válido."
-        if scope_type == "Institucional": scope_label = "TOTAL"
-        elif len(scope_label) < 2: errors["recorte"] = "Informe o recorte correspondente."
-        revenue = self._to_decimal(payload.get("receita_liquida"), "receita_liquida", errors, allow_zero=False)
-        expense = self._to_decimal(payload.get("despesa_total"), "despesa_total", errors)
-        if errors: raise ValidationError("Revise os campos destacados.", errors)
-        return {"periodo": period, "tipo_recorte": scope_type, "recorte": scope_label, "receita_liquida": revenue, "despesa_total": expense}
-
-    @staticmethod
-    def _dpe_result_to_dict(row: DpeOperatingResult) -> dict[str, Any]:
-        revenue = float(row.net_revenue); expense = float(row.total_expense)
-        result = revenue - expense
-        margin = result / revenue * 100 if revenue else None
-        return {
-            "id": row.id, "periodo": row.period, "tipo_recorte": row.scope_type, "recorte": row.scope_label,
-            "receita_liquida": revenue, "despesa_total": expense, "resultado_operacional": round(result, 2),
-            "margem_operacional": round(margin, 2) if margin is not None else None,
-            "valor": round(margin, 2) if margin is not None else None, "validacao": "OK",
-            "data_lancamento": str(row.inserted_at.date()) if row.inserted_at else "", "lancado_por": row.inserted_by or "",
-        }
-
-    def list_dpe_results(self) -> list[dict[str, Any]]:
-        self._ensure_dpe()
-        rows = self.db.scalars(select(DpeOperatingResult).where(DpeOperatingResult.directorate_id == self.directorate_id).order_by(DpeOperatingResult.period.desc(), DpeOperatingResult.scope_type, DpeOperatingResult.scope_label)).all()
-        return [self._dpe_result_to_dict(r) for r in rows]
-
-    def create_dpe_result(self, payload: dict[str, Any]) -> dict[str, Any]:
-        c = self._validate_dpe_result(payload)
-        row = DpeOperatingResult(directorate_id=self.directorate_id, period=c["periodo"], scope_type=c["tipo_recorte"], scope_label=c["recorte"], net_revenue=c["receita_liquida"], total_expense=c["despesa_total"], inserted_by=self.ctx.full_name)
-        self.db.add(row); self.db.flush(); self._audit("create", "dpe_operating_result", row.id, payload); self._commit(); return self._dpe_result_to_dict(row)
-
-    def update_dpe_result(self, row_id: int, payload: dict[str, Any]) -> dict[str, Any]:
-        row = require_object_for_directorate(self.db, DpeOperatingResult, row_id, self.directorate_id, label="Resultado operacional")
-        c = self._validate_dpe_result(payload)
-        row.period=c["periodo"]; row.scope_type=c["tipo_recorte"]; row.scope_label=c["recorte"]; row.net_revenue=c["receita_liquida"]; row.total_expense=c["despesa_total"]; row.inserted_by=self.ctx.full_name
-        self._audit("update", "dpe_operating_result", row.id, payload); self._commit(); return self._dpe_result_to_dict(row)
-
-    def delete_dpe_result(self, row_id: int):
-        row = require_object_for_directorate(self.db, DpeOperatingResult, row_id, self.directorate_id, label="Resultado operacional")
-        self.db.delete(row); self._audit("delete", "dpe_operating_result", row_id); self._commit()
-
-    def _validate_dpe_budget(self, payload: dict[str, Any]) -> dict[str, Any]:
-        self._ensure_dpe(); errors: dict[str, str] = {}
-        period = str(payload.get("periodo") or "").strip()
-        unit = str(payload.get("unidade") or "").strip().upper()[:40]
-        center = str(payload.get("centro_custo") or "").strip()[:180]
-        if not MONTH_RE.match(period): errors["periodo"] = "Selecione uma competência mensal válida (AAAA-MM)."
-        valid_units = set(self.db.scalars(select(Directorate.code)).all())
-        if unit not in valid_units: errors["unidade"] = "Selecione uma diretoria cadastrada."
-        if len(center) < 2: errors["centro_custo"] = "Informe o centro de custo."
-        budgeted = self._to_decimal(payload.get("despesa_orcada"), "despesa_orcada", errors, allow_zero=False)
-        actual = self._to_decimal(payload.get("despesa_realizada"), "despesa_realizada", errors)
-        if errors: raise ValidationError("Revise os campos destacados.", errors)
-        return {"periodo": period, "unidade": unit, "centro_custo": center, "despesa_orcada": budgeted, "despesa_realizada": actual}
-
-    @staticmethod
-    def _dpe_budget_to_dict(row: DpeBudgetExecution) -> dict[str, Any]:
-        budgeted=float(row.budgeted_expense); actual=float(row.actual_expense); execution=actual/budgeted*100 if budgeted else None
-        return {"id":row.id,"periodo":row.period,"unidade":row.budget_directorate,"centro_custo":row.cost_center,"despesa_orcada":budgeted,"despesa_realizada":actual,"execucao":round(execution,2) if execution is not None else None,"desvio":round(actual-budgeted,2),"valor":round(execution,2) if execution is not None else None,"validacao":"OK","data_lancamento":str(row.inserted_at.date()) if row.inserted_at else "","lancado_por":row.inserted_by or ""}
-
-    def list_dpe_budget(self) -> list[dict[str, Any]]:
-        self._ensure_dpe(); rows=self.db.scalars(select(DpeBudgetExecution).where(DpeBudgetExecution.directorate_id==self.directorate_id).order_by(DpeBudgetExecution.period.desc(),DpeBudgetExecution.budget_directorate,DpeBudgetExecution.cost_center)).all(); return [self._dpe_budget_to_dict(r) for r in rows]
-
-    def create_dpe_budget(self, payload: dict[str, Any]) -> dict[str, Any]:
-        c=self._validate_dpe_budget(payload); row=DpeBudgetExecution(directorate_id=self.directorate_id,period=c["periodo"],budget_directorate=c["unidade"],cost_center=c["centro_custo"],budgeted_expense=c["despesa_orcada"],actual_expense=c["despesa_realizada"],inserted_by=self.ctx.full_name); self.db.add(row);self.db.flush();self._audit("create","dpe_budget_execution",row.id,payload);self._commit();return self._dpe_budget_to_dict(row)
-
-    def update_dpe_budget(self,row_id:int,payload:dict[str,Any])->dict[str,Any]:
-        row=require_object_for_directorate(self.db, DpeBudgetExecution, row_id, self.directorate_id, label="Execução orçamentária")
-        c=self._validate_dpe_budget(payload);row.period=c["periodo"];row.budget_directorate=c["unidade"];row.cost_center=c["centro_custo"];row.budgeted_expense=c["despesa_orcada"];row.actual_expense=c["despesa_realizada"];row.inserted_by=self.ctx.full_name;self._audit("update","dpe_budget_execution",row.id,payload);self._commit();return self._dpe_budget_to_dict(row)
-
-    def delete_dpe_budget(self,row_id:int):
-        row=require_object_for_directorate(self.db, DpeBudgetExecution, row_id, self.directorate_id, label="Execução orçamentária")
-        self.db.delete(row);self._audit("delete","dpe_budget_execution",row_id);self._commit()
-
-    def _validate_dpe_cash(self,payload:dict[str,Any])->dict[str,Any]:
-        self._ensure_dpe();errors:dict[str,str]={};period=str(payload.get("periodo") or "").strip();account=str(payload.get("conta") or "").strip()[:180];movement=self._normalize_choice(payload.get("tipo_movimento"),DPE_CASH_MOVEMENT_TYPES);nature=str(payload.get("natureza") or "").strip()[:180]
-        if not MONTH_RE.match(period):errors["periodo"]="Selecione uma competência mensal válida (AAAA-MM)."
-        if len(account)<2:errors["conta"]="Informe a conta."
-        if movement not in DPE_CASH_MOVEMENT_TYPES:errors["tipo_movimento"]="Selecione Entrada ou Saída."
-        if len(nature)<2:errors["natureza"]="Informe a natureza do movimento."
-        amount=self._to_decimal(payload.get("valor"),"valor",errors,allow_zero=False)
-        if errors:raise ValidationError("Revise os campos destacados.",errors)
-        return {"periodo":period,"conta":account,"tipo_movimento":movement,"natureza":nature,"valor":amount}
-
-    @staticmethod
-    def _dpe_cash_to_dict(row:DpeCashMovement)->dict[str,Any]:
-        amount=float(row.amount);signed=amount if row.movement_type=="Entrada" else -amount
-        return {"id":row.id,"periodo":row.period,"conta":row.account,"tipo_movimento":row.movement_type,"natureza":row.nature,"valor":amount,"valor_assinado":signed,"validacao":"OK","data_lancamento":str(row.inserted_at.date()) if row.inserted_at else "","lancado_por":row.inserted_by or ""}
-
-    def list_dpe_cash(self)->list[dict[str,Any]]:
-        self._ensure_dpe();rows=self.db.scalars(select(DpeCashMovement).where(DpeCashMovement.directorate_id==self.directorate_id).order_by(DpeCashMovement.period.desc(),DpeCashMovement.account,DpeCashMovement.movement_type,DpeCashMovement.nature)).all();return [self._dpe_cash_to_dict(r) for r in rows]
-
-    def create_dpe_cash(self,payload:dict[str,Any])->dict[str,Any]:
-        c=self._validate_dpe_cash(payload);row=DpeCashMovement(directorate_id=self.directorate_id,period=c["periodo"],account=c["conta"],movement_type=c["tipo_movimento"],nature=c["natureza"],amount=c["valor"],inserted_by=self.ctx.full_name);self.db.add(row);self.db.flush();self._audit("create","dpe_cash_movement",row.id,payload);self._commit();return self._dpe_cash_to_dict(row)
-
-    def update_dpe_cash(self,row_id:int,payload:dict[str,Any])->dict[str,Any]:
-        row=require_object_for_directorate(self.db, DpeCashMovement, row_id, self.directorate_id, label="Movimento de caixa")
-        c=self._validate_dpe_cash(payload);row.period=c["periodo"];row.account=c["conta"];row.movement_type=c["tipo_movimento"];row.nature=c["natureza"];row.amount=c["valor"];row.inserted_by=self.ctx.full_name;self._audit("update","dpe_cash_movement",row.id,payload);self._commit();return self._dpe_cash_to_dict(row)
-
-    def delete_dpe_cash(self,row_id:int):
-        row=require_object_for_directorate(self.db, DpeCashMovement, row_id, self.directorate_id, label="Movimento de caixa")
-        self.db.delete(row);self._audit("delete","dpe_cash_movement",row_id);self._commit()
-
-    def snapshot_dpe(self)->dict[str,Any]:
-        self._ensure_dpe();return {"resultado":self.list_dpe_results(),"orcamento":self.list_dpe_budget(),"caixa":self.list_dpe_cash(),"metas":self.get_metas(),"actions":self.list_actions()}
-
-    def _find_existing_dpe(self,dataset:str,c:dict[str,Any]):
-        if dataset=="dpe-resultado":return self.db.scalar(select(DpeOperatingResult).where(DpeOperatingResult.directorate_id==self.directorate_id,DpeOperatingResult.period==c["periodo"],DpeOperatingResult.scope_type==c["tipo_recorte"],DpeOperatingResult.scope_label==c["recorte"]))
-        if dataset=="dpe-orcamento":return self.db.scalar(select(DpeBudgetExecution).where(DpeBudgetExecution.directorate_id==self.directorate_id,DpeBudgetExecution.period==c["periodo"],DpeBudgetExecution.budget_directorate==c["unidade"],DpeBudgetExecution.cost_center==c["centro_custo"]))
-        if dataset=="dpe-caixa":return self.db.scalar(select(DpeCashMovement).where(DpeCashMovement.directorate_id==self.directorate_id,DpeCashMovement.period==c["periodo"],DpeCashMovement.account==c["conta"],DpeCashMovement.movement_type==c["tipo_movimento"],DpeCashMovement.nature==c["natureza"]))
-        raise RepositoryError("Base DPE desconhecida.")
-
-    def import_dpe_file(self,dataset:str,file_path:Path,mode:str="add"):
-        self._ensure_dpe();aliases=DPE_HEADER_ALIASES.get(dataset)
-        if not aliases:raise RepositoryError("Base DPE desconhecida.")
-        try:wb=load_workbook(file_path,data_only=True,read_only=True)
-        except Exception as exc:raise ValidationError("O arquivo enviado não é uma planilha Excel válida.") from exc
-        try:
-            ws=wb["MODELO"] if "MODELO" in wb.sheetnames else (wb["IMPORTACAO"] if "IMPORTACAO" in wb.sheetnames else wb.active);header_row=None;mapping={}
-            for rr in range(1,min(ws.max_row,20)+1):
-                normalized={norm_header(ws.cell(rr,c).value):c for c in range(1,ws.max_column+1)};candidate={}
-                for field,accepted in aliases.items():
-                    for header,col in normalized.items():
-                        if header in accepted:candidate[field]=col;break
-                if len(candidate)==len(aliases):header_row=rr;mapping=candidate;break
-            if not header_row:raise ValidationError("Não encontrei os cabeçalhos esperados. Use o modelo DPE fornecido pelo sistema.")
-            raw=[]
-            for rr in range(header_row+1,ws.max_row+1):
-                payload={field:ws.cell(rr,col).value for field,col in mapping.items()}
-                if any(v not in (None,"") for v in payload.values()):raw.append((rr,payload))
-        finally:wb.close()
-        result={"inseridos":0,"atualizados":0,"ignorados":0,"erros":[]}
-        validators={"dpe-resultado":self._validate_dpe_result,"dpe-orcamento":self._validate_dpe_budget,"dpe-caixa":self._validate_dpe_cash};creators={"dpe-resultado":self.create_dpe_result,"dpe-orcamento":self.create_dpe_budget,"dpe-caixa":self.create_dpe_cash};updaters={"dpe-resultado":self.update_dpe_result,"dpe-orcamento":self.update_dpe_budget,"dpe-caixa":self.update_dpe_cash}
-        for source_row,payload in raw:
-            try:
-                clean=validators[dataset](payload);existing=self._find_existing_dpe(dataset,clean)
-                if existing:
-                    if mode=="update":updaters[dataset](existing.id,payload);result["atualizados"]+=1
-                    else:result["ignorados"]+=1
-                else:creators[dataset](payload);result["inseridos"]+=1
-            except Exception as exc:
-                self.db.rollback();result["erros"].append({"linha":source_row,"mensagem":str(exc),"campos":getattr(exc,"field_errors",{})})
-        self._audit("import",dataset,None,result);self._commit();return result
 
     def snapshot(self):
         courses, disciplines = self.course_maps(include_inactive=False)
@@ -2306,11 +2331,13 @@ class DatabaseRepository:
     def _prefetch_existing_results(self, prepared: list[tuple[Any, dict[str, Any]]]) -> dict[tuple[Any, ...], AcademicResult]:
         if not prepared:
             return {}
-        grouped: dict[tuple[str, int], set[int]] = {}
+        grouped: dict[tuple[str, int, int], set[int]] = {}
         for _, clean in prepared:
-            grouped.setdefault((clean["periodo"], clean["course_id"]), set()).add(clean["student_id"])
+            grouped.setdefault(
+                (clean["periodo"], clean["course_id"], clean["discipline_id"]), set()
+            ).add(clean["student_id"])
         result: dict[tuple[Any, ...], AcademicResult] = {}
-        for (period, course_id), student_ids in grouped.items():
+        for (period, course_id, discipline_id), student_ids in grouped.items():
             ordered_ids = sorted(student_ids)
             for chunk in self._chunked(ordered_ids):
                 rows = self.db.scalars(
@@ -2318,6 +2345,7 @@ class DatabaseRepository:
                         AcademicResult.directorate_id == self.directorate_id,
                         AcademicResult.period == period,
                         AcademicResult.course_id == course_id,
+                        AcademicResult.discipline_id == discipline_id,
                         AcademicResult.student_id.in_(chunk),
                     )
                 ).all()
@@ -2330,6 +2358,8 @@ class DatabaseRepository:
         raw: list[tuple[Any, dict[str, Any]]],
         mode: str = "add",
         source: str | None = None,
+        *,
+        audit: bool = True,
     ) -> dict[str, Any]:
         result = {"inseridos": 0, "atualizados": 0, "ignorados": 0, "erros": []}
         normalized: list[tuple[Any, dict[str, Any]]] = []
@@ -2349,7 +2379,8 @@ class DatabaseRepository:
                 })
 
         if not normalized:
-            self._audit("import", "resultados", None, {**result, "fonte": source or "excel", "engine": "batch"})
+            if audit:
+                self._audit("import", "resultados", None, {**result, "fonte": source or "excel", "engine": "batch"})
             self._commit()
             return result
 
@@ -2476,7 +2507,8 @@ class DatabaseRepository:
         if new_by_key:
             self.db.execute(insert(AcademicResult), list(new_by_key.values()))
 
-        self._audit("import", "resultados", None, {**result, "fonte": source or "excel", "engine": "batch"})
+        if audit:
+            self._audit("import", "resultados", None, {**result, "fonte": source or "excel", "engine": "batch"})
         self._commit()
         return result
 
@@ -2486,20 +2518,25 @@ class DatabaseRepository:
         raw: list[tuple[Any, dict[str, Any]]],
         mode: str = "add",
         source: str | None = None,
+        *,
+        audit: bool = True,
     ):
         if dataset != "resultados":
-            return self._import_academic_payloads_legacy(dataset, raw, mode=mode, source=source)
+            return self._import_academic_payloads_legacy(dataset, raw, mode=mode, source=source, audit=audit)
         try:
-            return self._import_academic_results_batch(raw, mode=mode, source=source)
+            return self._import_academic_results_batch(raw, mode=mode, source=source, audit=audit)
         except IntegrityError:
             # Concurrent catalog/student/result inserts can still race despite the
             # prefetch. Roll back the batch and fall back to the row-isolated path,
             # preserving the historical error semantics rather than failing the file.
             self.db.rollback()
             self._reset_import_caches()
-            return self._import_academic_payloads_legacy(dataset, raw, mode=mode, source=source)
+            return self._import_academic_payloads_legacy(dataset, raw, mode=mode, source=source, audit=audit)
 
-    def _import_academic_payloads_legacy(self, dataset: str, raw: list[tuple[Any, dict[str, Any]]], mode: str = "add", source: str | None = None):
+    def _import_academic_payloads_legacy(
+        self, dataset: str, raw: list[tuple[Any, dict[str, Any]]], mode: str = "add",
+        source: str | None = None, *, audit: bool = True,
+    ):
         if dataset not in DATASETS:
             raise RepositoryError("Base desconhecida.")
         result = {"inseridos": 0, "atualizados": 0, "ignorados": 0, "erros": []}
@@ -2529,9 +2566,59 @@ class DatabaseRepository:
                     "mensagem": str(exc),
                     "campos": getattr(exc, "field_errors", {}),
                 })
-        self._audit("import", dataset, None, {**result, "fonte": source or "excel"})
+        if audit:
+            self._audit("import", dataset, None, {**result, "fonte": source or "excel"})
         self._commit()
         return result
+
+    @staticmethod
+    def _merge_import_result(total: dict[str, Any], part: dict[str, Any]) -> None:
+        total["inseridos"] += int(part.get("inseridos") or 0)
+        total["atualizados"] += int(part.get("atualizados") or 0)
+        total["ignorados"] += int(part.get("ignorados") or 0)
+        total["erros"].extend(part.get("erros") or [])
+
+    def _import_results_in_chunks(
+        self,
+        rows,
+        *,
+        mode: str,
+        source: str,
+        batch_size: int = ACADEMIC_RESULT_IMPORT_BATCH_SIZE,
+    ) -> dict[str, Any]:
+        """Grava resultados em lotes limitados e libera identidades de aluno entre lotes."""
+        total = {
+            "inseridos": 0,
+            "atualizados": 0,
+            "ignorados": 0,
+            "erros": [],
+            "lotes_processados": 0,
+            "batch_size": batch_size,
+            "engine": "streaming-batch-v1",
+        }
+        batch: list[tuple[Any, dict[str, Any]]] = []
+
+        def flush_batch() -> None:
+            if not batch:
+                return
+            part = self._import_academic_payloads(
+                "resultados", list(batch), mode=mode, source=source, audit=False,
+            )
+            self._merge_import_result(total, part)
+            total["lotes_processados"] += 1
+            batch.clear()
+            # Matrículas são a dimensão de maior cardinalidade. Não deixe o cache
+            # crescer até o tamanho total da universidade durante uma importação.
+            self._student_registration_cache.clear()
+            if total["lotes_processados"] % 4 == 0:
+                gc.collect()
+
+        for source_row, payload in rows:
+            batch.append((source_row, payload))
+            if len(batch) >= batch_size:
+                flush_batch()
+        flush_batch()
+        return total
 
     def import_sei_report_file(
         self,
@@ -2539,14 +2626,14 @@ class DatabaseRepository:
         mode: str = "add",
         expected_course: str | None = None,
     ) -> dict[str, Any]:
-        """Importa diretamente o XLSX bruto 'Mapa de Nota do Aluno por Turma' do SEI.
+        """Importa o XLSX bruto do SEI em duas passagens de baixa memória.
 
-        Quando ``expected_course`` é informado pelo fluxo automático, o rótulo
-        interno do XLSX precisa corresponder ao curso solicitado antes de qualquer
-        gravação. Isso impede cruzar habilitações ou cursos parecidos.
+        1) ``inspecionar_relatorio`` valida identidade/período sem materializar linhas.
+        2) ``iterar_registros`` produz aluno-disciplina em streaming; o repositório
+           grava lotes pequenos com commits progressivos.
         """
         try:
-            metadata, registros, warnings = ler_registros(file_path)
+            metadata, warnings = inspecionar_relatorio(file_path)
         except Exception as exc:
             raise ValidationError(
                 "A planilha não corresponde ao relatório bruto de notas do SEI/UNIVC.",
@@ -2569,22 +2656,10 @@ class DatabaseRepository:
                 {"curso": f"Esperado: {expected_course}. Relatório: {raw_report_course or 'não identificado'}."},
             )
 
-        # A identidade do curso vem do campo ``Curso:`` de cada bloco do XLSX,
-        # nunca do código/nome da turma. O SEI pode reutilizar convenções históricas
-        # de turma (por exemplo, EFB) mesmo em relatórios cuja habilitação selecionada
-        # é Licenciatura. Usar EFB/EFL como prova de identidade gerava falso conflito.
-        #
-        # Para manter a proteção contra mistura de habilitações, validamos TODOS os
-        # rótulos de curso encontrados nos registros contra ``expected_course``.
+        report_course_labels = [str(label or "").strip() for label in (metadata.get("cursos_encontrados") or []) if str(label or "").strip()]
         if expected_course:
-            report_course_labels = sorted({
-                str(record.get("curso") or "").strip()
-                for record in registros
-                if str(record.get("curso") or "").strip()
-            })
             ambiguous_labels = [
-                label
-                for label in report_course_labels
+                label for label in report_course_labels
                 if is_ambiguous_course_name(label, self.directorate_code)
             ]
             if ambiguous_labels:
@@ -2592,60 +2667,68 @@ class DatabaseRepository:
                     "O relatório contém bloco(s) com o nome ambíguo 'Educação Física'. Gere o relatório selecionando Bacharelado ou Licenciatura no SEI.",
                     {"curso": "; ".join(ambiguous_labels)},
                 )
-
             mismatched_labels = [
-                label
-                for label in report_course_labels
+                label for label in report_course_labels
                 if not course_name_matches(label, expected_course, self.directorate_code)
             ]
             if mismatched_labels:
                 raise ValidationError(
                     "O XLSX retornado pelo SEI contém bloco(s) de curso diferente do solicitado.",
-                    {
-                        "curso": (
-                            f"Esperado: {expected_course}. "
-                            f"Encontrei: {', '.join(mismatched_labels)}."
-                        )
-                    },
+                    {"curso": f"Esperado: {expected_course}. Encontrei: {', '.join(mismatched_labels)}."},
                 )
 
         period = f"{metadata['ano']}-SEM{metadata['semestre']}"
         metadata["curso_origem_sei"] = raw_report_course
         metadata["curso"] = canonical_report_course
-        raw: list[tuple[Any, dict[str, Any]]] = []
-        for index, record in enumerate(registros, start=1):
-            raw.append((index, {
-                "periodo": period,
-                "curso": canonical_course_name(
-                    record.get("curso") or raw_report_course or metadata.get("curso"),
-                    self.directorate_code,
-                ),
-                "disciplina": record.get("disciplina"),
-                "turma": record.get("turma") or "SEM_TURMA",
-                "periodo_curricular": record.get("periodo"),
-                "matricula": record.get("matricula"),
-                "aluno": record.get("nome"),
-                "media": record.get("media"),
-                "situacao": record.get("situacao"),
-                "aprovado": record.get("aprovado"),
-                "motivo_reprovacao": record.get("motivo_reprovacao"),
-                "fonte": "SEI",
-            }))
-        result = self._import_academic_payloads("resultados", raw, mode=mode, source="SEI")
 
-        # Diagnóstico explícito da identidade do relatório. A habilitação já foi
-        # validada exclusivamente pelo campo Curso: do XLSX. O nome/código da turma
-        # não é consultado nem mesmo como heurística auxiliar.
+        def payloads():
+            for index, record in enumerate(iterar_registros(file_path), start=1):
+                yield index, {
+                    "periodo": period,
+                    "curso": canonical_course_name(
+                        record.get("curso") or raw_report_course or metadata.get("curso"),
+                        self.directorate_code,
+                    ),
+                    "disciplina": record.get("disciplina"),
+                    "turma": record.get("turma") or "SEM_TURMA",
+                    "periodo_curricular": record.get("periodo"),
+                    "matricula": record.get("matricula"),
+                    "aluno": record.get("nome"),
+                    "media": record.get("media"),
+                    "situacao": record.get("situacao"),
+                    "aprovado": record.get("aprovado"),
+                    "motivo_reprovacao": record.get("motivo_reprovacao"),
+                    "fonte": "SEI",
+                }
+
+        result = self._import_results_in_chunks(payloads(), mode=mode, source="SEI")
+        self._audit(
+            "import", "resultados", None,
+            {
+                "inseridos": result["inseridos"],
+                "atualizados": result["atualizados"],
+                "ignorados": result["ignorados"],
+                "erros": len(result["erros"]),
+                "fonte": "SEI",
+                "engine": result["engine"],
+                "batch_size": result["batch_size"],
+                "lotes_processados": result["lotes_processados"],
+                "arquivo": file_path.name,
+                "curso": canonical_report_course,
+                "periodo": period,
+            },
+        )
+        self._commit()
+
         metadata["curso_solicitado"] = expected_course
         metadata["identidade_curso_validada_por"] = "campo Curso: do XLSX"
         metadata["identidade_curso_validada"] = bool(
             not expected_course
             or course_name_matches(raw_report_course, expected_course, self.directorate_code)
         )
-
         result["metadados"] = metadata
         result["avisos_parser"] = warnings
-        result["registros_lidos"] = len(registros)
+        result["registros_lidos"] = int(metadata.get("total_registros_aluno_disciplina") or 0)
         return result
 
     def import_file(self, dataset: str, file_path: Path, mode: str = "add"):
@@ -2653,12 +2736,11 @@ class DatabaseRepository:
             raise RepositoryError("Base desconhecida.")
 
         # Para Resultados Acadêmicos aceitamos dois formatos:
-        # 1) o XLSX bruto gerado pelo próprio SEI; 2) o modelo padronizado do Data UNIVC.
+        # 1) o XLSX bruto do SEI (streaming); 2) o modelo Data UNIVC (também em lotes).
         if dataset == "resultados":
             try:
                 return self.import_sei_report_file(file_path, mode)
             except ValidationError:
-                # Se não for o relatório bruto do SEI, tenta o modelo padronizado abaixo.
                 pass
 
         try:
@@ -2678,8 +2760,6 @@ class DatabaseRepository:
                         if header in accepted:
                             candidate[field] = col
                             break
-                # 'aprovado' e 'motivo_reprovacao' são opcionais no modelo de resultados:
-                # podem ser inferidos da Situação oficial.
                 required_fields = set(aliases)
                 if dataset == "resultados":
                     required_fields -= {"aprovado", "motivo_reprovacao"}
@@ -2689,6 +2769,36 @@ class DatabaseRepository:
                     break
             if not header_row:
                 raise ValidationError("Não encontrei os cabeçalhos esperados. Use o modelo fornecido pelo Data UNIVC ou o relatório bruto do SEI.")
+
+            if dataset == "resultados":
+                def standardized_payloads():
+                    for rr, row in enumerate(ws.iter_rows(min_row=header_row + 1, values_only=True), start=header_row + 1):
+                        payload = {
+                            field: (row[col - 1] if col - 1 < len(row) else None)
+                            for field, col in mapping.items()
+                        }
+                        if any(value not in (None, "") for value in payload.values()):
+                            yield rr, payload
+
+                result = self._import_results_in_chunks(
+                    standardized_payloads(), mode=mode, source="Excel",
+                )
+                self._audit(
+                    "import", "resultados", None,
+                    {
+                        "inseridos": result["inseridos"],
+                        "atualizados": result["atualizados"],
+                        "ignorados": result["ignorados"],
+                        "erros": len(result["erros"]),
+                        "fonte": "Excel",
+                        "engine": result["engine"],
+                        "batch_size": result["batch_size"],
+                        "lotes_processados": result["lotes_processados"],
+                    },
+                )
+                self._commit()
+                return result
+
             raw = []
             for rr in range(header_row + 1, ws.max_row + 1):
                 payload = {field: ws.cell(rr, col).value for field, col in mapping.items()}

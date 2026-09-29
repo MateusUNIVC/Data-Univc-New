@@ -375,13 +375,14 @@ def _write_technical_data(wb: Workbook, payload: dict[str, Any]) -> dict[str, in
     )
 
     rows_02 = [[
-        r.get("periodo"), r.get("curso"), r.get("disciplina"), int(r.get("respondentes") or 0), r.get("nota_media"),
-        (float(r.get("nota_media")) * int(r.get("respondentes") or 0)) if r.get("nota_media") is not None else None,
-        r.get("meta"), r.get("atencao"), r.get("status"),
+        r.get("periodo"), r.get("curso"), r.get("disciplina"), int(r.get("respondentes") or 0),
+        int(r.get("favoraveis") or 0), int(r.get("intermediarias") or 0), int(r.get("desfavoraveis") or 0),
+        int(r.get("classificados") or 0), int(r.get("nao_classificados") or 0), int(r.get("nao_mapeados") or 0),
+        r.get("favorabilidade"), r.get("meta"), r.get("atencao"), r.get("status"),
     ] for r in payload.get("teacher", [])]
     ends["02"] = _write_rows_sheet(
         wb, "DADOS_02",
-        ["Periodo", "Curso", "Disciplina", "Respondentes", "NotaMedia", "SomaPonderada", "Meta", "Atencao", "Status"],
+        ["Periodo", "Curso", "Disciplina", "Participacoes", "Favoraveis", "Intermediarias", "Desfavoraveis", "Classificadas", "NaoClassificadas", "NaoMapeadas", "Favorabilidade", "Meta", "Atencao", "Status"],
         rows_02, table_name="TblV3_02",
     )
 
@@ -575,10 +576,11 @@ def _teacher_formula(ends: dict[str, int], period_expr: str) -> str:
     per = _range("DADOS_02", "A", end)
     course = _range("DADOS_02", "B", end)
     disc = _range("DADOS_02", "C", end)
-    resp = _range("DADOS_02", "D", end)
-    weighted = _range("DADOS_02", "F", end)
+    favorable = _range("DADOS_02", "E", end)
+    classified = _range("DADOS_02", "H", end)
+    unmapped = _range("DADOS_02", "J", end)
     args = f"{per},{period_expr},{_criteria_course(course)},{_criteria_disc(disc)}"
-    return f'=IFERROR(SUMIFS({weighted},{args})/SUMIFS({resp},{args}),NA())'
+    return f'=IF(SUMIFS({unmapped},{args})>0,NA(),IFERROR(SUMIFS({favorable},{args})/SUMIFS({classified},{args})*100,NA()))'
 
 
 def _approval_formula(ends: dict[str, int], period_expr: str) -> str:
@@ -627,7 +629,7 @@ def _write_calc(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) -> 
         ws.cell(row, 8, f'=IF(B{row}="",NA(),{_approval_formula(ends, f"B{row}")[1:]})')
     for row in range(5, 17):
         for col in [3, 4, 5, 6]: ws.cell(row, col).number_format = NPS_FMT
-        ws.cell(row, 7).number_format = SCORE_FMT
+        ws.cell(row, 7).number_format = PCT_POINT_FMT
         ws.cell(row, 8).number_format = PCT_POINT_FMT
 
     # Reference/comparison KPI summary.
@@ -639,7 +641,7 @@ def _write_calc(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) -> 
         ("NPS Instituição · Alunos", codes["nps_institution"], lambda p: _nps_formula("DADOS_01A_DIR", ends, "01A_DIR", p, course=True), NPS_FMT, '"(todas)"'),
         ("NPS do Curso", codes["nps_course"], lambda p: _nps_formula("DADOS_01B", ends, "01B", p, course=True), NPS_FMT, '"(todas)"'),
         ("NPS Instituição · Docentes", codes["nps_faculty"], None, NPS_FMT, '"(todas)"'),
-        ("Avaliação Docente", codes["teacher"], lambda p: _teacher_formula(ends, p), SCORE_FMT, "P_DISC"),
+        ("Favorabilidade Docente", codes["teacher"], lambda p: _teacher_formula(ends, p), PCT_POINT_FMT, "P_DISC"),
         ("Aprovação", codes["approval"], lambda p: _approval_formula(ends, p), PCT_POINT_FMT, "P_DISC"),
     ]
     for idx, (name, code, fn, numfmt, disc_expr) in enumerate(kpis, 21):
@@ -726,8 +728,9 @@ def _nps_course_specific_formula(sheet: str, end: int, period_expr: str, course_
 
 
 def _teacher_course_specific_formula(end: int, period_expr: str, course_expr: str) -> str:
-    per=_range("DADOS_02","A",end); cr=_range("DADOS_02","B",end); resp=_range("DADOS_02","D",end); weighted=_range("DADOS_02","F",end)
-    return f'IFERROR(SUMIFS({weighted},{per},{period_expr},{cr},{course_expr})/SUMIFS({resp},{per},{period_expr},{cr},{course_expr}),"")'
+    per=_range("DADOS_02","A",end); cr=_range("DADOS_02","B",end)
+    favorable=_range("DADOS_02","E",end); classified=_range("DADOS_02","H",end); unmapped=_range("DADOS_02","J",end)
+    return f'IF(SUMIFS({unmapped},{per},{period_expr},{cr},{course_expr})>0,"",IFERROR(SUMIFS({favorable},{per},{period_expr},{cr},{course_expr})/SUMIFS({classified},{per},{period_expr},{cr},{course_expr})*100,""))'
 
 
 def _approval_course_specific_formula(end: int, period_expr: str, course_expr: str) -> str:
@@ -815,7 +818,7 @@ def _write_panel(wb: Workbook, payload: dict[str, Any], ends: dict[str, int]) ->
         _status_fill(ws.cell(dest,7),formula=True)
     for r in [9,10,11]:
         for c in range(2,7): ws.cell(r,c).number_format=NPS_FMT
-    for c in range(2,7): ws.cell(12,c).number_format=SCORE_FMT
+    for c in range(2,7): ws.cell(12,c).number_format=PCT_POINT_FMT
     for c in range(2,7): ws.cell(13,c).number_format=PCT_POINT_FMT
     _add_status_cf(ws, "G9:G13")
 
@@ -907,11 +910,12 @@ def _write_goals_actions(wb: Workbook, payload: dict[str, Any]) -> None:
     ws=wb.create_sheet("METAS E PLANOS"); _setup(ws,freeze="A5",zoom=85)
     _title(ws,"METAS E PLANOS","Metas e planos são exportados do banco oficial. Alterações devem ser feitas no Data UNIVC, não nesta planilha.",end_col=10)
     _section(ws,4,"METAS CADASTRADAS",end_col=10)
-    headers=["KPI","Recorte","Vigência","Meta","Atenção","Limite superior","Justificativa"]
+    headers=["KPI","Recorte","Vigência","Meta","Atenção","Limite superior","Unidade","Situação da métrica","Justificativa"]
     for c,h in enumerate(headers,1): _header(ws.cell(5,c,h))
     row=6
     for item in payload.get("goals",[]):
-        vals=[item.get("indicador"),item.get("recorte"),item.get("vigencia"),item.get("meta"),item.get("atencao"),item.get("limite_superior"),item.get("justificativa")]
+        metric_status="LEGADA · nota 0–10 · não aplicada" if item.get("legacy_metric") else (item.get("metric_version") or "vigente")
+        vals=[item.get("indicador"),item.get("recorte"),item.get("vigencia"),item.get("meta"),item.get("atencao"),item.get("limite_superior"),item.get("unidade"),metric_status,item.get("justificativa")]
         for c,v in enumerate(vals,1): ws.cell(row,c,v); _body(ws.cell(row,c),imported=True)
         row+=1
     row+=2; _section(ws,row,"PLANOS DE AÇÃO",end_col=10); row+=1
@@ -970,7 +974,7 @@ def build_academic_interactive_workbook(payload: dict[str, Any]) -> BytesIO:
     _write_nps_institution(wb,payload)
     _write_indicator_sheet(wb,"NPS CURSO","NPS DO CURSO (01B)",f"Evolução do curso em foco. Com '(todos)', agrega as respostas dos cursos da {payload['directorate']}.",5,summary_row=22,y_min=-100,y_max=100,fmt="0.0",table_sheet="DADOS_01B")
     _write_indicator_sheet(wb,"NPS DOCENTES","NPS DA INSTITUIÇÃO · DOCENTES (01C)","População institucional anônima; o filtro de curso não altera este indicador.",6,summary_row=23,y_min=-100,y_max=100,fmt="0.0",table_sheet="DADOS_01C")
-    _write_indicator_sheet(wb,"AVALIACAO DOCENTE","AVALIAÇÃO DOCENTE PELO ALUNO (02)","Média ponderada por respondentes, com recorte por curso e disciplina.",7,summary_row=24,y_min=0,y_max=10,fmt="0.00",table_sheet="DADOS_02")
+    _write_indicator_sheet(wb,"AVALIACAO DOCENTE","FAVORABILIDADE DOCENTE (02)","Percentual de respostas favoráveis entre as respostas classificadas das perguntas sobre o docente; categorias não mapeadas suspendem o indicador.",7,summary_row=24,y_min=0,y_max=100,fmt='0.0"%"',table_sheet="DADOS_02")
     _write_indicator_sheet(wb,"APROVACAO RESULTADOS","APROVAÇÃO E RESULTADOS (03)","Taxa de aprovação calculada sobre registros finalizados no curso/disciplina selecionados.",8,summary_row=25,y_min=0,y_max=100,fmt='0.0"%"',table_sheet="DADOS_03")
     _write_matrix(wb,payload)
     _write_goals_actions(wb,payload)

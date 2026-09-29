@@ -1,3 +1,106 @@
+# v0.11.5 — migration 040 obrigatória
+
+A v0.11.5 altera a semântica oficial do KPI 02 e adiciona `goals.metric_version`. Antes de publicar a aplicação, aplique no PostgreSQL/Supabase:
+
+```text
+database/040_faculty_favorability_kpi_v0115.sql
+```
+
+A migration preserva todas as metas anteriores de DTNH-02/DCS-02, marcando-as como `legacy_score_0_10`; nenhuma meta antiga é reinterpretada automaticamente como percentual. O schema canônico passa a **40**.
+
+Checklist de produção:
+
+1. confirme que a migration 039 já está aplicada;
+2. aplique a 040;
+3. publique a aplicação v0.11.5;
+4. confirme `/api/health/live` e `/api/health/ready` com `schema_expected=40` e schema atual 40;
+5. abra Metas e revise os KPI 02 marcados como legados;
+6. cadastre/edite conscientemente a meta de favorabilidade em percentual;
+7. valide Painel Executivo e Excel V2/V3 contra a área Avaliação Docente.
+
+Não remova a tabela histórica `teacher_evaluations`; ela é mantida para auditoria, mas não participa mais do KPI oficial.
+
+---
+
+## v0.9.6.19 — DPE Month Close & Audit
+
+Deploy incremental sobre a v0.9.6.18. Antes de publicar o código, aplique no Supabase/PostgreSQL:
+
+```text
+database/039_dpe_month_close_audit_v09619.sql
+```
+
+A migration é aditiva e eleva o ledger para schema `39`. Com `REQUIRE_SCHEMA_VERSION=true`, publique o código somente depois que a migration estiver aplicada.
+
+### Homologação pós-deploy
+
+1. confirme `/api/health/live` com versão `0.9.6.19`;
+2. confirme `/api/health/ready` com schema expected/current `39`;
+3. abra DPE > **Fechamento e auditoria** e selecione uma competência `CALCULATED`;
+4. confirme que o checklist apresenta ofertas, despesas, configuração de rateio, alunos, receita, ticket e versão oficial;
+5. confirme que receitas estimadas e staging pendente aparecem como avisos, enquanto pendências críticas bloqueiam o fechamento;
+6. feche uma competência sem bloqueios e confirme status `CLOSED`, usuário/data e evento `CLOSED`;
+7. confirme que as superfícies editáveis da competência fechada permanecem bloqueadas;
+8. reabra a competência informando uma justificativa com pelo menos 10 caracteres e confirme retorno para `REVIEW` e evento `REOPENED`;
+9. altere um dado de origem, gere/oficialize nova versão do rateio e confirme que um novo fechamento gera outro evento sem apagar os anteriores.
+
+## v0.9.6.18 — DPE Offering Economics
+
+Deploy incremental sobre a v0.9.6.17. Antes de publicar o código, aplique no Supabase/PostgreSQL:
+
+```text
+database/038_dpe_offering_economics_v09618.sql
+```
+
+A migration é aditiva e eleva o ledger para schema `38`. Com `REQUIRE_SCHEMA_VERSION=true`, publique o código somente depois que a migration estiver aplicada.
+
+### Homologação pós-deploy
+
+1. confirme `/api/health/live` com versão `0.9.6.18`;
+2. confirme `/api/health/ready` com schema expected/current `38`;
+3. abra DPE > **Receita, alunos e ticket** e selecione uma competência editável;
+4. informe alunos ativos/pagantes e receita de duas ofertas do mesmo produto em turnos diferentes;
+5. confirme ticket líquido e consolidações por produto, modalidade e turno;
+6. em Motor de rateio, confirme que STUDENTS e REVENUE aparecem como **base econômica oficial**;
+7. gere um cálculo, altere alunos/receita e confirme que a versão anterior fica desatualizada e não pode ser oficializada;
+8. recalcule/oficialize e confirme que a competência passa a `CALCULATED` e bloqueia a edição econômica.
+
+## v0.9.6.14 — DPE Economic Catalog & Competences
+
+Deploy incremental sobre a v0.9.6.13. **Não existe migration nova**: mantenha o banco no schema 34 com `034_dpe_cost_engine_foundation_v09613.sql` já aplicada.
+
+### Homologação pós-deploy
+
+1. confirme `/api/health/live` com versão `0.9.6.14`;
+2. confirme `/api/health/ready` com schema expected/current `34`;
+3. abra DPE > Catálogo econômico e cadastre um produto e duas ofertas do mesmo produto com turnos diferentes;
+4. abra uma competência e confirme materialização automática das ofertas vigentes;
+5. altere uma oferta no cadastro mestre e confirme que o snapshot da competência permanece anterior até usar **Atualizar snapshot**;
+6. desmarque uma oferta da competência e confirme que uma atualização posterior preserva essa exclusão manual;
+7. altere o status entre Preparação e Conferência;
+8. confirme que a base financeira e os indicadores DPE anteriores continuam funcionando.
+
+## v0.9.6.13 — DPE Cost Engine Foundation
+
+Deploy incremental sobre a v0.9.6.12. Esta release **exige migration nova**. Antes de publicar o código em produção, aplique no Supabase/PostgreSQL:
+
+```text
+database/034_dpe_cost_engine_foundation_v09613.sql
+```
+
+A migration é aditiva, preserva todas as tabelas DPE atuais e atualiza `data_univc_schema_version` para `34`. Não publique a aplicação com `REQUIRE_SCHEMA_VERSION=true` antes de aplicar a migration, pois `/api/health/ready` corretamente reportará incompatibilidade.
+
+### Homologação pós-deploy
+
+1. confirme `/api/health/live` com versão `0.9.6.13`;
+2. confirme `/api/health/ready` com schema expected/current `34`;
+3. confirme acesso normal à DPE legada e aos seus dashboards atuais;
+4. consulte `GET /api/dpe/cost-engine/foundation` e confirme `foundation_version=1`, `write_surface_enabled=false` e `system_rules.ready=true`;
+5. consulte `GET /api/dpe/cost-engine/allocation-rules` e confirme sete regras de sistema;
+6. confirme que nenhuma tabela financeira legada foi removida ou renomeada.
+
+Não há mudança de variável de ambiente nesta release.
+
 ## v0.9.6.12 — DPE Reactivation & Mobile Navigation
 
 Deploy incremental sobre a v0.9.6.11. Não existe migration nova: mantenha o mesmo banco Supabase/PostgreSQL no schema 33.

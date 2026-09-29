@@ -48,6 +48,10 @@ load_dotenv()
 AUTH_DISABLED = os.getenv("AUTH_DISABLED", "false").lower() == "true"
 DEFAULT_DIRECTORATE_CODE = os.getenv("DEFAULT_DIRECTORATE_CODE", "DTNH").upper()
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+ENVIRONMENT = os.getenv("ENVIRONMENT", "").strip().lower()
+LOCAL_REITORIA_MODE = os.getenv("LOCAL_REITORIA_MODE", "false").strip().lower() in {"1", "true", "yes", "on"}
+if AUTH_DISABLED and ENVIRONMENT in {"prod", "production"}:
+    raise RuntimeError("AUTH_DISABLED e permitido somente em ambiente local/de desenvolvimento.")
 
 ACCESS_COOKIE_NAME = "__Host-dataunivc_access" if COOKIE_SECURE else "dataunivc_access"
 REFRESH_COOKIE_NAME = "__Host-dataunivc_refresh" if COOKIE_SECURE else "dataunivc_refresh"
@@ -370,22 +374,56 @@ def _delete_all_auth_cookies(response: Response) -> None:
 
 async def current_context(request: Request, db: Session = Depends(get_db)) -> UserContext:
     if AUTH_DISABLED:
-        directorate = db.scalar(select(Directorate).where(Directorate.code == DEFAULT_DIRECTORATE_CODE))
+        # Local launchers may emulate either one operational directorate or the
+        # Reitoria. This branch is unreachable in production because AUTH_DISABLED
+        # is rejected at module import when ENVIRONMENT=production.
+        home_code = DEFAULT_DIRECTORATE_CODE if DEFAULT_DIRECTORATE_CODE in OPERATING_DIRECTORATE_CODES else "DTNH"
+        directorate = db.scalar(select(Directorate).where(Directorate.code == home_code))
         if not directorate:
-            raise HTTPException(500, f"Diretoria {DEFAULT_DIRECTORATE_CODE} não foi criada no banco.")
-        ctx = UserContext(
-            "dev-user",
-            f"dev.{directorate.code.lower()}@univc.local",
-            f"Desenvolvimento {directorate.code}",
-            "admin",
-            directorate.id,
-            directorate.code,
-            directorate.name,
-            global_role=ROLE_DIRECTORATE,
-            permission_version=1,
-            directorate_access=(DirectorateGrant(directorate.id, directorate.code, directorate.name, ACCESS_EDIT, True),),
-            session_id="dev-session",
-        )
+            raise HTTPException(500, f"Diretoria {home_code} não foi criada no banco local.")
+
+        if LOCAL_REITORIA_MODE:
+            rows = list(
+                db.scalars(
+                    select(Directorate)
+                    .where(
+                        Directorate.code.in_(visible_operating_directorate_codes()),
+                        Directorate.active.is_(True),
+                    )
+                    .order_by(Directorate.id)
+                ).all()
+            )
+            grants = tuple(
+                DirectorateGrant(row.id, row.code, row.name, ACCESS_EDIT, row.code == directorate.code)
+                for row in rows
+            )
+            ctx = UserContext(
+                "dev-reitoria",
+                "dev.reitoria@univc.local",
+                "Desenvolvimento Reitoria",
+                "admin",
+                directorate.id,
+                directorate.code,
+                directorate.name,
+                global_role=ROLE_REITORIA,
+                permission_version=1,
+                directorate_access=grants,
+                session_id="dev-reitoria-session",
+            )
+        else:
+            ctx = UserContext(
+                "dev-user",
+                f"dev.{directorate.code.lower()}@univc.local",
+                f"Desenvolvimento {directorate.code}",
+                "admin",
+                directorate.id,
+                directorate.code,
+                directorate.name,
+                global_role=ROLE_DIRECTORATE,
+                permission_version=1,
+                directorate_access=(DirectorateGrant(directorate.id, directorate.code, directorate.name, ACCESS_EDIT, True),),
+                session_id="dev-session",
+            )
         request.state.auth_context = ctx
         return ctx
 
@@ -434,6 +472,11 @@ def require_fresh_reitoria(
     """
     if not ctx.global_access:
         raise HTTPException(403, "Este recurso é exclusivo da Reitoria.")
+    # The local Reitoria launcher has no persisted auth session by design.
+    # Production can never reach this branch because AUTH_DISABLED is rejected
+    # when ENVIRONMENT is prod/production.
+    if AUTH_DISABLED and LOCAL_REITORIA_MODE:
+        return ctx
     app_user = db.get(AppUser, ctx.user_id)
     if not app_user or not app_user.active:
         raise HTTPException(403, "Seu usuário está bloqueado no Data UNIVC.")

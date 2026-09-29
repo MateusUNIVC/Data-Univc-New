@@ -10,7 +10,6 @@ from models import (
     AuditLog,
     Course,
     Discipline,
-    DPEExpenseAllocation,
     FacultyEvaluationContext,
     FacultyRawResponse,
     FacultyResponseAggregate,
@@ -166,12 +165,6 @@ def object_directorate_ids(db: Session, row: Any) -> set[int]:
             run = db.get(SurveyRun, row.survey_run_id)
             return survey_run_owner_ids(db, run) if run else set()
         return set()
-
-    if isinstance(row, DPEExpenseAllocation):
-        from models import DPEExpense
-
-        expense = db.get(DPEExpense, row.expense_id)
-        return object_directorate_ids(db, expense) if expense else set()
 
     return set()
 

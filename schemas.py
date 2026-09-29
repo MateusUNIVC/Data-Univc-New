@@ -122,19 +122,17 @@ def norm_header(value: Any) -> str:
 # KPIs that already have a data-entry/calculation flow implemented in the application.
 # The institutional catalog can contain more indicators than the UI currently operationalizes.
 ACADEMIC_DIRECTORATES: tuple[str, ...] = ("DTNH", "DCS", "DEAD")
-ACADEMIC_UI_DATASETS: tuple[str, ...] = ("avaliacao_docente", "resultados")
+ACADEMIC_UI_DATASETS: tuple[str, ...] = ("resultados",)
 
 IMPLEMENTED_KPIS: dict[str, tuple[str, ...]] = {
     "DTNH": ("DTNH-01A", "DTNH-01B", "DTNH-01C", "DTNH-02", "DTNH-03"),
     "DCS": ("DCS-01A", "DCS-01B", "DCS-01C", "DCS-02", "DCS-03"),
     "DADM": ("DADM-01", "DADM-02"),
-    "DPE": ("DPE-01", "DPE-02", "DPE-03"),
+    "DPE": (),
     "DM": ("DM-01", "DM-02"),
 }
 
 DADM_MODALITIES: tuple[str, ...] = ("Presencial", "Semipresencial", "EAD")
-DPE_RESULT_SCOPE_TYPES: tuple[str, ...] = ("Institucional", "Modalidade", "Polo", "Curso", "Programa stricto sensu")
-DPE_CASH_MOVEMENT_TYPES: tuple[str, ...] = ("Entrada", "Saída")
 
 KPI_META: dict[str, dict[str, Any]] = {
     "DTNH-01A": {
@@ -179,12 +177,12 @@ KPI_META: dict[str, dict[str, Any]] = {
         "help": "Código legado. Novas metas e planos devem usar DTNH-01A ou DTNH-01B.",
     },
     "DTNH-02": {
-        "unit": "nota", "direction": "higher", "short_name": "Avaliação docente",
-        "objective": "Acompanhar a avaliação dos docentes realizada pelos alunos, por curso, disciplina e professor.",
-        "formula": "Média ponderada das notas de avaliação pelo número de respondentes.",
-        "source": "Instrumento institucional de avaliação docente pelo aluno; integração SEI preparada para o primeiro relatório real.",
+        "unit": "%", "direction": "higher", "short_name": "Favorabilidade docente",
+        "objective": "Acompanhar a favorabilidade das avaliações realizadas pelos alunos sobre os docentes, preservando curso, disciplina, professor e semestre.",
+        "formula": "Respostas favoráveis ÷ (favoráveis + intermediárias + desfavoráveis) × 100, somente nas perguntas sobre o docente.",
+        "source": "Relatório Disciplina/Professor da Avaliação Institucional no SEI; categorias originais preservadas.",
         "periodicity": "Semestral",
-        "help": "A arquitetura preserva professor, disciplina, curso, turma/oferta e semestre. A leitura pode ser numérica ou categórica conforme o questionário real.",
+        "help": "O KPI 02 é percentual de favorabilidade, não nota 0–10. 'Não sei' e equivalentes ficam fora do denominador; perguntas contextuais não compõem a síntese docente e categorias desconhecidas suspendem o percentual até revisão.",
     },
     "DTNH-03": {
         "unit": "%", "direction": "higher", "short_name": "Taxa de aprovação",
@@ -220,12 +218,12 @@ KPI_META: dict[str, dict[str, Any]] = {
         "help": "Código legado. Novas metas e planos devem usar DCS-01A ou DCS-01B.",
     },
     "DCS-02": {
-        "unit": "nota", "direction": "higher", "short_name": "Avaliação docente",
-        "objective": "Acompanhar a avaliação dos docentes realizada pelos alunos, por curso, disciplina e professor.",
-        "formula": "Média ponderada das notas de avaliação pelo número de respondentes.",
-        "source": "Instrumento institucional de avaliação docente pelo aluno; integração SEI preparada para o primeiro relatório real.",
+        "unit": "%", "direction": "higher", "short_name": "Favorabilidade docente",
+        "objective": "Acompanhar a favorabilidade das avaliações realizadas pelos alunos sobre os docentes, preservando curso, disciplina, professor e semestre.",
+        "formula": "Respostas favoráveis ÷ (favoráveis + intermediárias + desfavoráveis) × 100, somente nas perguntas sobre o docente.",
+        "source": "Relatório Disciplina/Professor da Avaliação Institucional no SEI; categorias originais preservadas.",
         "periodicity": "Semestral",
-        "help": "A arquitetura preserva professor, disciplina, curso, turma/oferta e semestre. A leitura pode ser numérica ou categórica conforme o questionário real.",
+        "help": "O KPI 02 é percentual de favorabilidade, não nota 0–10. 'Não sei' e equivalentes ficam fora do denominador; perguntas contextuais não compõem a síntese docente e categorias desconhecidas suspendem o percentual até revisão.",
     },
     "DCS-03": {
         "unit": "%", "direction": "higher", "short_name": "Taxa de aprovação",
@@ -265,61 +263,8 @@ KPI_META: dict[str, dict[str, Any]] = {
         "cuts": "Canal, tipo de solicitação e faixa de resolução",
         "help": "O painel apresenta satisfação, insatisfação e taxa de resposta. A leitura deve sempre considerar a representatividade da amostra.",
     },
-    "DPE-01": {
-        "unit": "%",
-        "secondary_unit": "R$",
-        "direction": "higher",
-        "short_name": "Resultado operacional",
-        "objective": "Consolidar receita e despesa em um único indicador de sustentabilidade, no total e nos recortes gerenciais previstos.",
-        "formula": "((Receita líquida − Despesa total) ÷ Receita líquida) × 100",
-        "source": "Setor Financeiro — DRE gerencial mensal com centros de custo por modalidade, polo, curso e programa.",
-        "feeder": "Setor Financeiro",
-        "validator": "Diretor(a) da DPE",
-        "target_text": "≥ 10% institucional; ≥ 20% de margem de contribuição por polo",
-        "target_value": 10.0,
-        "periodicity": "Mensal",
-        "cycle": "Ciclo 1 — set/2026",
-        "cuts": "Obrigatórios: institucional; modalidade; polo; programa stricto sensu. Curso é dimensão operacional adicional disponível na DRE.",
-        "origin": "REI05 + DEMD03 + DEMD04 + DEMD07 + DM06",
-        "help": "Informe receita líquida e despesa total para um recorte. O sistema calcula automaticamente resultado em R$ e margem em %. Para Institucional, o recorte é TOTAL.",
-    },
-    "DPE-04": {
-        "unit": "%",
-        "secondary_unit": "R$",
-        "direction": "range",
-        "short_name": "Execução orçamentária",
-        "objective": "Comparar o realizado com o orçado por centro de custo, dando previsibilidade à Reitoria.",
-        "formula": "(Despesa realizada no mês ÷ Despesa orçada no mês) × 100",
-        "source": "Orçamento anual aprovado + razão contábil.",
-        "feeder": "Setor Financeiro / Contabilidade",
-        "validator": "Diretor(a) da DPE",
-        "target_text": "Entre 95% e 105%",
-        "target_value": 95.0,
-        "attention_value": 90.0,
-        "upper_limit": 105.0,
-        "periodicity": "Mensal",
-        "cycle": "Ciclo 2 — out/2026",
-        "cuts": "Diretoria e centro de custo",
-        "origin": "DA02",
-        "help": "Meta em faixa: use 95 como limite inferior e 105 como limite superior. Acima de 105% também é desvio, pois indica estouro orçamentário.",
-    },
-    "DPE-05": {
-        "unit": "R$",
-        "direction": "higher",
-        "short_name": "Saldo operacional de caixa",
-        "objective": "Acompanhar a liquidez mensal e antecipar necessidade de ajuste de desembolsos.",
-        "formula": "Entradas do mês − Saídas do mês (e saldo acumulado)",
-        "source": "Extratos e fluxo de caixa consolidado.",
-        "feeder": "Setor Financeiro",
-        "validator": "Diretor(a) da DPE",
-        "target_text": "Saldo mensal positivo e reserva equivalente a, no mínimo, uma folha de pagamento",
-        "target_value": 0.0,
-        "periodicity": "Mensal",
-        "cycle": "Ciclo 2 — out/2026",
-        "cuts": "Conta e natureza de desembolso",
-        "origin": "DA03",
-        "help": "Cadastre movimentos mensais agregados por conta, tipo (Entrada/Saída) e natureza. O sistema calcula entradas, saídas, saldo do mês e saldo acumulado do histórico carregado. A condição de reserva mínima de uma folha fica sinalizada como pendente até a folha/DPE-06 ser integrada.",
-    },
+
+
 }
 
 DADM_HEADER_ALIASES = {
@@ -339,29 +284,5 @@ DADM_HEADER_ALIASES = {
         "periodo": {"periodo", "mes", "competencia"},
         "despesa": {"despesa", "despesa de infraestrutura", "despesa de infraestrutura e manutencao", "custo"},
         "area_m2": {"area em uso m2", "area em uso", "m2 em uso", "area m2"},
-    },
-}
-
-DPE_HEADER_ALIASES = {
-    "dpe-resultado": {
-        "periodo": {"periodo", "mes", "competencia"},
-        "tipo_recorte": {"tipo de recorte", "tipo recorte", "dimensao", "nivel"},
-        "recorte": {"recorte", "valor do recorte", "descricao"},
-        "receita_liquida": {"receita liquida", "receita liquida r", "receita"},
-        "despesa_total": {"despesa total", "despesa total r", "despesa"},
-    },
-    "dpe-orcamento": {
-        "periodo": {"periodo", "mes", "competencia"},
-        "unidade": {"diretoria", "unidade", "unidade gestora", "unidade orcamentaria"},
-        "centro_custo": {"centro de custo", "centro custo"},
-        "despesa_orcada": {"despesa orcada", "orcado", "orcamento", "despesa orcada r"},
-        "despesa_realizada": {"despesa realizada", "realizado", "despesa realizada r"},
-    },
-    "dpe-caixa": {
-        "periodo": {"periodo", "mes", "competencia"},
-        "conta": {"conta", "conta bancaria", "caixa"},
-        "tipo_movimento": {"tipo de movimento", "tipo movimento", "movimento"},
-        "natureza": {"natureza", "natureza do movimento", "natureza do desembolso"},
-        "valor": {"valor", "valor r", "montante"},
     },
 }

@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: data-univc-app
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      ENVIRONMENT: production
+      AUTH_DISABLED: "false"
+      COOKIE_SECURE: "true"
+      REQUIRE_SCHEMA_VERSION: "true"
+      AUTO_CREATE_DB: "false"
+      ENABLE_API_DOCS: "false"
+      LOGIN_RATE_LIMIT_ENABLED: "true"
+      PORT: "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

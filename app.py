@@ -9,15 +9,15 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
+from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from academic_analytics import build_academic_dashboard
-from dpe_analytics import build_dpe_dashboard
 from database import Base, SessionLocal, engine, get_db
 from excel_service import export_academic_interactive_excel, export_formatted_excel
 from excel_errors import ExcelExportLimitError
@@ -65,8 +65,8 @@ ROOT = Path(__file__).resolve().parent
 def _source_fingerprint() -> str:
     """Fingerprint every runtime source/asset instead of a hand-maintained file list.
 
-    A fixed list previously omitted modules such as dpe_finance_repository.py, so
-    meaningful backend changes could keep the same build identifier. The runtime
+    A fixed list previously omitted runtime modules, so meaningful backend
+    changes could keep the same build identifier. The runtime
     surface is small enough to hash deterministically at startup (~a few MB).
     """
     digest = hashlib.sha256()
@@ -191,43 +191,20 @@ def repo_for_user(db: Session, ctx: UserContext) -> DatabaseRepository:
     return DatabaseRepository(db, ctx)
 
 
+def _import_result_file_worker(path: Path, mode: str, scope: DirectorateScope):
+    """Processa Resultados Acadêmicos fora do event loop com sessão SQL própria."""
+    with SessionLocal() as worker_db:
+        return repo_for(worker_db, scope).import_file("resultados", path, mode)
+
+
 def require_operational_directorate(scope: DirectorateScope, expected: str):
     if scope.directorate_code != expected:
         raise HTTPException(404, f"Este recurso está disponível apenas para a diretoria {expected}.")
 
 
-
 def require_academic_directorate(scope: DirectorateScope):
     if scope.directorate_code not in ACADEMIC_DIRECTORATES or scope.directorate_code == "DEAD":
         raise HTTPException(404, "Este recurso está disponível apenas para uma diretoria acadêmica operacional.")
-
-
-def dpe_list(repo: DatabaseRepository, resource: str):
-    if resource == "resultado": return repo.list_dpe_results()
-    if resource == "orcamento": return repo.list_dpe_budget()
-    if resource == "caixa": return repo.list_dpe_cash()
-    raise HTTPException(404, "Base DPE não encontrada.")
-
-
-def dpe_create(repo: DatabaseRepository, resource: str, payload: dict):
-    if resource == "resultado": return repo.create_dpe_result(payload)
-    if resource == "orcamento": return repo.create_dpe_budget(payload)
-    if resource == "caixa": return repo.create_dpe_cash(payload)
-    raise HTTPException(404, "Base DPE não encontrada.")
-
-
-def dpe_update(repo: DatabaseRepository, resource: str, row_id: int, payload: dict):
-    if resource == "resultado": return repo.update_dpe_result(row_id, payload)
-    if resource == "orcamento": return repo.update_dpe_budget(row_id, payload)
-    if resource == "caixa": return repo.update_dpe_cash(row_id, payload)
-    raise HTTPException(404, "Base DPE não encontrada.")
-
-
-def dpe_delete(repo: DatabaseRepository, resource: str, row_id: int):
-    if resource == "resultado": return repo.delete_dpe_result(row_id)
-    if resource == "orcamento": return repo.delete_dpe_budget(row_id)
-    if resource == "caixa": return repo.delete_dpe_cash(row_id)
-    raise HTTPException(404, "Base DPE não encontrada.")
 
 
 @app.exception_handler(Exception)
@@ -492,14 +469,12 @@ def bootstrap(db: Session = Depends(get_db), scope: DirectorateScope = Depends(c
             extra = {}
             datasets = {}
         elif scope.directorate_code == "DPE":
+            # DPE v0.13 usa exclusivamente os endpoints dedicados do Cost Engine.
+            # O bootstrap genérico não publica mais datasets v0.4.
             courses = []
             disciplines = {}
-            extra = {"dpe": repo.dpe_reference_options()}
-            datasets = {
-                "dpe-resultado": {"label": "Resultado Operacional", "template": "/api/modelos/dpe-resultado"},
-                "dpe-orcamento": {"label": "Execução Orçamentária", "template": "/api/modelos/dpe-orcamento"},
-                "dpe-caixa": {"label": "Saldo Operacional de Caixa", "template": "/api/modelos/dpe-caixa"},
-            }
+            extra = {}
+            datasets = {}
         else:
             courses = []
             disciplines = {}
@@ -564,12 +539,7 @@ def dashboard(
         if scope.directorate_code == "DADM":
             raise HTTPException(410, "Dashboard legado da DADM descontinuado na v0.7.8. Use /api/dadm/dashboard.")
         if scope.directorate_code == "DPE":
-            return build_dpe_dashboard(
-                repo.snapshot_dpe(), referencia=referencia, comparacao=comparacao,
-                inicio=inicio, fim=fim, tipo_recorte=tipo_recorte, recorte=recorte,
-                unidade=unidade, centro_custo=centro_custo, conta=conta,
-                natureza=natureza, window_months=window_months,
-            )
+            raise HTTPException(410, "Dashboard DPE v0.4 aposentado. Use os endpoints /api/dpe/cost-engine/* da DPE atual.")
         raise HTTPException(501, "O painel desta diretoria ainda não foi implementado.")
     except Exception as exc:
         return api_error(exc)
@@ -628,6 +598,7 @@ def list_data(
     periodo: str | None = None,
     professor: str | None = None,
     busca: str | None = None,
+    resultado: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=10, le=100),
     db: Session = Depends(get_db),
@@ -636,11 +607,15 @@ def list_data(
     require_academic_directorate(scope)
     try:
         repo = repo_for(db, scope)
-        filters = {"curso": curso or "", "disciplina": disciplina or "", "periodo": periodo or "", "professor": professor or "", "busca": busca or ""}
+        filters = {"curso": curso or "", "disciplina": disciplina or "", "periodo": periodo or "", "professor": professor or "", "busca": busca or "", "resultado": resultado or ""}
         if dataset == "resultados":
             return repo.list_results_page(filters, page=page, page_size=page_size)
         if dataset == "avaliacao_docente":
-            return repo.list_teacher_evaluations_page(filters, page=page, page_size=page_size)
+            result = repo.list_teacher_evaluations_page(filters, page=page, page_size=page_size)
+            result["legacy_metric"] = True
+            result["metric_version"] = "legacy_score_0_10"
+            result["official_kpi_endpoint"] = "/api/surveys/faculty-student/analytics/overview"
+            return result
         items = repo.list_records(dataset, filters)
         return {"items": items, "total": len(items), "page": 1, "page_size": len(items) or page_size, "pages": 1}
     except Exception as exc:
@@ -655,13 +630,10 @@ def teacher_evaluation_options(
     scope: DirectorateScope = Depends(current_scope),
 ):
     require_academic_directorate(scope)
-    try:
-        return repo_for(db, scope).teacher_evaluation_filter_options({
-            "curso": curso or "",
-            "disciplina": disciplina or "",
-        })
-    except Exception as exc:
-        return api_error(exc)
+    raise HTTPException(
+        410,
+        "A análise antiga em nota 0-10 foi aposentada na v0.11.5. Use /api/surveys/faculty-student/analytics/filters para o KPI 02 oficial de favorabilidade.",
+    )
 
 
 @app.get("/api/avaliacao-docente/analise")
@@ -674,15 +646,10 @@ def teacher_evaluation_analysis(
     scope: DirectorateScope = Depends(current_scope),
 ):
     require_academic_directorate(scope)
-    try:
-        return repo_for(db, scope).teacher_evaluation_analysis({
-            "periodo": periodo or "",
-            "curso": curso or "",
-            "disciplina": disciplina or "",
-            "professor": professor or "",
-        })
-    except Exception as exc:
-        return api_error(exc)
+    raise HTTPException(
+        410,
+        "A análise antiga em nota 0-10 foi aposentada na v0.11.5. Use /api/surveys/faculty-student/analytics/overview e os endpoints analíticos faculty-student.",
+    )
 
 
 @app.get("/api/resultados/resumo")
@@ -701,6 +668,25 @@ def result_summary(
             "periodo": periodo or "",
         })
         return {"items": items, "total": len(items)}
+    except Exception as exc:
+        return api_error(exc)
+
+
+@app.get("/api/resultados/alunos-resumo")
+def result_student_summary(
+    curso: str | None = None,
+    disciplina: str | None = None,
+    periodo: str | None = None,
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(current_scope),
+):
+    require_academic_directorate(scope)
+    try:
+        return repo_for(db, scope).academic_result_student_summary({
+            "curso": curso or "",
+            "disciplina": disciplina or "",
+            "periodo": periodo or "",
+        })
     except Exception as exc:
         return api_error(exc)
 
@@ -728,6 +714,8 @@ async def create_data(dataset: str, request: Request, db: Session = Depends(get_
     require_academic_directorate(scope)
     if dataset == "nps":
         raise HTTPException(410, "O NPS é alimentado exclusivamente pela integração de Avaliações SEI. Use NPS Discente > Atualizar pelo SEI; o mesmo fluxo aceita XLSX/ZIP do relatório como contingência.")
+    if dataset == "avaliacao_docente":
+        raise HTTPException(410, "O KPI 02 é alimentado exclusivamente pelo relatório Disciplina/Professor do SEI. Use Avaliação Docente > Importações para pré-visualizar, validar e importar o XLSX/ZIP oficial.")
     try:
         return repo_for(db, scope).create_record(dataset, await request.json())
     except Exception as exc:
@@ -739,6 +727,8 @@ async def update_data(dataset: str, row_id: int, request: Request, db: Session =
     require_academic_directorate(scope)
     if dataset == "nps":
         raise HTTPException(410, "O NPS sincronizado pelo SEI é somente leitura nesta API. Para trocar a fonte oficial, faça uma nova sincronização em NPS Discente > Atualizar pelo SEI.")
+    if dataset == "avaliacao_docente":
+        raise HTTPException(410, "O histórico legado de nota docente é somente leitura. O KPI 02 oficial usa favorabilidade categórica e só pode ser alterado por nova importação do relatório SEI.")
     try:
         return repo_for(db, scope).update_record(dataset, row_id, await request.json())
     except Exception as exc:
@@ -750,45 +740,10 @@ def delete_data(dataset: str, row_id: int, db: Session = Depends(get_db), scope:
     require_academic_directorate(scope)
     if dataset == "nps":
         raise HTTPException(410, "O NPS sincronizado pelo SEI não pode ser excluído pelo CRUD legado. Troque a fonte oficial pela integração de Avaliações SEI.")
+    if dataset == "avaliacao_docente":
+        raise HTTPException(410, "O histórico legado de nota docente foi aposentado para escrita. Para corrigir o KPI 02 oficial, use uma nova importação do relatório SEI na área Avaliação Docente.")
     try:
         repo_for(db, scope).delete_record(dataset, row_id)
-        return {"ok": True}
-    except Exception as exc:
-        return api_error(exc)
-
-
-@app.get("/api/dpe/{resource}")
-def list_dpe(resource: str, db: Session = Depends(get_db), scope: DirectorateScope = Depends(current_scope)):
-    require_operational_directorate(scope, "DPE")
-    try:
-        return {"items": dpe_list(repo_for(db, scope), resource)}
-    except Exception as exc:
-        return api_error(exc)
-
-
-@app.post("/api/dpe/{resource}")
-async def create_dpe(resource: str, request: Request, db: Session = Depends(get_db), scope: DirectorateScope = Depends(require_scope_write)):
-    require_operational_directorate(scope, "DPE")
-    try:
-        return dpe_create(repo_for(db, scope), resource, await request.json())
-    except Exception as exc:
-        return api_error(exc)
-
-
-@app.put("/api/dpe/{resource}/{row_id}")
-async def update_dpe(resource: str, row_id: int, request: Request, db: Session = Depends(get_db), scope: DirectorateScope = Depends(require_scope_write)):
-    require_operational_directorate(scope, "DPE")
-    try:
-        return dpe_update(repo_for(db, scope), resource, row_id, await request.json())
-    except Exception as exc:
-        return api_error(exc)
-
-
-@app.delete("/api/dpe/{resource}/{row_id}")
-def delete_dpe(resource: str, row_id: int, db: Session = Depends(get_db), scope: DirectorateScope = Depends(require_scope_write)):
-    require_operational_directorate(scope, "DPE")
-    try:
-        dpe_delete(repo_for(db, scope), resource, row_id)
         return {"ok": True}
     except Exception as exc:
         return api_error(exc)
@@ -876,14 +831,17 @@ async def import_data(
             "Planilha validada para importação",
             extra={"dataset": dataset, "bytes": size, "directorate": scope.directorate_code},
         )
-        repo = repo_for(db, scope)
         mode = "update" if modo == "update" else "add"
+        if dataset == "resultados":
+            require_academic_directorate(scope)
+            return await run_in_threadpool(_import_result_file_worker, path, mode, scope)
+        repo = repo_for(db, scope)
         if dataset.startswith("dadm-"):
             require_operational_directorate(scope, "DADM")
             raise HTTPException(410, "Importação legada da DADM descontinuada. Use /api/dadm/import com DADM-01 ou DADM-02.")
         if dataset.startswith("dpe-"):
             require_operational_directorate(scope, "DPE")
-            return repo.import_dpe_file(dataset, path, mode)
+            raise HTTPException(410, "Importação DPE v0.4 aposentada. Use os fluxos de importação do Cost Engine.")
         require_academic_directorate(scope)
         if dataset == "disciplinas":
             return repo.import_disciplines_file(path, mode)
@@ -895,8 +853,8 @@ async def import_data(
 
 
 @app.post("/api/sei/importar-resultados")
-async def import_results_from_sei(
-    request: Request,
+def import_results_from_sei(
+    payload: dict = Body(...),
     db: Session = Depends(get_db),
     scope: DirectorateScope = Depends(require_scope_write),
 ):
@@ -907,7 +865,6 @@ async def import_results_from_sei(
     """
     require_academic_directorate(scope)
     try:
-        payload = await request.json()
         username = str(payload.get("usuario") or "").strip()
         password = str(payload.get("senha") or "")
         year = str(payload.get("ano") or "").strip()
@@ -974,6 +931,10 @@ async def import_results_from_sei(
                     "identidade_validada_por": metadata.get("identidade_curso_validada_por"),
                     "alunos_unicos": metadata.get("total_alunos_unicos"),
                     "turmas": metadata.get("total_turmas"),
+                    "lotes_processados": report.get("lotes_processados", 0),
+                    "batch_size": report.get("batch_size"),
+                    "engine": report.get("engine"),
+                    "parser_mode": metadata.get("parser_mode"),
                 })
                 totals["inseridos"] += report.get("inseridos", 0)
                 totals["atualizados"] += report.get("atualizados", 0)
@@ -1014,9 +975,6 @@ MODEL_FILES = {
     "matriculas": ROOT / "assets" / "modelos" / "Modelo_Matriculas_Ativas.xlsx",
     "frequencia": ROOT / "assets" / "modelos" / "Modelo_Frequencia_Media.xlsx",
     "disciplinas": ROOT / "assets" / "modelos" / "Modelo_Disciplinas.xlsx",
-    "dpe-resultado": ROOT / "assets" / "modelos" / "Modelo_DPE_01_Resultado_Operacional.xlsx",
-    "dpe-orcamento": ROOT / "assets" / "modelos" / "Modelo_DPE_04_Execucao_Orcamentaria.xlsx",
-    "dpe-caixa": ROOT / "assets" / "modelos" / "Modelo_DPE_05_Saldo_Operacional_Caixa.xlsx",
 }
 
 
@@ -1040,7 +998,6 @@ def model(
     )
 
 
-
 @app.get("/api/excel-interativo")
 def excel_interativo(
     referencia: str | None = Query(None),
@@ -1055,6 +1012,8 @@ def excel_interativo(
         raise HTTPException(400, "O Excel Interativo V3 acadêmico está disponível apenas para DTNH/DCS.")
     acquired = False
     try:
+        if scope.directorate_code == "DPE":
+            raise HTTPException(410, "Exportação DPE v0.4 aposentada. A exportação moderna será fornecida pela rota dedicada da DPE.")
         window_periods = _parse_window_query(janela, preserve_all=True)
         acquired = _EXCEL_EXPORT_SLOTS.acquire(timeout=EXCEL_EXPORT_WAIT_SECONDS)
         if not acquired:

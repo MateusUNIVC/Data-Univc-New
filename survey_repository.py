@@ -42,11 +42,25 @@ from models import (
     TeachingAssignment,
 )
 from security import DirectorateScope
-from academic_catalog import course_aliases
+from academic_catalog import course_aliases, is_ambiguous_course_name
 from survey_metrics import distribution, metric_summary, nps_score
+from survey_faculty_analytics import (
+    classify_faculty_question,
+    distribution_with_classification,
+    faculty_favorability_methodology,
+    favorability_summary,
+)
 from analytics import active_goal, goal_info, status_for
 from survey_models import ParsedQuestion, ParsedWorkbook
 from survey_faculty_models import ParsedFacultyContext
+from survey_faculty_student import faculty_context_semantic_key
+from survey_faculty_identity import (
+    class_group_display,
+    clean_identity_display,
+    discipline_identity_key,
+    faculty_academic_identity_key,
+    teacher_identity_key,
+)
 from survey_faculty_institution_models import ParsedFacultyInstitutionWorkbook
 from survey_parser import normalize_key
 
@@ -119,15 +133,192 @@ class SurveyRepository:
             select(Course).where(Course.directorate_id == self.directorate_id).order_by(Course.name)
         ).all())
 
+    def _find_faculty_run_by_identity(
+        self,
+        *,
+        survey_title: str | None,
+        questionnaire_name: str | None,
+        period_start: str | None,
+        period_end: str | None,
+        semester: str | None = None,
+    ) -> SurveyRun | None:
+        """Localiza uma avaliação docente já existente pela identidade lógica.
+
+        Isso protege também o upload manual de um ZIP regenerado pelo SEI: o
+        timestamp/ID interno pode alterar o SHA-256 sem criar uma nova aplicação
+        de questionário. A correspondência exige questionário e título/período e
+        só é aceita quando resulta em um único survey run.
+        """
+
+        questionnaire_key = normalize_key(questionnaire_name or "")
+        title_key = normalize_key(survey_title or "")
+        if not questionnaire_key or not (title_key or period_start or period_end):
+            return None
+        stmt = (
+            select(SurveyRun)
+            .join(SurveyQuestionnaire, SurveyQuestionnaire.id == SurveyRun.questionnaire_id)
+            .where(
+                SurveyRun.directorate_id == self.directorate_id,
+                SurveyRun.run_kind == "faculty",
+            )
+        )
+        if semester:
+            stmt = stmt.where(SurveyRun.semester == semester)
+        if period_start:
+            stmt = stmt.where(SurveyRun.period_start == period_start)
+        if period_end:
+            stmt = stmt.where(SurveyRun.period_end == period_end)
+        candidates = list(self.db.scalars(stmt).all())
+        matches = [
+            run
+            for run in candidates
+            if normalize_key(run.questionnaire.name if run.questionnaire else "") == questionnaire_key
+            and (not title_key or normalize_key(run.title or "") == title_key)
+        ]
+        return matches[0] if len(matches) == 1 else None
+
+    def faculty_import_state(
+        self,
+        *,
+        sha256: str,
+        origin: str = "manual",
+        metadata: dict | None = None,
+        survey_identity: dict | None = None,
+    ) -> dict[str, Any]:
+        """Retorna o estado já persistido da mesma fonte docente nesta diretoria.
+
+        A busca usa primeiro a identidade externa do SEI, quando disponível, e
+        depois o SHA-256 do upload. Os contextos são expostos também por uma
+        chave semântica curso + professor + disciplina para detectar reexportações
+        do mesmo relatório mesmo quando o ID/nome interno do XLSX mudar.
+        """
+
+        metadata = metadata or {}
+        external_key = self.external_import_key(origin, metadata)
+        imp = None
+        if external_key:
+            imp = self.db.scalar(select(SurveyImport).where(
+                SurveyImport.directorate_id == self.directorate_id,
+                SurveyImport.external_key == external_key,
+            ))
+        if not imp:
+            imp = self.db.scalar(select(SurveyImport).where(
+                SurveyImport.directorate_id == self.directorate_id,
+                SurveyImport.sha256 == sha256,
+            ))
+
+        run = None
+        identity = survey_identity or {}
+        if not imp and identity:
+            run = self._find_faculty_run_by_identity(
+                survey_title=identity.get("survey_title"),
+                questionnaire_name=identity.get("questionnaire_name"),
+                period_start=identity.get("period_start"),
+                period_end=identity.get("period_end"),
+                semester=_semester_to_data_univc(identity.get("semester")),
+            )
+            if run:
+                imp = self.db.scalar(select(SurveyImport).where(SurveyImport.id == run.import_id))
+        if not imp:
+            return {
+                "exists": False,
+                "context_count": 0,
+                "source_keys": [],
+                "semantic_keys": [],
+            }
+
+        if run is None:
+            run = self.db.scalar(select(SurveyRun).where(SurveyRun.import_id == imp.id))
+        if not run:
+            return {
+                "exists": True,
+                "import_id": imp.id,
+                "run_id": None,
+                "semester": None,
+                "status": imp.status,
+                "context_count": 0,
+                "source_keys": [],
+                "semantic_keys": [],
+            }
+        require_survey_run_for_directorate(self.db, run.id, self.directorate_id)
+        rows = self.db.execute(
+            select(
+                FacultyEvaluationContext.source_key,
+                Course.name,
+                Teacher.display_name,
+                Discipline.name,
+                AcademicOffering.class_group,
+            )
+            .join(TeachingAssignment, TeachingAssignment.id == FacultyEvaluationContext.teaching_assignment_id)
+            .join(AcademicOffering, AcademicOffering.id == TeachingAssignment.offering_id)
+            .join(Course, Course.id == AcademicOffering.course_id)
+            .join(Discipline, Discipline.id == AcademicOffering.discipline_id)
+            .join(Teacher, Teacher.id == TeachingAssignment.teacher_id)
+            .where(FacultyEvaluationContext.run_id == run.id)
+        ).all()
+        source_keys = sorted({str(row[0]) for row in rows if row[0]})
+        semantic_keys = sorted({
+            faculty_context_semantic_key(row[1], row[2], row[3], row[4])
+            for row in rows
+        })
+        return {
+            "exists": True,
+            "import_id": imp.id,
+            "run_id": run.id,
+            "semester": run.semester,
+            "status": imp.status,
+            "context_count": len(rows),
+            "source_keys": source_keys,
+            "semantic_keys": semantic_keys,
+        }
+
+    @staticmethod
+    def _course_payload(course: Course) -> dict[str, Any]:
+        return {
+            "course_id": int(course.id),
+            "course_name": course.name,
+            "modality": course.modality or "Presencial",
+            "active": bool(course.active),
+        }
+
     def match_course(self, name: str, modality: str | None = None) -> dict[str, Any]:
+        """Resolve curso somente por identidade exata/alias institucional.
+
+        Nenhuma similaridade textual ou substring ampla é usada. Quando mais de
+        um curso é possível, o retorno carrega os IDs permitidos para que a
+        resolução posterior seja explícita e auditável por contexto.
+        """
+
         target = normalize_key(name)
         if not target:
-            return {"matched": False, "reason": "Nome do curso ausente"}
+            return {"matched": False, "reason": "Nome do curso ausente", "candidates": [], "candidate_courses": []}
+
+        if is_ambiguous_course_name(name, self.directorate_code):
+            candidate_rows = [
+                course
+                for course in self._course_candidates()
+                if normalize_key(course.name).startswith(normalize_key("Educação Física"))
+            ]
+            payloads = [self._course_payload(course) for course in candidate_rows]
+            return {
+                "matched": False,
+                "reason": (
+                    "O relatório usa o nome ambíguo 'Educação Física'. "
+                    "É necessário identificar Bacharelado ou Licenciatura antes da importação."
+                ),
+                "candidates": [item["course_name"] for item in payloads],
+                "candidate_ids": [item["course_id"] for item in payloads],
+                "candidate_courses": payloads,
+                "resolution_required": True,
+                "resolution_type": "course_identity",
+            }
+
         modality_norm = normalize_key(modality or "")
         target_variants = {target}
         for suffix in (" ead", " presencial", " semipresencial", " a distancia"):
             if target.endswith(suffix):
                 target_variants.add(target[: -len(suffix)].strip())
+
         exact: list[Course] = []
         alias_matches: list[Course] = []
         for course in self._course_candidates():
@@ -138,36 +329,119 @@ class SurveyRepository:
                 exact.append(course)
             elif normalized.intersection(target_variants):
                 alias_matches.append(course)
+
         candidates = exact or alias_matches
         if modality_norm and candidates:
             modality_filtered = [c for c in candidates if normalize_key(c.modality or "") == modality_norm]
             if modality_filtered:
                 candidates = modality_filtered
             else:
+                payloads = [self._course_payload(course) for course in candidates]
                 return {
                     "matched": False,
                     "reason": f"Curso encontrado, mas a modalidade do relatório ({modality or 'não informada'}) não corresponde ao catálogo desta diretoria.",
-                    "candidates": [c.name for c in candidates],
+                    "candidates": [item["course_name"] for item in payloads],
+                    "candidate_ids": [item["course_id"] for item in payloads],
+                    "candidate_courses": payloads,
+                    "resolution_required": False,
                 }
+
         if len(candidates) == 1:
             course = candidates[0]
             return {
                 "matched": True,
-                "course_id": course.id,
+                "course_id": int(course.id),
                 "course_name": course.name,
                 "modality": course.modality or "Presencial",
                 "match_type": "exact" if exact else "alias",
+                "resolution_source": "catalog",
             }
+
         if len(candidates) > 1:
+            payloads = [self._course_payload(course) for course in candidates]
             return {
                 "matched": False,
                 "reason": "Mais de um curso do catálogo corresponde ao nome do relatório.",
-                "candidates": [c.name for c in candidates],
+                "candidates": [item["course_name"] for item in payloads],
+                "candidate_ids": [item["course_id"] for item in payloads],
+                "candidate_courses": payloads,
+                "resolution_required": True,
+                "resolution_type": "course_identity",
             }
+
         return {
             "matched": False,
             "reason": "Curso não encontrado no catálogo desta diretoria.",
             "candidates": [],
+            "candidate_ids": [],
+            "candidate_courses": [],
+            "resolution_required": False,
+        }
+
+    def resolve_course(
+        self,
+        name: str,
+        modality: str | None = None,
+        *,
+        explicit_course_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Aplica uma resolução manual somente quando o preview a autoriza.
+
+        O ID escolhido precisa pertencer à mesma diretoria e estar entre os
+        candidatos calculados para aquele rótulo. Isso impede que um override
+        transforme qualquer curso desconhecido em outro curso arbitrário.
+        """
+
+        automatic = self.match_course(name, modality)
+        if explicit_course_id is None:
+            return automatic
+
+        try:
+            requested_id = int(explicit_course_id)
+        except (TypeError, ValueError) as exc:
+            raise SurveyIntegrationError("A resolução manual do curso precisa informar um course_id válido.") from exc
+
+        course = self.db.scalar(select(Course).where(
+            Course.id == requested_id,
+            Course.directorate_id == self.directorate_id,
+        ))
+        if not course:
+            raise SurveyIntegrationError("O curso escolhido para resolução não pertence a esta diretoria.")
+
+        if automatic.get("matched"):
+            if int(automatic.get("course_id")) != requested_id:
+                raise SurveyIntegrationError(
+                    "O relatório já possui uma identidade de curso inequívoca; não é permitido substituí-la manualmente."
+                )
+            return {**automatic, "resolution_source": "explicit_confirmation"}
+
+        if not automatic.get("resolution_required"):
+            raise SurveyIntegrationError(
+                "Este curso não possui uma ambiguidade resolvível pelo catálogo. "
+                "Ajuste o catálogo/alias institucional antes de importar."
+            )
+
+        candidate_ids = {int(value) for value in automatic.get("candidate_ids") or []}
+        if requested_id not in candidate_ids:
+            raise SurveyIntegrationError(
+                "O curso escolhido não está entre as opções permitidas para este relatório."
+            )
+
+        modality_norm = normalize_key(modality or "")
+        if modality_norm and normalize_key(course.modality or "") != modality_norm:
+            raise SurveyIntegrationError(
+                "A modalidade do curso escolhido não corresponde à modalidade identificada no relatório."
+            )
+
+        return {
+            "matched": True,
+            "course_id": int(course.id),
+            "course_name": course.name,
+            "modality": course.modality or "Presencial",
+            "match_type": "manual_resolution",
+            "resolution_source": "user",
+            "raw_course_name": clean_identity_display(name),
+            "candidate_ids": sorted(candidate_ids),
         }
 
     def inspect_entries(self, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1300,8 +1574,8 @@ class SurveyRepository:
         ]
 
     def _get_or_create_teacher(self, name: str, external_id: str | None = None) -> Teacher:
-        display = " ".join(str(name or "").split())
-        key = normalize_key(display)
+        display = clean_identity_display(name)
+        key = teacher_identity_key(display)
         if not key:
             raise SurveyIntegrationError("O contexto docente não informou o professor.")
         row = None
@@ -1325,17 +1599,23 @@ class SurveyRepository:
         self.db.flush()
         return row
 
-    def _get_or_create_discipline(self, course_id: int, name: str) -> Discipline:
-        display = " ".join(str(name or "").split())
+    def _get_or_create_discipline(self, course_id: int, name: str, period: str) -> Discipline:
+        display = clean_identity_display(name)
         if not display:
             raise SurveyIntegrationError("O contexto docente não informou a disciplina.")
-        key = normalize_key(display)
+        key = discipline_identity_key(display)
         rows = list(self.db.scalars(select(Discipline).where(Discipline.course_id == course_id)).all())
         for row in rows:
-            if normalize_key(row.name) == key:
+            if discipline_identity_key(row.name) == key:
                 row.active = True
                 return row
-        row = Discipline(course_id=course_id, name=display, active=True)
+        valid_from = None
+        period_text = str(period or "").strip().upper()
+        if len(period_text) >= 4 and period_text[:4].isdigit():
+            valid_from = f"{period_text[:4]}-{'07' if period_text.endswith('SEM2') else '01'}"
+        if not valid_from:
+            raise SurveyIntegrationError("Não foi possível definir a vigência inicial da disciplina docente.")
+        row = Discipline(course_id=course_id, name=display, active=True, valid_from=valid_from)
         self.db.add(row)
         self.db.flush()
         return row
@@ -1349,7 +1629,7 @@ class SurveyRepository:
         class_group: str,
         external_id: str | None = None,
     ) -> AcademicOffering:
-        class_group = " ".join(str(class_group or "").split())
+        class_group = class_group_display(class_group)
         row = None
         if external_id:
             row = self.db.scalar(select(AcademicOffering).where(AcademicOffering.external_id == str(external_id)))
@@ -1413,17 +1693,19 @@ class SurveyRepository:
         semester_override: str | None = None,
         origin: str = "sei",
         metadata: dict | None = None,
+        course_resolutions: dict[str, int] | None = None,
     ) -> dict[str, Any]:
-        """Destino estável do futuro adaptador do relatório docente do SEI.
+        """Persiste os contextos normalizados do relatório docente do SEI.
 
-        O método já persiste várias combinações docente × disciplina × turma do
-        mesmo curso e semestre. Nenhum layout XLSX é assumido aqui; quando um
-        relatório real existir, o adaptador precisará apenas produzir
-        ``ParsedFacultyContext``.
+        Suporta várias combinações docente × disciplina × curso no mesmo semestre
+        e preserva as distribuições das respostas por pergunta. O parser do
+        relatório ``Disciplina/Professor`` é responsável apenas por produzir
+        ``ParsedFacultyContext``; esta camada continua independente do layout XLSX.
         """
         if not contexts:
             raise SurveyIntegrationError("Nenhum contexto docente foi informado.")
         metadata = metadata or {}
+        course_resolutions = {str(key): int(value) for key, value in (course_resolutions or {}).items()}
         first = contexts[0]
         semester = _semester_to_data_univc(semester_override or first.semester_suggested)
         if not semester:
@@ -1435,12 +1717,31 @@ class SurveyRepository:
             imp = self.db.scalar(select(SurveyImport).where(SurveyImport.directorate_id == self.directorate_id, SurveyImport.external_key == external_key))
         if not imp:
             imp = self.db.scalar(select(SurveyImport).where(SurveyImport.directorate_id == self.directorate_id, SurveyImport.sha256 == sha256))
+        logical_run = None
+        if not imp:
+            logical_run = self._find_faculty_run_by_identity(
+                survey_title=first.survey_title,
+                questionnaire_name=first.questionnaire_name,
+                period_start=first.period_start,
+                period_end=first.period_end,
+                semester=semester,
+            )
+            if logical_run:
+                imp = self.db.scalar(select(SurveyImport).where(SurveyImport.id == logical_run.import_id))
 
         if imp:
-            run = self.db.scalar(select(SurveyRun).where(SurveyRun.import_id == imp.id))
+            run = logical_run or self.db.scalar(select(SurveyRun).where(SurveyRun.import_id == imp.id))
             if not run:
                 raise SurveyIntegrationError("Importação docente existente sem survey_run correspondente.")
             require_survey_run_for_directorate(self.db, run.id, self.directorate_id)
+            existing_contexts = int(self.db.scalar(
+                select(func.count(FacultyEvaluationContext.id)).where(FacultyEvaluationContext.run_id == run.id)
+            ) or 0)
+            if existing_contexts and run.semester and run.semester != semester:
+                raise SurveyIntegrationError(
+                    "Esta fonte docente já foi importada em outro semestre. "
+                    "Para preservar o histórico, não é permitido mover contextos existentes entre semestres."
+                )
             run.semester = semester
             run.run_kind = "faculty"
             imp.source_filename = source_filename
@@ -1481,17 +1782,38 @@ class SurveyRepository:
 
         imported: list[str] = []
         skipped: list[str] = []
-        unmapped: list[dict[str, str]] = []
+        unmapped: list[dict[str, Any]] = []
+        applied_resolutions: list[dict[str, Any]] = []
         for parsed in contexts:
             context_semester = _semester_to_data_univc(semester_override or parsed.semester_suggested or semester)
             if context_semester != semester:
                 raise SurveyIntegrationError("Todos os contextos da mesma importação docente precisam pertencer ao mesmo semestre.")
-            match = self.match_course(parsed.course_name, parsed.modality)
+            explicit_course_id = course_resolutions.get(parsed.source_path)
+            match = self.resolve_course(
+                parsed.course_name,
+                parsed.modality,
+                explicit_course_id=explicit_course_id,
+            )
             if not match.get("matched"):
-                unmapped.append({"source_key": parsed.source_key, "course": parsed.course_name, "reason": match.get("reason") or "Não mapeado"})
+                unmapped.append({
+                    "source_key": parsed.source_key,
+                    "source_path": parsed.source_path,
+                    "course": parsed.course_name,
+                    "reason": match.get("reason") or "Não mapeado",
+                    "resolution_required": bool(match.get("resolution_required")),
+                    "candidate_courses": match.get("candidate_courses") or [],
+                })
                 continue
             course_id = int(match["course_id"])
-            discipline = self._get_or_create_discipline(course_id, parsed.discipline_name)
+            if match.get("match_type") == "manual_resolution":
+                applied_resolutions.append({
+                    "source_path": parsed.source_path,
+                    "source_key": parsed.source_key,
+                    "raw_course_name": parsed.course_name,
+                    "course_id": course_id,
+                    "course_name": match.get("course_name"),
+                })
+            discipline = self._get_or_create_discipline(course_id, parsed.discipline_name, semester)
             teacher = self._get_or_create_teacher(parsed.teacher_name, parsed.teacher_external_id)
             offering = self._get_or_create_offering(
                 period=semester,
@@ -1505,11 +1827,13 @@ class SurveyRepository:
                 teacher_id=teacher.id,
                 external_id=parsed.assignment_external_id,
             )
+            # Um survey run só deve possuir um contexto por atribuição docente.
+            # O ID do XLSX no SEI pode mudar em uma nova exportação; por isso a
+            # idempotência não depende mais do source_key/report_id.
             existing = self.db.scalar(select(FacultyEvaluationContext).where(
                 FacultyEvaluationContext.run_id == run.id,
                 FacultyEvaluationContext.teaching_assignment_id == assignment.id,
-                FacultyEvaluationContext.source_key == parsed.source_key,
-            ))
+            ).order_by(FacultyEvaluationContext.id))
             if existing:
                 skipped.append(parsed.source_key)
                 continue
@@ -1543,12 +1867,18 @@ class SurveyRepository:
                     ))
             imported.append(parsed.source_key)
 
+        if applied_resolutions:
+            merged_metadata = dict(imp.metadata_json or {})
+            merged_metadata["faculty_course_resolutions"] = applied_resolutions
+            imp.metadata_json = merged_metadata
+
         imp.status = "completed"
         self._audit("import", "survey_faculty", run.id, {
             "semester": semester,
             "imported": len(imported),
             "skipped": len(skipped),
             "unmapped": len(unmapped),
+            "course_resolutions_applied": len(applied_resolutions),
         })
         self.db.commit()
         return {
@@ -1558,6 +1888,1057 @@ class SurveyRepository:
             "imported_contexts": imported,
             "skipped_contexts": skipped,
             "unmapped": unmapped,
+            "course_resolutions_applied": applied_resolutions,
+        }
+
+    def faculty_import_history(self) -> dict[str, Any]:
+        """Lista lotes persistidos da Avaliação Docente da diretoria atual.
+
+        A consulta e somente leitura e reutiliza survey_imports/survey_runs; nao
+        cria uma tabela paralela para o frontend. A contagem de contextos usa
+        subquery correlacionada para manter compatibilidade com PostgreSQL JSON.
+        """
+
+        context_count = (
+            select(func.count(FacultyEvaluationContext.id))
+            .where(FacultyEvaluationContext.run_id == SurveyRun.id)
+            .correlate(SurveyRun)
+            .scalar_subquery()
+        )
+        stmt = (
+            select(
+                SurveyImport.id.label("import_id"),
+                SurveyImport.source_filename.label("source_filename"),
+                SurveyImport.source_kind.label("source_kind"),
+                SurveyImport.origin.label("origin"),
+                SurveyImport.status.label("status"),
+                SurveyImport.created_at.label("created_at"),
+                SurveyImport.metadata_json.label("metadata_json"),
+                SurveyRun.id.label("run_id"),
+                SurveyRun.semester.label("semester"),
+                SurveyRun.title.label("title"),
+                SurveyRun.period_start.label("period_start"),
+                SurveyRun.period_end.label("period_end"),
+                SurveyQuestionnaire.name.label("questionnaire_name"),
+                context_count.label("context_count"),
+            )
+            .join(SurveyRun, SurveyRun.import_id == SurveyImport.id)
+            .join(SurveyQuestionnaire, SurveyQuestionnaire.id == SurveyRun.questionnaire_id)
+            .where(
+                SurveyImport.directorate_id == self.directorate_id,
+                SurveyRun.directorate_id == self.directorate_id,
+                SurveyRun.run_kind == "faculty",
+            )
+            .order_by(SurveyImport.created_at.desc(), SurveyImport.id.desc())
+        )
+        history_rows = list(self.db.execute(stmt).all())
+        run_ids = [str(row._mapping["run_id"]) for row in history_rows]
+        audit_by_run: dict[str, list[dict[str, Any]]] = {}
+        if run_ids:
+            audit_stmt = (
+                select(
+                    AuditLog.entity_id,
+                    AuditLog.user_email,
+                    AuditLog.details,
+                    AuditLog.created_at,
+                )
+                .where(
+                    AuditLog.directorate_id == self.directorate_id,
+                    AuditLog.action == "import",
+                    AuditLog.entity == "survey_faculty",
+                    AuditLog.entity_id.in_(run_ids),
+                )
+                .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+            )
+            for entity_id, user_email, details, created_at in self.db.execute(audit_stmt).all():
+                parsed_details: dict[str, Any] = {}
+                if details:
+                    try:
+                        loaded = json.loads(details)
+                        if isinstance(loaded, dict):
+                            parsed_details = loaded
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        parsed_details = {}
+                audit_by_run.setdefault(str(entity_id), []).append({
+                    "user_email": user_email,
+                    "created_at": created_at,
+                    "details": parsed_details,
+                })
+
+        items: list[dict[str, Any]] = []
+        for row in history_rows:
+            data = dict(row._mapping)
+            metadata = data.pop("metadata_json") or {}
+            resolutions = metadata.get("faculty_course_resolutions") or []
+            resolution_count = len(resolutions) if isinstance(resolutions, (list, dict)) else 0
+            created = data.get("created_at")
+            data["created_at"] = created.isoformat() if created else None
+            data["context_count"] = int(data.get("context_count") or 0)
+            data["course_resolution_count"] = resolution_count
+
+            audits = audit_by_run.get(str(data.get("run_id")), [])
+            latest_audit = audits[0] if audits else None
+            data["import_attempts"] = len(audits)
+            data["last_imported_by"] = latest_audit.get("user_email") if latest_audit else None
+            data["last_activity_at"] = (
+                latest_audit["created_at"].isoformat()
+                if latest_audit and latest_audit.get("created_at")
+                else data["created_at"]
+            )
+            details = latest_audit.get("details", {}) if latest_audit else {}
+            data["last_import_result"] = {
+                "imported": int(details.get("imported") or 0),
+                "skipped": int(details.get("skipped") or 0),
+                "unmapped": int(details.get("unmapped") or 0),
+                "course_resolutions_applied": int(details.get("course_resolutions_applied") or 0),
+            }
+            items.append(data)
+        return {"items": items, "count": len(items)}
+
+    def faculty_identity_catalog(self, semester: str | None = None) -> dict[str, Any]:
+        """Expõe a malha acadêmica persistida que alimentará o analytics.
+
+        A resposta é relacional e não calcula nota/favorabilidade. Ela existe
+        para auditar se semestre, curso, disciplina, professor e turma foram
+        conectados corretamente antes da camada analítica.
+        """
+
+        effective_semester = _semester_to_data_univc(semester) if semester else None
+        if semester and not effective_semester:
+            raise SurveyIntegrationError("Semestre inválido. Use AAAA-SEM1 ou AAAA-SEM2.")
+
+        stmt = (
+            select(
+                FacultyEvaluationContext.id,
+                FacultyEvaluationContext.run_id,
+                FacultyEvaluationContext.respondent_count,
+                FacultyEvaluationContext.source_key,
+                FacultyEvaluationContext.source_path,
+                TeachingAssignment.id,
+                AcademicOffering.id,
+                AcademicOffering.period,
+                AcademicOffering.class_group,
+                Course.id,
+                Course.name,
+                Course.modality,
+                Discipline.id,
+                Discipline.name,
+                Teacher.id,
+                Teacher.display_name,
+                Teacher.external_id,
+            )
+            .join(TeachingAssignment, TeachingAssignment.id == FacultyEvaluationContext.teaching_assignment_id)
+            .join(AcademicOffering, AcademicOffering.id == TeachingAssignment.offering_id)
+            .join(Course, Course.id == AcademicOffering.course_id)
+            .join(Discipline, Discipline.id == AcademicOffering.discipline_id)
+            .join(Teacher, Teacher.id == TeachingAssignment.teacher_id)
+            .where(Course.directorate_id == self.directorate_id)
+        )
+        if effective_semester:
+            stmt = stmt.where(AcademicOffering.period == effective_semester)
+        stmt = stmt.order_by(
+            AcademicOffering.period.desc(),
+            Course.name,
+            Discipline.name,
+            Teacher.display_name,
+            FacultyEvaluationContext.id,
+        )
+
+        items: list[dict[str, Any]] = []
+        for row in self.db.execute(stmt).all():
+            (
+                context_id, run_id, respondent_count, source_key, source_path,
+                assignment_id, offering_id, period, class_group,
+                course_id, course_name, modality, discipline_id, discipline_name,
+                teacher_id, teacher_name, teacher_external_id,
+            ) = row
+            items.append({
+                "context_id": int(context_id),
+                "run_id": int(run_id),
+                "assignment_id": int(assignment_id),
+                "offering_id": int(offering_id),
+                "semester": period,
+                "course_id": int(course_id),
+                "course_name": course_name,
+                "modality": modality,
+                "discipline_id": int(discipline_id),
+                "discipline_name": discipline_name,
+                "teacher_id": int(teacher_id),
+                "teacher_name": teacher_name,
+                "teacher_external_id": teacher_external_id,
+                "class_group": class_group or "",
+                "respondent_count": int(respondent_count or 0),
+                "source_key": source_key,
+                "source_path": source_path,
+                "academic_identity_key": faculty_academic_identity_key(
+                    period=period,
+                    course_identity=course_id,
+                    teacher_name=teacher_name,
+                    discipline_name=discipline_name,
+                    class_group=class_group or "",
+                ),
+            })
+
+        return {
+            "semester": effective_semester,
+            "items": items,
+            "summary": {
+                "contexts": len(items),
+                "semesters": len({item["semester"] for item in items}),
+                "courses": len({item["course_id"] for item in items}),
+                "disciplines": len({item["discipline_id"] for item in items}),
+                "teachers": len({item["teacher_id"] for item in items}),
+                "offerings": len({item["offering_id"] for item in items}),
+                "assignments": len({item["assignment_id"] for item in items}),
+                "respondents_across_contexts": sum(item["respondent_count"] for item in items),
+            },
+        }
+
+    def faculty_identity_quality(self, semester: str | None = None) -> dict[str, Any]:
+        """Diagnóstico estrutural da identidade acadêmica já persistida."""
+
+        catalog = self.faculty_identity_catalog(semester)
+        items = catalog["items"]
+
+        duplicate_context_groups: dict[tuple[int, int], list[int]] = {}
+        by_run_assignment: dict[tuple[int, int], list[int]] = {}
+        for item in items:
+            by_run_assignment.setdefault(
+                (int(item["run_id"]), int(item["assignment_id"])), []
+            ).append(int(item["context_id"]))
+        duplicate_context_groups = {
+            key: ids for key, ids in by_run_assignment.items() if len(ids) > 1
+        }
+
+        discipline_rows = self.db.execute(
+            select(Discipline.id, Discipline.course_id, Discipline.name, Course.name)
+            .join(Course, Course.id == Discipline.course_id)
+            .where(Course.directorate_id == self.directorate_id)
+        ).all()
+        discipline_groups: dict[tuple[int, str], list[dict[str, Any]]] = {}
+        for discipline_id, course_id, discipline_name, course_name in discipline_rows:
+            discipline_groups.setdefault(
+                (int(course_id), discipline_identity_key(discipline_name)), []
+            ).append({
+                "discipline_id": int(discipline_id),
+                "discipline_name": discipline_name,
+                "course_id": int(course_id),
+                "course_name": course_name,
+            })
+        duplicate_disciplines = [
+            group for group in discipline_groups.values() if len(group) > 1
+        ]
+
+        zero_respondent_contexts = [
+            {
+                "context_id": item["context_id"],
+                "semester": item["semester"],
+                "course_name": item["course_name"],
+                "discipline_name": item["discipline_name"],
+                "teacher_name": item["teacher_name"],
+            }
+            for item in items
+            if int(item["respondent_count"] or 0) <= 0
+        ]
+        teachers_without_external_id = len({
+            item["teacher_id"] for item in items if not item.get("teacher_external_id")
+        })
+
+        blockers: list[dict[str, Any]] = []
+        if duplicate_context_groups:
+            blockers.append({
+                "code": "duplicate_run_assignment_context",
+                "count": len(duplicate_context_groups),
+                "message": "Há mais de um contexto para a mesma atribuição docente dentro do mesmo survey run.",
+            })
+        if duplicate_disciplines:
+            blockers.append({
+                "code": "duplicate_discipline_identity",
+                "count": len(duplicate_disciplines),
+                "message": "Há disciplinas com nomes diferentes que colapsam para a mesma identidade normalizada dentro do mesmo curso.",
+            })
+
+        warnings: list[dict[str, Any]] = []
+        if zero_respondent_contexts:
+            warnings.append({
+                "code": "zero_respondents",
+                "count": len(zero_respondent_contexts),
+                "message": "Há contextos importados sem respondentes contabilizados.",
+            })
+        if teachers_without_external_id:
+            warnings.append({
+                "code": "teacher_without_external_id",
+                "count": teachers_without_external_id,
+                "message": "O relatório atual identifica docentes pelo nome; external_id permanece ausente nesses registros.",
+            })
+
+        return {
+            "semester": catalog.get("semester"),
+            "summary": catalog["summary"],
+            "blocking_issue_count": sum(int(item["count"]) for item in blockers),
+            "warning_count": sum(int(item["count"]) for item in warnings),
+            "blockers": blockers,
+            "warnings": warnings,
+            "details": {
+                "duplicate_run_assignment_contexts": [
+                    {"run_id": key[0], "assignment_id": key[1], "context_ids": ids}
+                    for key, ids in list(duplicate_context_groups.items())[:50]
+                ],
+                "duplicate_discipline_identities": duplicate_disciplines[:50],
+                "zero_respondent_contexts": zero_respondent_contexts[:50],
+            },
+        }
+
+    def _faculty_analytics_rows(
+        self,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+        teacher_id: int | None = None,
+        offering_id: int | None = None,
+        question_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Retorna o grao pergunta x alternativa preservando a fonte SEI."""
+
+        effective_semester = _semester_to_data_univc(semester) if semester else None
+        if semester and not effective_semester:
+            raise SurveyIntegrationError("Semestre invalido. Use AAAA-SEM1 ou AAAA-SEM2.")
+
+        stmt = (
+            select(
+                FacultyResponseAggregate.id.label("aggregate_id"),
+                FacultyResponseAggregate.context_id.label("context_id"),
+                FacultyResponseAggregate.question_id.label("question_id"),
+                FacultyResponseAggregate.option_label.label("option_label"),
+                FacultyResponseAggregate.response_count.label("response_count"),
+                FacultyEvaluationContext.run_id.label("run_id"),
+                FacultyEvaluationContext.respondent_count.label("respondent_count"),
+                TeachingAssignment.id.label("assignment_id"),
+                Teacher.id.label("teacher_id"),
+                Teacher.display_name.label("teacher_name"),
+                AcademicOffering.id.label("offering_id"),
+                AcademicOffering.period.label("semester"),
+                AcademicOffering.class_group.label("class_group"),
+                Course.id.label("course_id"),
+                Course.name.label("course_name"),
+                Course.modality.label("modality"),
+                Discipline.id.label("discipline_id"),
+                Discipline.name.label("discipline_name"),
+                SurveyQuestion.text.label("question_text"),
+                SurveyQuestion.position.label("question_position"),
+            )
+            .join(FacultyEvaluationContext, FacultyEvaluationContext.id == FacultyResponseAggregate.context_id)
+            .join(SurveyRun, SurveyRun.id == FacultyEvaluationContext.run_id)
+            .join(TeachingAssignment, TeachingAssignment.id == FacultyEvaluationContext.teaching_assignment_id)
+            .join(Teacher, Teacher.id == TeachingAssignment.teacher_id)
+            .join(AcademicOffering, AcademicOffering.id == TeachingAssignment.offering_id)
+            .join(Course, Course.id == AcademicOffering.course_id)
+            .join(Discipline, Discipline.id == AcademicOffering.discipline_id)
+            .join(SurveyQuestion, SurveyQuestion.id == FacultyResponseAggregate.question_id)
+            .where(
+                Course.directorate_id == self.directorate_id,
+                SurveyRun.directorate_id == self.directorate_id,
+                SurveyRun.run_kind == "faculty",
+            )
+        )
+        if effective_semester:
+            stmt = stmt.where(AcademicOffering.period == effective_semester)
+        if course_id is not None:
+            stmt = stmt.where(AcademicOffering.course_id == int(course_id))
+        if discipline_id is not None:
+            stmt = stmt.where(AcademicOffering.discipline_id == int(discipline_id))
+        if teacher_id is not None:
+            stmt = stmt.where(TeachingAssignment.teacher_id == int(teacher_id))
+        if offering_id is not None:
+            stmt = stmt.where(AcademicOffering.id == int(offering_id))
+        if question_id is not None:
+            stmt = stmt.where(FacultyResponseAggregate.question_id == int(question_id))
+        stmt = stmt.order_by(
+            AcademicOffering.period,
+            Course.name,
+            Discipline.name,
+            Teacher.display_name,
+            SurveyQuestion.position,
+            FacultyResponseAggregate.id,
+        )
+        return [dict(row._mapping) for row in self.db.execute(stmt).all()]
+
+    @staticmethod
+    def _faculty_analytics_summary_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        contexts: dict[int, dict[str, Any]] = {}
+        for row in rows:
+            contexts.setdefault(int(row["context_id"]), row)
+        teacher_rows = [
+            row for row in rows
+            if classify_faculty_question(row.get("question_text")) == "teacher"
+        ]
+        teacher_question_ids = {int(row["question_id"]) for row in teacher_rows}
+        contextual_question_ids = {
+            int(row["question_id"]) for row in rows
+            if classify_faculty_question(row.get("question_text")) == "contextual"
+        }
+        favorability = favorability_summary(teacher_rows)
+        participation_total = sum(int(row.get("respondent_count") or 0) for row in contexts.values())
+        return {
+            "contexts": len(contexts),
+            "semesters": len({row["semester"] for row in contexts.values()}),
+            "courses": len({int(row["course_id"]) for row in contexts.values()}),
+            "disciplines": len({int(row["discipline_id"]) for row in contexts.values()}),
+            "teachers": len({int(row["teacher_id"]) for row in contexts.values()}),
+            "offerings": len({int(row["offering_id"]) for row in contexts.values()}),
+            "questions": len({int(row["question_id"]) for row in rows}),
+            "teacher_questions": len(teacher_question_ids),
+            "contextual_questions": len(contextual_question_ids),
+            "respondent_participations": participation_total,
+            "answer_selections": sum(max(0, int(row.get("response_count") or 0)) for row in rows),
+            "teacher_answer_selections": sum(max(0, int(row.get("response_count") or 0)) for row in teacher_rows),
+            "favorability": favorability,
+            "favorability_scope": "teacher_questions_only",
+            "respondent_participations_note": (
+                "Soma dos respondentes informados em cada contexto Professor x Disciplina; "
+                "nao representa alunos unicos entre diferentes contextos."
+            ),
+        }
+
+    def faculty_analytics_filters(
+        self,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+        teacher_id: int | None = None,
+        offering_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Facetas encadeadas baseadas somente em contextos realmente importados."""
+
+        effective_semester = _semester_to_data_univc(semester) if semester else None
+        if semester and not effective_semester:
+            raise SurveyIntegrationError("Semestre invalido. Use AAAA-SEM1 ou AAAA-SEM2.")
+        items = self.faculty_identity_catalog(None)["items"]
+        selected = {
+            "semester": effective_semester,
+            "course_id": int(course_id) if course_id is not None else None,
+            "discipline_id": int(discipline_id) if discipline_id is not None else None,
+            "teacher_id": int(teacher_id) if teacher_id is not None else None,
+            "offering_id": int(offering_id) if offering_id is not None else None,
+        }
+
+        def filtered(exclude: str | None = None) -> list[dict[str, Any]]:
+            result = []
+            for item in items:
+                if exclude != "semester" and selected["semester"] and item["semester"] != selected["semester"]:
+                    continue
+                if exclude != "course_id" and selected["course_id"] is not None and int(item["course_id"]) != selected["course_id"]:
+                    continue
+                if exclude != "discipline_id" and selected["discipline_id"] is not None and int(item["discipline_id"]) != selected["discipline_id"]:
+                    continue
+                if exclude != "teacher_id" and selected["teacher_id"] is not None and int(item["teacher_id"]) != selected["teacher_id"]:
+                    continue
+                if exclude != "offering_id" and selected["offering_id"] is not None and int(item["offering_id"]) != selected["offering_id"]:
+                    continue
+                result.append(item)
+            return result
+
+        semester_items = filtered("semester")
+        course_items = filtered("course_id")
+        discipline_items = filtered("discipline_id")
+        teacher_items = filtered("teacher_id")
+        offering_items = filtered("offering_id")
+
+        semesters = sorted({item["semester"] for item in semester_items}, reverse=True)
+        courses = sorted(
+            {
+                (int(item["course_id"]), item["course_name"], item.get("modality") or "")
+                for item in course_items
+            },
+            key=lambda row: row[1].casefold(),
+        )
+        disciplines = sorted(
+            {
+                (int(item["discipline_id"]), item["discipline_name"], int(item["course_id"]), item["course_name"])
+                for item in discipline_items
+            },
+            key=lambda row: (row[3].casefold(), row[1].casefold()),
+        )
+        teachers = sorted(
+            {(int(item["teacher_id"]), item["teacher_name"]) for item in teacher_items},
+            key=lambda row: row[1].casefold(),
+        )
+        offerings = sorted(
+            {
+                (
+                    int(item["offering_id"]), item["semester"], int(item["course_id"]), item["course_name"],
+                    int(item["discipline_id"]), item["discipline_name"], item.get("class_group") or "",
+                )
+                for item in offering_items
+            },
+            key=lambda row: (row[1], row[3].casefold(), row[5].casefold(), row[6].casefold()),
+        )
+        active = filtered(None)
+        return {
+            "selected": selected,
+            "semesters": semesters,
+            "courses": [
+                {"id": row[0], "name": row[1], "modality": row[2]} for row in courses
+            ],
+            "disciplines": [
+                {"id": row[0], "name": row[1], "course_id": row[2], "course_name": row[3]}
+                for row in disciplines
+            ],
+            "teachers": [{"id": row[0], "name": row[1]} for row in teachers],
+            "offerings": [
+                {
+                    "id": row[0], "semester": row[1], "course_id": row[2], "course_name": row[3],
+                    "discipline_id": row[4], "discipline_name": row[5], "class_group": row[6],
+                }
+                for row in offerings
+            ],
+            "matching_contexts": len({int(item["context_id"]) for item in active}),
+        }
+
+    def _faculty_goal_rows(self) -> list[dict[str, Any]]:
+        """Retorna somente metas compatíveis com a favorabilidade oficial do KPI 02."""
+
+        indicator = f"{self.directorate_code}-02"
+        rows = self.db.scalars(
+            select(Goal)
+            .where(
+                Goal.directorate_id == self.directorate_id,
+                Goal.indicator_code == indicator,
+                Goal.metric_version == "faculty_favorability_pct_v1",
+            )
+            .order_by(Goal.valid_from, Goal.scope_label, Goal.id)
+        ).all()
+        return [
+            {
+                "indicador": row.indicator_code,
+                "recorte": row.scope_label,
+                "vigencia": row.valid_from,
+                "meta": row.target,
+                "atencao": row.attention,
+                "limite_superior": row.upper_limit,
+                "justificativa": row.justification or "",
+                "metric_version": row.metric_version,
+            }
+            for row in rows
+        ]
+
+    def _faculty_goal_scope_names(
+        self,
+        *,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+    ) -> tuple[str | None, str | None]:
+        course_name: str | None = None
+        discipline_name: str | None = None
+        resolved_course_id = int(course_id) if course_id is not None else None
+
+        if discipline_id is not None:
+            discipline = self.db.get(Discipline, int(discipline_id))
+            if not discipline:
+                raise SurveyIntegrationError("Disciplina não encontrada para o recorte da meta.")
+            discipline_course = self.db.get(Course, int(discipline.course_id))
+            if not discipline_course or int(discipline_course.directorate_id) != int(self.directorate_id):
+                raise SurveyIntegrationError("Disciplina não pertence à diretoria atual.")
+            discipline_name = discipline.name
+            if resolved_course_id is None:
+                resolved_course_id = int(discipline.course_id)
+            elif int(resolved_course_id) != int(discipline.course_id):
+                raise SurveyIntegrationError("Disciplina não pertence ao curso informado.")
+
+        if resolved_course_id is not None:
+            course = self.db.get(Course, int(resolved_course_id))
+            if not course or int(course.directorate_id) != int(self.directorate_id):
+                raise SurveyIntegrationError("Curso não pertence à diretoria atual.")
+            course_name = course.name
+
+        return course_name, discipline_name
+
+    def _faculty_goal_state(
+        self,
+        *,
+        period: str | None,
+        value: float | None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+    ) -> dict[str, Any]:
+        indicator = f"{self.directorate_code}-02"
+        if not period:
+            return {
+                "indicator": indicator,
+                "goal": None,
+                "status": "Sem dados",
+                "gap_to_goal_percentage_points": None,
+            }
+        course_name, discipline_name = self._faculty_goal_scope_names(
+            course_id=course_id, discipline_id=discipline_id
+        )
+        selected = active_goal(
+            self._faculty_goal_rows(),
+            indicator,
+            period,
+            course_name,
+            discipline_name,
+        )
+        info = goal_info(selected, indicator, course_name, discipline_name)
+        target = info.get("meta") if info else None
+        gap = None
+        if value is not None and target is not None:
+            gap = round(float(value) - float(target), 2)
+        return {
+            "indicator": indicator,
+            "goal": info,
+            "status": status_for(value, selected, indicator),
+            "gap_to_goal_percentage_points": gap,
+        }
+
+    def faculty_analytics_operational_status(
+        self,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+        teacher_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Resumo operacional para a tela de produção da Avaliação Docente.
+
+        O endpoint escolhe o semestre mais recente quando nenhum período é
+        informado, mede a variação em pontos percentuais, aplica a meta vigente
+        da mesma métrica e agrega sinais de qualidade/rastreabilidade sem criar
+        uma segunda fonte de verdade.
+        """
+
+        effective_semester = _semester_to_data_univc(semester) if semester else None
+        if semester and not effective_semester:
+            raise SurveyIntegrationError("Semestre inválido. Use AAAA-SEM1 ou AAAA-SEM2.")
+
+        comparison = self.faculty_analytics_semester_comparison(
+            course_id=course_id,
+            discipline_id=discipline_id,
+            teacher_id=teacher_id,
+        )
+        timeline = comparison.get("items") or []
+        current_period = effective_semester or (timeline[-1]["semester"] if timeline else None)
+        current_item = next((item for item in timeline if item.get("semester") == current_period), None)
+        current_summary = current_item.get("summary") if current_item else self._faculty_analytics_summary_from_rows([])
+        current_fav = (current_summary or {}).get("favorability") or {}
+        current_value = (
+            current_fav.get("favorable_percentage")
+            if current_fav.get("mapping_complete") is not False
+            else None
+        )
+
+        previous_item = None
+        if current_period:
+            for item in reversed(timeline):
+                if str(item.get("semester") or "") >= str(current_period):
+                    continue
+                previous_item = item
+                break
+        previous_value = None
+        if previous_item:
+            previous_fav = previous_item.get("summary", {}).get("favorability", {})
+            if previous_fav.get("mapping_complete") is not False:
+                previous_value = previous_fav.get("favorable_percentage")
+        delta = None
+        if current_value is not None and previous_value is not None:
+            delta = round(float(current_value) - float(previous_value), 2)
+
+        goal_state = self._faculty_goal_state(
+            period=current_period,
+            value=current_value,
+            course_id=course_id,
+            discipline_id=discipline_id,
+        )
+        quality = self.faculty_identity_quality(current_period) if current_period else {
+            "blocking_issue_count": 0, "warning_count": 0, "summary": {}, "blockers": [], "warnings": []
+        }
+        history = self.faculty_import_history().get("items") or []
+        latest_import = next(
+            (item for item in history if not current_period or item.get("semester") == current_period),
+            history[0] if history else None,
+        )
+
+        if not current_item:
+            readiness = "no_data"
+            readiness_message = "Não há avaliação docente importada para este semestre e recorte."
+        elif current_fav.get("mapping_complete") is False:
+            readiness = "blocked_scale"
+            readiness_message = "Há categorias de resposta ainda não mapeadas; a favorabilidade está suspensa."
+        elif int(quality.get("blocking_issue_count") or 0) > 0:
+            readiness = "blocked_identity"
+            readiness_message = "A malha acadêmica possui bloqueios de identidade que precisam ser revisados."
+        elif not goal_state.get("goal"):
+            readiness = "ready_no_goal"
+            readiness_message = "Indicador calculável e identidade íntegra, mas ainda sem meta percentual vigente."
+        else:
+            readiness = "ready"
+            readiness_message = "Indicador calculável, identidade íntegra e meta vigente disponível."
+
+        return {
+            "filters": {
+                "semester": current_period,
+                "course_id": course_id,
+                "discipline_id": discipline_id,
+                "teacher_id": teacher_id,
+            },
+            "current_period": current_period,
+            "current_summary": current_summary,
+            "current_value": current_value,
+            "previous_period": previous_item.get("semester") if previous_item else None,
+            "previous_value": previous_value,
+            "delta_percentage_points": delta,
+            "goal": goal_state.get("goal"),
+            "goal_status": goal_state.get("status"),
+            "gap_to_goal_percentage_points": goal_state.get("gap_to_goal_percentage_points"),
+            "quality": {
+                "blocking_issue_count": int(quality.get("blocking_issue_count") or 0),
+                "warning_count": int(quality.get("warning_count") or 0),
+                "summary": quality.get("summary") or {},
+                "blockers": quality.get("blockers") or [],
+                "warnings": quality.get("warnings") or [],
+            },
+            "latest_import": latest_import,
+            "readiness": readiness,
+            "readiness_message": readiness_message,
+            "historical_period_count": len(timeline),
+            "methodology": faculty_favorability_methodology(),
+        }
+
+    def faculty_analytics_overview(
+        self,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+        teacher_id: int | None = None,
+        offering_id: int | None = None,
+    ) -> dict[str, Any]:
+        rows = self._faculty_analytics_rows(
+            semester=semester,
+            course_id=course_id,
+            discipline_id=discipline_id,
+            teacher_id=teacher_id,
+            offering_id=offering_id,
+        )
+        return {
+            "filters": {
+                "semester": _semester_to_data_univc(semester) if semester else None,
+                "course_id": course_id,
+                "discipline_id": discipline_id,
+                "teacher_id": teacher_id,
+                "offering_id": offering_id,
+            },
+            "summary": self._faculty_analytics_summary_from_rows(rows),
+            "methodology": faculty_favorability_methodology(),
+        }
+
+    def faculty_dashboard_projection(self) -> list[dict[str, Any]]:
+        """Projeta o KPI 02 oficial para o painel executivo sem criar nota 0-10.
+
+        O grao e semestre x curso x disciplina. A favorabilidade e reconstruida
+        pelas contagens originais das perguntas classificadas como docente,
+        permitindo agregacoes posteriores exatas por soma de contagens.
+        """
+        rows = self._faculty_analytics_rows()
+        grouped: dict[tuple[str, int, int], list[dict[str, Any]]] = {}
+        for row in rows:
+            key = (str(row["semester"]), int(row["course_id"]), int(row["discipline_id"]))
+            grouped.setdefault(key, []).append(row)
+
+        out: list[dict[str, Any]] = []
+        for (semester, _course_id, _discipline_id), group_rows in grouped.items():
+            first = group_rows[0]
+            summary = self._faculty_analytics_summary_from_rows(group_rows)
+            fav = summary["favorability"]
+            mapping_complete = bool(fav.get("mapping_complete"))
+            classified_total = int(fav.get("classified_total") or 0)
+            if not mapping_complete:
+                validation = "CATEGORIA_NAO_MAPEADA"
+            elif classified_total <= 0:
+                validation = "SEM_RESPOSTAS_CLASSIFICADAS"
+            else:
+                validation = "OK"
+            out.append({
+                "agregado": True,
+                "periodo": semester,
+                "curso": first["course_name"],
+                "disciplina": first["discipline_name"],
+                "professor": "",
+                "respondentes": int(summary.get("respondent_participations") or 0),
+                "valor": fav.get("favorable_percentage") if mapping_complete else None,
+                "favoraveis": int(fav.get("favorable") or 0),
+                "intermediarias": int(fav.get("intermediate") or 0),
+                "desfavoraveis": int(fav.get("unfavorable") or 0),
+                "classificados": classified_total,
+                "nao_classificados": int(fav.get("unclassified_total") or 0),
+                "nao_mapeados": int(fav.get("unmapped_total") or 0),
+                "respostas_docente": int(summary.get("teacher_answer_selections") or 0),
+                "contextos": int(summary.get("contexts") or 0),
+                "professores": int(summary.get("teachers") or 0),
+                "fonte": "SEI · Avaliacao Institucional · Disciplina/Professor",
+                "validacao": validation,
+                "metrica": "faculty_favorability_pct_v1",
+            })
+        return sorted(out, key=lambda item: (str(item["periodo"]), str(item["curso"]).casefold(), str(item["disciplina"]).casefold()))
+
+    def faculty_analytics_questions(
+        self,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+        teacher_id: int | None = None,
+        offering_id: int | None = None,
+    ) -> dict[str, Any]:
+        rows = self._faculty_analytics_rows(
+            semester=semester,
+            course_id=course_id,
+            discipline_id=discipline_id,
+            teacher_id=teacher_id,
+            offering_id=offering_id,
+        )
+        grouped: dict[int, list[dict[str, Any]]] = {}
+        for row in rows:
+            grouped.setdefault(int(row["question_id"]), []).append(row)
+        items: list[dict[str, Any]] = []
+        for question_id, qrows in grouped.items():
+            first = qrows[0]
+            items.append({
+                "question_id": question_id,
+                "position": int(first.get("question_position") or 0),
+                "question": first["question_text"],
+                "analytical_scope": classify_faculty_question(first["question_text"]),
+                "distribution": distribution_with_classification(qrows),
+                "favorability": favorability_summary(qrows),
+                "contexts": len({int(row["context_id"]) for row in qrows}),
+            })
+        items.sort(key=lambda item: (item["position"], item["question_id"]))
+        return {
+            "filters": {
+                "semester": _semester_to_data_univc(semester) if semester else None,
+                "course_id": course_id,
+                "discipline_id": discipline_id,
+                "teacher_id": teacher_id,
+                "offering_id": offering_id,
+            },
+            "items": items,
+            "question_count": len(items),
+            "methodology": faculty_favorability_methodology(),
+        }
+
+    def _faculty_analytics_grouped(
+        self,
+        entity: str,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+        teacher_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        rows = self._faculty_analytics_rows(
+            semester=semester,
+            course_id=course_id,
+            discipline_id=discipline_id,
+            teacher_id=teacher_id,
+        )
+        specs = {
+            "teacher": ("teacher_id", "teacher_name"),
+            "discipline": ("discipline_id", "discipline_name"),
+            "course": ("course_id", "course_name"),
+        }
+        if entity not in specs:
+            raise ValueError("Entidade analitica invalida.")
+        id_key, name_key = specs[entity]
+        grouped: dict[int, list[dict[str, Any]]] = {}
+        for row in rows:
+            grouped.setdefault(int(row[id_key]), []).append(row)
+        items: list[dict[str, Any]] = []
+        for entity_id, erows in grouped.items():
+            first = erows[0]
+            item = {
+                "id": entity_id,
+                "name": first[name_key],
+                "summary": self._faculty_analytics_summary_from_rows(erows),
+            }
+            if entity == "discipline":
+                item["course_id"] = int(first["course_id"])
+                item["course_name"] = first["course_name"]
+            if entity == "course":
+                item["modality"] = first.get("modality")
+            items.append(item)
+        items.sort(key=lambda item: (str(item["name"]).casefold(), int(item["id"])))
+        return items
+
+    def faculty_analytics_teachers(
+        self,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "items": self._faculty_analytics_grouped(
+                "teacher", semester=semester, course_id=course_id, discipline_id=discipline_id
+            ),
+            "methodology": faculty_favorability_methodology(),
+        }
+
+    def faculty_analytics_disciplines(
+        self,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        teacher_id: int | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "items": self._faculty_analytics_grouped(
+                "discipline", semester=semester, course_id=course_id, teacher_id=teacher_id
+            ),
+            "methodology": faculty_favorability_methodology(),
+        }
+
+    def faculty_analytics_courses(
+        self,
+        *,
+        semester: str | None = None,
+        teacher_id: int | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "items": self._faculty_analytics_grouped(
+                "course", semester=semester, teacher_id=teacher_id
+            ),
+            "methodology": faculty_favorability_methodology(),
+        }
+
+    def _faculty_identity_contexts_filtered(
+        self,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+        teacher_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        effective_semester = _semester_to_data_univc(semester) if semester else None
+        if semester and not effective_semester:
+            raise SurveyIntegrationError("Semestre invalido. Use AAAA-SEM1 ou AAAA-SEM2.")
+        result = []
+        for item in self.faculty_identity_catalog(None)["items"]:
+            if effective_semester and item["semester"] != effective_semester:
+                continue
+            if course_id is not None and int(item["course_id"]) != int(course_id):
+                continue
+            if discipline_id is not None and int(item["discipline_id"]) != int(discipline_id):
+                continue
+            if teacher_id is not None and int(item["teacher_id"]) != int(teacher_id):
+                continue
+            result.append(item)
+        return result
+
+    def faculty_analytics_teacher_detail(
+        self,
+        teacher_id: int,
+        *,
+        semester: str | None = None,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+    ) -> dict[str, Any]:
+        contexts = self._faculty_identity_contexts_filtered(
+            semester=semester, course_id=course_id, discipline_id=discipline_id, teacher_id=teacher_id
+        )
+        if not contexts:
+            raise SurveyIntegrationError("Docente nao possui avaliacao no escopo informado.")
+        return {
+            "teacher": {"id": int(teacher_id), "name": contexts[0]["teacher_name"]},
+            "overview": self.faculty_analytics_overview(
+                semester=semester, course_id=course_id, discipline_id=discipline_id, teacher_id=teacher_id
+            ),
+            "questions": self.faculty_analytics_questions(
+                semester=semester, course_id=course_id, discipline_id=discipline_id, teacher_id=teacher_id
+            ),
+            "contexts": contexts,
+        }
+
+    def faculty_analytics_discipline_detail(
+        self,
+        discipline_id: int,
+        *,
+        semester: str | None = None,
+        teacher_id: int | None = None,
+    ) -> dict[str, Any]:
+        contexts = self._faculty_identity_contexts_filtered(
+            semester=semester, discipline_id=discipline_id, teacher_id=teacher_id
+        )
+        if not contexts:
+            raise SurveyIntegrationError("Disciplina nao possui avaliacao no escopo informado.")
+        return {
+            "discipline": {
+                "id": int(discipline_id),
+                "name": contexts[0]["discipline_name"],
+                "course_id": contexts[0]["course_id"],
+                "course_name": contexts[0]["course_name"],
+            },
+            "overview": self.faculty_analytics_overview(
+                semester=semester, discipline_id=discipline_id, teacher_id=teacher_id
+            ),
+            "questions": self.faculty_analytics_questions(
+                semester=semester, discipline_id=discipline_id, teacher_id=teacher_id
+            ),
+            "contexts": contexts,
+        }
+
+    def faculty_analytics_semester_comparison(
+        self,
+        *,
+        course_id: int | None = None,
+        discipline_id: int | None = None,
+        teacher_id: int | None = None,
+    ) -> dict[str, Any]:
+        rows = self._faculty_analytics_rows(
+            course_id=course_id, discipline_id=discipline_id, teacher_id=teacher_id
+        )
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            grouped.setdefault(str(row["semester"]), []).append(row)
+
+        items: list[dict[str, Any]] = []
+        previous_value: float | None = None
+        previous_period: str | None = None
+        for period in sorted(grouped):
+            summary = self._faculty_analytics_summary_from_rows(grouped[period])
+            fav = summary.get("favorability") or {}
+            value = fav.get("favorable_percentage") if fav.get("mapping_complete") is not False else None
+            delta = None
+            if value is not None and previous_value is not None:
+                delta = round(float(value) - float(previous_value), 2)
+            goal_state = self._faculty_goal_state(
+                period=period,
+                value=value,
+                course_id=course_id,
+                discipline_id=discipline_id,
+            )
+            items.append({
+                "semester": period,
+                "summary": summary,
+                "previous_semester": previous_period,
+                "delta_percentage_points": delta,
+                "goal": goal_state.get("goal"),
+                "goal_status": goal_state.get("status"),
+                "gap_to_goal_percentage_points": goal_state.get("gap_to_goal_percentage_points"),
+            })
+            if value is not None:
+                previous_value = float(value)
+                previous_period = period
+
+        return {
+            "filters": {
+                "course_id": course_id,
+                "discipline_id": discipline_id,
+                "teacher_id": teacher_id,
+            },
+            "items": items,
+            "methodology": faculty_favorability_methodology(),
         }
 
     def faculty_metric(
@@ -1661,11 +3042,13 @@ class SurveyRepository:
             ) or 0),
         }
         return {
-            "status": "architecture_ready",
-            "parser_adapter": "pending_real_faculty_report",
+            "status": "sei_adapter_ready",
+            "parser_adapter": "discipline_teacher_xlsx",
+            "source_scope": "GRADUACAO_SAO_MATEUS",
             "message": (
-                "Professor, disciplina, turma/oferta, curso e semestre já possuem uma estrutura relacional. "
-                "O adaptador do relatório docente permanece pendente até existir um XLSX/ZIP real do SEI."
+                "A estrutura relacional e o adaptador Disciplina/Professor do SEI estão disponíveis. "
+                "Professor, disciplina, curso e semestre permanecem separados e as respostas são "
+                "preservadas por pergunta/opção, sem conversão implícita para nota 0–10."
             ),
             "counts": counts,
         }

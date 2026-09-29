@@ -1,0 +1,22 @@
+DATA UNIVC v0.12.5.1 — DPE DEMO + NAVIGATION HOTFIX
+
+1. Preserve uma copia da arvore completa atualmente utilizada.
+2. Extraia o patch na raiz do projeto, mantendo a estrutura de pastas.
+3. Nao ha migration nova. O schema continua 42.
+4. Reinicie a aplicacao para invalidar o cache dos assets CSS/JS.
+5. Para homologar com os dados ficticios, use TESTAR_DPE_DEMO.bat.
+6. O arquivo univc_dpe_demo.db e exclusivamente local e nao deve substituir DATABASE_URL de producao.
+
+CORRECAO PRINCIPAL
+- A regra CSS de Receitas nao pode mais manter a secao visivel quando outra aba estiver ativa.
+- Todas as secoes inativas recebem display:none de forma defensiva.
+
+DADOS DEMO
+- 16 cursos
+- 19 ofertas presenciais
+- 24 docentes com atividade
+- 39 atividades docentes
+- 40 despesas oficiais
+- 19 registros de alunos/receitas
+- 2 politicas de distribuicao
+- 1 Allocation Run oficial e reconciliado

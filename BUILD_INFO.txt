@@ -1,3 +1,192 @@
-Data UNIVC v0.9.6.12
-DPE Reactivation & Mobile Navigation
-Schema: 33 (sem migration nova)
+Data UNIVC v0.13.0 - PRODUCTION
+
+Base acadêmica: v0.11.6.7
+Schema esperado: 48
+Migration ledger: 048_dpe_teacher_profiles_v0130.sql
+Perfil: production
+
+Hardening obrigatório:
+- ENVIRONMENT=production
+- AUTH_DISABLED=false
+- COOKIE_SECURE=true
+- REQUIRE_SCHEMA_VERSION=true
+- ENABLE_API_DOCS=false
+- LOGIN_RATE_LIMIT_ENABLED=true
+
+Esta promoção não introduz novas regras de negócio sobre a v0.13.0-dev.15 reconciliada.
+
+Data UNIVC v0.13.0-dev.15 - Academic Base Reconciliation
+Schema: 48 (sem nova migration; preserva 048_dpe_teacher_profiles_v0130.sql)
+
+Reconciliacao global concluida:
+- base academica completa atualizada de v0.11.6.5 para v0.11.6.7;
+- integra integralmente as correcoes v0.11.6.6 Academic Results SEI Compat;
+- integra integralmente v0.11.6.7 Academic Results Student Classification;
+- repository.py reconciliado por merge de tres vias, sem conflito;
+- DPE v0.13.0-dev.14 preservada integralmente sobre a nova base;
+- schema DPE permanece 48; nenhuma migration academica adicional era necessaria;
+- release candidato a regressao global antes da promocao para v0.13.0.
+
+O bloqueador de base academica registrado nas entregas DPE-01 a DPE-14 foi resolvido nesta versao.
+
+Data UNIVC v0.13.0-dev.14 - DPE-14 Final Audit and Legacy Lockout
+Schema: 48 (sem nova migration; preserva 048_dpe_teacher_profiles_v0130.sql)
+
+Principais mudancas DPE-14:
+- removidos dpe_excel_parser.py e dpe_excel_builder.py;
+- aposentados /api/dpe/import, /api/dpe/modelo/{indicator_code} e o seed antigo /api/dpe/demo;
+- dashboard, medicoes e Excel gerenciais genericos retornam 410 para o escopo DPE;
+- catalog, targets e actions permanecem porque sustentam a gestao moderna de metas/planos;
+- removidos calculos/validacoes DPE-01/02/03 restantes de management_service.py;
+- seed operacional generico nao recria mais medicoes DPE antigas;
+- frontend ativo nao contem DPE-01/DPE-02/DPE-03;
+- criado scripts/run_release_checks.py;
+- regressao completa: 152 testes aprovados;
+- smoke HTTP: DPE/Excel/Gestao 200, import/modelo antigos 404, dashboard/medicoes genericos DPE 410.
+
+Compatibilidade historica mantida somente onde necessaria para migracao/auditoria de bancos antigos (management_catalog, dpe_domain, schema_version e migrations historicas).
+
+Bloqueador global antes de producao:
+- esta linha permanece baseada na arvore academica v0.11.6.5;
+- reconciliar v0.11.6.6 + patch v0.11.6.7 e executar regressao global posterior.
+
+Data UNIVC v0.13.0-dev.13 - DPE-13 Modern Analytical Excel
+Schema: 48 (sem nova migration; preserva 048_dpe_teacher_profiles_v0130.sql)
+
+Principais mudancas DPE-13:
+- /api/dpe/excel passa a exportar diretamente os fatos canonicos do Cost Engine;
+- workbook com 16 abas: PAINEL, RESULTADO, CURSOS, RECEITAS, DESPESAS, DOCENCIA, RATEIOS, METAS_PLANOS, QUALIDADE, cinco BASE_* visiveis, DICIONARIO e PARAMETROS;
+- BASE_CURSOS, BASE_RECEITAS, BASE_DESPESAS, BASE_DOCENCIA e BASE_RATEIOS usam Excel Tables com filtros;
+- PAINEL e consolidacoes usam formulas sobre as bases exportadas, sem duplicar regras do backend;
+- dois graficos executivos no PAINEL: receita x custo por curso e despesas por tratamento;
+- endpoint de exportacao individual /api/dpe/excel/{indicator_code} aposentado; DPE-01/02/03 nao alimentam o workbook moderno;
+- botao Exportar Excel ligado a competencia selecionada na interface;
+- alias ?referencia=AAAA-MM mantido apenas para compatibilidade de bookmarks;
+- schema permanece 48; nenhuma migration nova;
+- regressao completa: 147 testes aprovados.
+
+Validacao DEMO 2026-09:
+- receitas exportadas: R$ 2.778.568,00;
+- despesas exportadas: R$ 495.180,00;
+- custos distribuidos no run oficial: R$ 467.580,00;
+- resultado institucional: R$ 2.283.388,00;
+- totais identicos aos retornados pela aplicacao.
+
+Observacao de release:
+- os endpoints/modelos antigos de importacao DPE-01/02/03 ainda permanecem temporariamente para compatibilidade historica e serao tratados na limpeza final;
+- esta linha continua construida sobre a base academica completa v0.11.6.5;
+- antes de producao, permanece necessaria a reconciliacao com a arvore academica v0.11.6.6 + patch v0.11.6.7 identificada no DPE-01.
+
+Data UNIVC v0.13.0-dev.12 - DPE-12 Final UX Navigation
+Schema: 48 (sem nova migration; preserva 048_dpe_teacher_profiles_v0130.sql)
+
+Principais mudancas DPE-12:
+- navegacao separada em Fluxo do mes, Resultados e gestao e Configuracao e ferramentas;
+- Cursos analitico renomeado para Resultado por curso;
+- Metas e Planos de acao promovidos para a navegacao de gestao;
+- faixa horizontal de 5 etapas do fluxo mensal;
+- topbar com titulo, subtitulo e acao principal contextuais;
+- ultima secao visitada restaurada durante a mesma sessao do navegador;
+- nenhum calculo, schema ou regra financeira alterados nesta etapa.
+
+Data UNIVC v0.13.0-dev.11 - DPE-11 Goals & Action Plans
+Schema: 48 (sem nova migration; preserva 048_dpe_teacher_profiles_v0130.sql)
+
+Principais mudancas DPE-11:
+- Metas avaliadas automaticamente contra os fatos reais do Cost Engine;
+- nova API /api/dpe/management/overview, sem criar medicoes KPI paralelas;
+- cinco grupos canonicos: Resultados, Receitas, Despesas, Docencia e Distribuicao;
+- DPE-01/02/03 e metricas herdadas ficam somente como historico e nao aceitam novos cadastros;
+- metas mostram valor atual, meta, vigencia e situacao;
+- metas em atencao/fora da meta podem originar plano de acao com contexto preenchido;
+- planos DPE passam a exigir metrica real e dimensoes compativeis;
+- prazo vencido gera status derivado Atrasado sem reescrever o historico;
+- DEMO inclui seis metas e um plano canonico;
+- sem nova migration: schema 48 permanece vigente.
+
+Data UNIVC v0.13.0-dev.10 - DPE-10 Consolidated Results
+Schema: 48 (sem nova migration; preserva 048_dpe_teacher_profiles_v0130.sql)
+
+Principais mudancas DPE-10:
+- dpe_revenue_entries passa a ser a unica fonte de verdade de receita do Cost Engine moderno;
+- removido o espelho runtime em dpe_cost_offering_economics.net_revenue;
+- Economics passa a guardar somente alunos ativos e metadados auxiliares;
+- Analytics, Visao Geral V2, Fechamento, rateio por receita e Produtividade usam diretamente o ledger;
+- resultado institucional = todas as receitas do ledger - todas as despesas oficiais;
+- resultado por curso = receitas atribuidas ao curso - custos atribuidos pelo calculo oficial;
+- receita institucional e despesa institucional nao contaminam a margem de cursos;
+- receita zero confirmada permanece como lancamento explicito e nao e confundida com receita ausente;
+- grade de alunos passou a validar todas as linhas antes de alterar dados, garantindo atomicidade;
+- copia do mes anterior copia receita de curso do ledger e alunos ativos separadamente;
+- sem nova migration: colunas fisicas antigas em bancos ja migrados ficam inertes e fora do ORM/runtime ate a limpeza fisica final.
+
+Data UNIVC v0.13.0-dev.9 - DPE-09 Allocation UX
+Schema: 48 (sem nova migration; preserva 048_dpe_teacher_profiles_v0130.sql)
+
+Principais mudancas DPE-09:
+- Distribuicao reorganizada em uma decisao administrativa: como o custo chega aos cursos;
+- despesas Diretas exibem apenas o destino de 100%, sem oferecer criterios contraditorios;
+- despesas Compartilhadas nao podem mais usar DIRECT como atalho de compatibilidade;
+- despesas Institucionais continuam fora da distribuicao por curso;
+- opcoes apresentadas em linguagem simples: atividades do docente, carga horaria, alunos, receita, igual ou manual;
+- configuracoes reutilizaveis/politicas movidas para area avancada do modal;
+- previa em reais continua obrigatoria antes de salvar;
+- referencias a cursos presenciais e receita liquida removidas da experiencia de distribuicao;
+- motor, snapshots, execucoes oficiais, historico e reconciliacao preservados.
+
+Data UNIVC v0.13.0-dev.8 - DPE-08 Teaching Domain
+Schema: 48 (048_dpe_teacher_profiles_v0130.sql)
+
+Principais mudancas DPE-08:
+- identidade institucional do docente separada do perfil operacional da DPE;
+- novo dpe_teacher_profiles delimita quais docentes pertencem ao dominio DPE;
+- vinculo padrao separado do vinculo mensal da competencia;
+- atividades docentes separadas do cadastro e do custo financeiro;
+- custos continuam vindo das despesas PAYROLL conciliadas, sem duplicacao financeira;
+- Central de Docencia reorganizada em Atividades, Vinculos e custos, Cadastro e Disciplinas;
+- docente institucional existente pode ser adotado sem duplicar o registro global;
+- rateio por carga docente e snapshots historicos preservados;
+- DEMO: 24 perfis DPE, 24 vinculos mensais, 39 atividades e R$ 171.480,00 conciliados;
+- regressao completa: 122 testes aprovados.
+
+Observacao de release:
+- esta linha continua construida sobre a base academica completa v0.11.6.5;
+- antes de producao, permanece necessaria a reconciliacao com a arvore academica v0.11.6.6 + patch v0.11.6.7 identificada no DPE-01.
+
+Data UNIVC v0.13.0-dev.7 - DPE-07 Expense Treatment
+Schema: 47 (047_dpe_expense_scope_v0130.sql)
+
+Principais mudancas DPE-07:
+- tratamento economico explicito DIRECT / SHARED / INSTITUTIONAL;
+- despesas diretas vinculadas a um curso/contexto no proprio lancamento;
+- despesas institucionais fora do rateio por curso;
+- fechamento reconcilia somente despesas distribuiveis;
+- UX de selecao em massa corrigida para estados sem itens editaveis;
+- Excel de importacao passa a aceitar tratamento compartilhado/institucional;
+- snapshots e memoria do rateio preservados;
+- regressao completa: 117 testes aprovados.
+
+Data UNIVC v0.13.0-dev.6 - DPE-06 Revenue Ledger
+Schema: 46 (046_dpe_revenue_ledger_v0130.sql)
+
+Data UNIVC v0.13.0-dev.5
+DPE-05 - Cursos e contextos opcionais
+Base acumulada: DPE-02 frontend cleanup + DPE-03 backend cleanup + DPE-04 domain consolidation.
+Migration nova nesta versao: 045_dpe_course_contexts_v0130.sql
+Schema esperado: 45
+
+Principais mudancas DPE-05:
+- remove a restricao operacional a cursos PRESENCIAIS;
+- Curso passa a ser a entidade principal da experiencia DPE;
+- cada novo curso ganha um contexto-base interno automatico;
+- contextos adicionais sao opcionais e podem representar turma, turno, unidade, local ou modalidade especifica;
+- quando existem contextos adicionais validos no mes, eles substituem o contexto-base para evitar dupla contagem;
+- offering_id/tabela dpe_academic_offerings permanecem internamente para preservar FKs, snapshots, docencia, rateio e historico;
+- snapshots passam a registrar context_kind/is_default_context;
+- /api/dpe/courses passa a disponibilizar cursos ativos DTNH/DCS de todas as modalidades;
+- interface passa a usar a linguagem Curso / Contexto em vez de Oferta presencial.
+
+Nao faz parte desta etapa:
+- remodelagem de Receitas (DPE-06);
+- simplificacao de Despesas (DPE-07);
+- remocao final DPE-01/02/03 e Excel legado.

@@ -7,11 +7,12 @@ from survey_models import ParsedQuestion
 
 @dataclass
 class ParsedFacultyContext:
-    """Representação normalizada que o futuro adaptador de XLSX docente deve produzir.
+    """Contrato normalizado da avaliação em que o discente avalia o docente.
 
-    Nenhuma posição de coluna do SEI é assumida aqui. O adaptador futuro terá a
-    responsabilidade exclusiva de descobrir esses campos a partir de relatório real.
-    O restante da aplicação trabalha somente com esta estrutura estável.
+    O adaptador do relatório ``Disciplina/Professor`` do SEI converte cada XLSX
+    para esta estrutura. O restante da aplicação não depende das posições de
+    colunas do arquivo original e trabalha apenas com o contexto acadêmico e as
+    distribuições de respostas preservadas aqui.
     """
 
     source_key: str

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/static/css/ui-v2.css?v={{ app_version }}">
 </head>
 <body class="ui-v2 ui-v2-dpe">
+  <a class="dpe-skip-link" href="#dpeMainContent">Pular para o conteúdo principal</a>
   <div id="dpeApp" class="app-shell dpe-shell">
     <aside class="sidebar" aria-label="Navegação da DPE">
       <a class="brand brand-link" href="/" aria-label="Data UNIVC — página inicial">
@@ -21,22 +22,30 @@
           <span>Gestão por indicadores</span>
         </div>
       </a>
-      <nav class="nav-list">
-        <button class="nav-item active" data-section="dashboard"><span class="nav-icon"></span><span>Painel executivo</span></button>
-        <div class="nav-caption">Base financeira</div>
-        <button class="nav-item" data-section="receitas"><span class="nav-icon"></span><span>Receitas</span></button>
-        <button class="nav-item" data-section="despesas"><span class="nav-icon"></span><span>Despesas e folha</span></button>
-        <button class="nav-item" data-section="cursos"><span class="nav-icon"></span><span>Resultado por curso</span></button>
-        <div class="nav-caption">Indicadores calculados</div>
-        <button class="nav-item" data-section="dpe01"><span class="nav-icon"></span><span>Resultado econômico (DPE-01)</span></button>
-        <button class="nav-item" data-section="dpe02"><span class="nav-icon"></span><span>Cobertura receita × despesa</span></button>
-        <button class="nav-item" data-section="dpe03"><span class="nav-icon"></span><span>Folha sobre receita</span></button>
-        <div class="nav-caption">Gestão</div>
+      <nav class="nav-list dpe-ux-nav">
+        <div class="nav-caption">Fluxo do mês</div>
+        <button class="nav-item active" data-section="dashboard"><span class="nav-icon"></span><span>Visão geral</span></button>
+        <button class="nav-item" data-section="receita-operacional"><span class="nav-icon"></span><span>Receitas</span></button>
+        <button class="nav-item" data-section="central-despesas"><span class="nav-icon"></span><span>Despesas</span></button>
+        <button class="nav-item" data-section="docencia"><span class="nav-icon"></span><span>Docência</span></button>
+        <button class="nav-item" data-section="rateio"><span class="nav-icon"></span><span>Distribuição de custos</span></button>
+        <button class="nav-item" data-section="fechamento"><span class="nav-icon"></span><span>Fechamento</span></button>
+
+        <div class="nav-caption dpe-nav-group-spaced">Resultados e gestão</div>
+        <button class="nav-item" data-section="economia"><span class="nav-icon"></span><span>Resultado por curso</span></button>
+        <button class="nav-item" data-section="metas"><span class="nav-icon"></span><span>Metas</span></button>
         <button class="nav-item" data-section="planos"><span class="nav-icon"></span><span>Planos de ação</span></button>
-        <button class="nav-item" data-section="metas"><span class="nav-icon"></span><span>Metas dos KPIs</span></button>
-        <div class="nav-caption">Sistema</div>
-        <button class="nav-item" data-section="arquivos"><span class="nav-icon"></span><span>Central de arquivos</span></button>
-        <button class="nav-item" data-section="governanca"><span class="nav-icon"></span><span>Governança de dados</span></button>
+
+        <details class="dpe-secondary-nav">
+          <summary><span class="nav-icon"></span><span>Configuração e ferramentas</span><span class="dpe-nav-chevron">›</span></summary>
+          <div class="dpe-secondary-nav-items">
+            <button class="nav-item" data-section="competencias"><span class="nav-icon"></span><span>Períodos e histórico</span></button>
+            <button class="nav-item" data-section="catalogo"><span class="nav-icon"></span><span>Cursos e contextos</span></button>
+            <button class="nav-item" data-section="produtividade"><span class="nav-icon"></span><span>Produtividade</span></button>
+            <button class="nav-item" data-section="politicas-rateio"><span class="nav-icon"></span><span>Políticas de distribuição</span></button>
+            <button class="nav-item" data-section="governanca"><span class="nav-icon"></span><span>Regras e governança</span></button>
+          </div>
+        </details>
         <a class="nav-item nav-link" href="/"><span class="nav-icon"></span><span>Voltar ao Data UNIVC</span></a>
       </nav>
       <div class="sidebar-footer dpe-sidebar-footer">
@@ -56,162 +65,535 @@
       </div>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content" id="dpeMainContent" tabindex="-1">
       <header class="topbar">
         <div>
-          <span class="eyebrow">DPE · Diretoria de Planejamento Econômico e Oferta</span>
-          <h1 id="dpePageTitle">Painel executivo</h1>
+          <span class="eyebrow">DATA UNIVC · DPE</span>
+          <h1 id="dpePageTitle">Visão geral</h1>
+          <p class="dpe-topbar-subtitle" id="dpePageSubtitle">Receitas, despesas, custos por curso e fechamento do mês.</p>
         </div>
-        <div class="topbar-actions">
+        <div class="topbar-actions dpe-ux-topbar-actions">
+          <div class="dpe-period-switcher">
+            <label for="dpeV2PeriodFilter">Mês em análise</label>
+            <div class="dpe-period-switcher-row">
+              <select id="dpeV2PeriodFilter" aria-label="Selecionar mês de trabalho"></select>
+              <span id="dpeV2PeriodContext" class="dpe-global-period-context"></span>
+            </div>
+          </div>
           <div class="directorate-switcher">
-            <label for="dpeDirectorateSelect">Diretoria em visualização</label>
+            <label for="dpeDirectorateSelect">Diretoria</label>
             <div class="directorate-switcher-row"><select id="dpeDirectorateSelect" aria-label="Trocar diretoria"></select><span id="dpeDirectorateAccessBadge" class="access-badge"></span></div>
           </div>
-          <span class="save-state" id="dpeSaveState"><span class="status-dot"></span> Banco sincronizado</span>
-          <a id="dpeFullExcel" href="/api/dpe/excel?diretoria=DPE" class="button secondary" download>Exportar</a>
-          <button class="button primary" id="dpeQuickAdd" data-write-action>+ Despesa</button>
+          <a class="button secondary dpe-excel-export" id="dpeExportExcel" href="/api/dpe/excel" download>Exportar Excel</a>
+          <span class="save-state" id="dpeSaveState"><span class="status-dot"></span> Sincronizado</span>
+          <button class="button primary dpe-context-action" id="dpeQuickAdd" type="button">+ Nova despesa</button>
         </div>
       </header>
-      <div id="dpeLoading" class="loading-bar hidden"><span></span></div>
+      <div id="dpeLoading" class="loading-bar hidden" aria-hidden="true"><span></span></div>
+      <div id="dpeBusyStatus" class="dpe-busy-status hidden" role="status" aria-live="polite"><span class="dpe-spinner" aria-hidden="true"></span><span>Atualizando dados…</span></div>
+      {% if local_demo %}
+      <div class="dpe-demo-banner" role="status">
+        <div class="dpe-demo-badge">DEMO LOCAL</div>
+        <div><strong>Ambiente de homologação com dados fictícios</strong><span>Os cursos, professores, receitas e despesas desta base são somente para testes. Alterações ficam no arquivo local <code>univc_dpe_demo.db</code>.</span></div>
+      </div>
+      {% endif %}
       <div id="dpeReadOnly" class="readonly-banner hidden">
         <span class="readonly-icon">⌁</span>
         <div><strong>Visualização somente leitura</strong><span>Você pode consultar a DPE, mas somente usuários vinculados a ela podem alterar ou importar dados.</span></div>
       </div>
-      <div id="dpeAlert" class="dpe-alert hidden"></div>
+      <div id="dpeAlert" class="dpe-alert hidden" role="status" aria-live="polite" tabindex="-1"></div>
 
-      <section id="section-dashboard" class="page-section active">
-        <div class="page-lead compact-lead">
-          <div><span class="eyebrow">DPE · Diretoria de Planejamento Econômico e Oferta</span><h2>Visão econômico-financeira consolidada</h2><p>A receita é informada uma única vez; folha e demais despesas também. Os indicadores são calculados automaticamente sobre a mesma base.</p></div>
-          <div class="indicator-actions"><a class="button secondary" href="/api/dpe/excel?diretoria=DPE" download>Exportar legado</a></div>
-        </div>
-        <div class="analysis-bar dpe-dashboard-filter">
-          <label><span>Referência</span><select id="dashboardReference"></select></label>
-          <label><span>Comparação</span><select id="dashboardComparison"></select></label>
-          <label><span>Janela</span><select id="dashboardWindow"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option><option value="all">Todo histórico</option></select></label>
-          <span id="dpeAnalysisContext" class="analysis-context">Atualização automática</span>
+      <nav class="dpe-workflow-strip" id="dpeWorkflowNav" aria-label="Fluxo mensal da DPE">
+        <span class="dpe-workflow-label">Fluxo do mês</span>
+        <button type="button" class="dpe-workflow-step" data-flow-section="receita-operacional"><b>1</b><span>Receitas</span></button>
+        <button type="button" class="dpe-workflow-step" data-flow-section="central-despesas"><b>2</b><span>Despesas</span></button>
+        <button type="button" class="dpe-workflow-step" data-flow-section="docencia"><b>3</b><span>Docência</span></button>
+        <button type="button" class="dpe-workflow-step" data-flow-section="rateio"><b>4</b><span>Distribuição</span></button>
+        <button type="button" class="dpe-workflow-step" data-flow-section="fechamento"><b>5</b><span>Fechamento</span></button>
+      </nav>
+
+      <section id="section-dashboard" class="page-section active cost-engine-section dpe-v2-dashboard dpe-decision-dashboard">
+        <div class="page-lead compact-lead dpe-v2-lead dpe-decision-lead">
+          <div>
+            <span class="eyebrow">Resumo do mês</span>
+            <h2>Como está este mês?</h2>
+            <p>Veja primeiro o resultado financeiro e o que ainda precisa ser resolvido. Detalhes de processo ficam disponíveis somente quando forem necessários.</p>
+          </div>
+          <div class="indicator-actions"><button class="button secondary" id="dpeV2Refresh" type="button">Atualizar dados</button></div>
         </div>
 
-        <div id="dashboardCards" class="metric-grid executive dpe-card-grid"></div>
-        <div class="dashboard-grid two-columns executive-grid">
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Fluxo mensal</span><h3>Receita × despesa</h3></div><span class="chart-unit">competência</span></div><div id="chartDashboard01" class="chart-canvas dpe-chart"></div></article>
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">DPE-02</span><h3>Índice de cobertura</h3></div><span class="chart-unit">mês + 12 meses</span></div><div id="chartDashboard02" class="chart-canvas dpe-chart"></div></article>
+        <div id="dpeV2ExecutiveCards" class="metric-grid executive dpe-card-grid dpe-v2-card-grid dpe-decision-kpis"></div>
+        <div id="dpeV2Meta" class="dpe-v2-meta dpe-decision-context"></div>
+
+        <div class="dashboard-grid two-columns dpe-v2-overview-grid dpe-decision-grid">
+          <article class="panel dpe-v2-next-action dpe-decision-next"><div id="dpeV2NextAction"></div></article>
+          <article class="panel dpe-decision-attention">
+            <div class="panel-heading responsive-heading">
+              <div><span class="eyebrow">Atenção</span><h3>O que precisa ser resolvido</h3></div>
+              <span id="dpeV2IssuesContext" class="chart-unit"></span>
+            </div>
+            <div id="dpeV2Issues" class="dpe-decision-issues"></div>
+          </article>
         </div>
-        <div class="dashboard-grid two-columns executive-grid">
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Despesas</span><h3>Composição do mês</h3></div><span class="chart-unit">sem CAPEX</span></div><div id="chartDashboard03" class="chart-canvas dpe-chart"></div></article>
-          <article class="panel attention-panel"><div class="panel-heading"><div><span class="eyebrow">Síntese</span><h3>Pontos de atenção</h3></div></div><div id="dashboardInsights" class="insights-list compact-insights"></div></article>
+
+        <article class="panel dpe-v2-offerings-panel dpe-decision-courses">
+          <div class="panel-heading responsive-heading">
+            <div><span class="eyebrow">Cursos</span><h3>Resultado por curso e contexto</h3></div>
+            <span id="dpeV2OfferingContext" class="chart-unit"></span>
+          </div>
+          <div class="table-wrap"><table class="data-table dpe-v2-offering-table"><thead><tr><th>Curso / contexto</th><th>Alunos</th><th>Receita</th><th>Custo distribuído</th><th>Resultado</th><th>Margem</th><th>Situação</th></tr></thead><tbody id="dpeV2OfferingTable"></tbody></table></div>
+        </article>
+
+        <div class="dpe-v2-bottom-grid dpe-decision-bottom">
+          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Visão consolidada</span><h3>Resumo por curso</h3></div><span class="chart-unit">receita × custo</span></div><div id="dpeV2ProductList" class="dpe-v2-product-list"></div></article>
+        </div>
+
+        <section class="dpe-analytics-suite" aria-labelledby="dpeAnalyticsTitle">
+          <div class="dpe-analytics-heading">
+            <div><span class="eyebrow">Analytics · domínio consolidado</span><h2 id="dpeAnalyticsTitle">Como este mês se compara aos anteriores?</h2><p>As análises abaixo usam a mesma receita, despesa e distribuição oficial do fluxo mensal. Nenhum número é duplicado em uma base paralela.</p></div>
+            <div class="dpe-analytics-filters">
+              <label><span>Janela</span><select id="dpeAnalyticsWindow"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option></select></label>
+              <button class="button secondary compact" id="dpeAnalyticsRefresh" type="button">Atualizar análises</button>
+            </div>
+          </div>
+
+          <div id="dpeAnalyticsCards" class="metric-grid executive dpe-analytics-cards"></div>
+          <div id="dpeAnalyticsLimitations" class="dpe-analytics-notes"></div>
+
+          <div class="dashboard-grid two-columns dpe-analytics-primary-grid">
+            <article class="panel chart-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Evolução mensal</span><h3>Receita × Despesas × Resultado</h3></div><span class="chart-unit" id="dpeAnalyticsTrendContext">últimos meses</span></div><div id="dpeAnalyticsTrendChart" class="dpe-analytics-chart"></div></article>
+            <article class="panel chart-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Rentabilidade</span><h3>Margem operacional <span class="dpe-help-tip" tabindex="0" data-tooltip="Percentual do resultado institucional sobre a receita total do período." aria-label="Ajuda: margem operacional">?</span></h3></div><span class="chart-unit">resultado ÷ receita total</span></div><div id="dpeAnalyticsMarginChart" class="dpe-analytics-chart"></div></article>
+          </div>
+
+          <details class="dpe-analytics-group" open>
+            <summary><div><strong>Onde estamos gastando?</strong><small>Categorias, setores e mudança em relação ao mês anterior.</small></div><span class="dpe-details-chevron">›</span></summary>
+            <div class="dpe-analytics-group-body">
+              <div class="dashboard-grid two-columns">
+                <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Categorias</span><h3>Despesas por categoria</h3></div></div><div id="dpeAnalyticsCategoryChart" class="dpe-analytics-chart tall"></div></article>
+                <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Setores</span><h3>Despesas por setor de origem</h3></div></div><div id="dpeAnalyticsSectorChart" class="dpe-analytics-chart tall"></div></article>
+              </div>
+              <article class="panel chart-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Mudança mensal</span><h3>Categoria atual × mês anterior</h3></div><span id="dpeAnalyticsCategoryCompareContext" class="chart-unit"></span></div><div id="dpeAnalyticsCategoryCompareChart" class="dpe-analytics-chart tall"></div></article>
+            </div>
+          </details>
+
+          <details class="dpe-analytics-group" open>
+            <summary><div><strong>Como estão os cursos?</strong><small>Receita, resultado, margem e indicadores por aluno dos cursos e contextos.</small></div><span class="dpe-details-chevron">›</span></summary>
+            <div class="dpe-analytics-group-body">
+              <div class="dashboard-grid two-columns">
+                <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Receita</span><h3>Receita por curso</h3></div></div><div id="dpeAnalyticsCourseRevenueChart" class="dpe-analytics-chart tall"></div></article>
+                <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Resultado</span><h3>Resultado por curso</h3></div></div><div id="dpeAnalyticsCourseResultChart" class="dpe-analytics-chart tall"></div></article>
+                <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Margem</span><h3>Margem por curso</h3></div></div><div id="dpeAnalyticsCourseMarginChart" class="dpe-analytics-chart tall"></div></article>
+                <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Eficiência</span><h3>Receita por aluno ativo</h3></div></div><div id="dpeAnalyticsCourseTicketChart" class="dpe-analytics-chart tall"></div></article>
+                <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Unit economics</span><h3>Custo por aluno × Receita por aluno <span class="dpe-help-tip" tabindex="0" data-tooltip="Compara o custo distribuído por aluno ativo com a receita atribuída por aluno ativo." aria-label="Ajuda: custo e receita por aluno">?</span></h3></div></div><div id="dpeAnalyticsCostTicketChart" class="dpe-analytics-chart tall"></div></article>
+                <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Composição</span><h3>Composição do custo por curso <span class="dpe-help-tip" tabindex="0" data-tooltip="Separa o custo docente, custos direcionados diretamente e custos compartilhados pelo motor de distribuição." aria-label="Ajuda: composição do custo">?</span></h3></div><span class="chart-unit">docentes · diretos · compartilhados</span></div><div id="dpeAnalyticsCompositionChart" class="dpe-analytics-chart tall"></div></article>
+              </div>
+              <article class="panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Base analítica</span><h3>Resultado econômico dos cursos</h3></div><span id="dpeAnalyticsCourseContext" class="chart-unit"></span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Curso</th><th>Alunos</th><th>Receita</th><th>Custo</th><th>Resultado</th><th>Margem</th><th>Receita/aluno</th><th>Custo/aluno</th></tr></thead><tbody id="dpeAnalyticsCourseTable"></tbody></table></div></article>
+            </div>
+          </details>
+
+          <details class="dpe-analytics-group" open>
+            <summary><div><strong>De onde veio o resultado?</strong><small>Waterfall institucional e evolução individual de um curso.</small></div><span class="dpe-details-chevron">›</span></summary>
+            <div class="dpe-analytics-group-body">
+              <div class="dashboard-grid two-columns">
+                <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Waterfall</span><h3>Da receita total ao resultado</h3></div></div><div id="dpeAnalyticsWaterfallChart" class="dpe-analytics-chart waterfall"></div><p id="dpeAnalyticsWaterfallNote" class="panel-note"></p></article>
+                <article class="panel chart-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Curso ao longo do tempo</span><h3>Receita × Custo × Resultado</h3></div><label class="dpe-analytics-course-filter"><span>Curso</span><select id="dpeAnalyticsCourseSelect"></select></label></div><div id="dpeAnalyticsCourseHistoryChart" class="dpe-analytics-chart waterfall"></div></article>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <details class="dpe-secondary-panel dpe-v2-month-details">
+          <summary>
+            <div><strong>Ver andamento do mês</strong><small>Acompanhe o preenchimento das etapas somente quando precisar.</small></div>
+            <span class="dpe-details-chevron">›</span>
+          </summary>
+          <div class="dpe-secondary-panel-body">
+            <article id="dpeV2Progress" class="panel dpe-v2-progress dpe-v2-progress-embedded"></article>
+            <div class="panel-heading responsive-heading dpe-v2-workflow-heading"><div><span class="eyebrow">Andamento</span><h3>Etapas do mês</h3></div><span class="chart-unit">clique para abrir</span></div>
+            <div id="dpeV2Workflow" class="dpe-v2-workflow"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="section-competencias" class="page-section cost-engine-section">
+        <div class="page-lead dpe-indicator-lead">
+          <div><span class="eyebrow">Configuração avançada</span><h2>Períodos e histórico</h2><p>O sistema guarda um retrato independente de cada mês para que mudanças futuras não alterem resultados anteriores. No uso normal, basta escolher o mês no topo da DPE.</p></div>
+          <button class="button primary" id="newCostPeriod" data-write-action>+ Abrir mês</button>
+        </div>
+        <div id="costPeriodCards" class="metric-grid executive dpe-metric-grid cost-engine-cards"></div>
+        <div class="cost-engine-layout">
+          <article class="panel cost-engine-list-panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow">Histórico</span><h3>Meses cadastrados</h3></div><span class="chart-unit">Preparação → Conferência</span></div>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>Mês</th><th>Situação</th><th>Contextos</th><th>Aberta por</th><th>Observação</th><th></th></tr></thead><tbody id="costPeriodsTable"></tbody></table></div>
+          </article>
+          <article class="panel cost-engine-detail-panel" id="costPeriodDetailPanel">
+            <div class="cost-engine-empty"><strong>Selecione um mês</strong><span>Os cursos e contextos preservados para esse período aparecerão aqui.</span></div>
+          </article>
         </div>
       </section>
 
-      <section id="section-receitas" class="page-section">
-        <div class="page-lead dpe-indicator-lead">
-          <div><span class="eyebrow">Base financeira</span><h2>Receitas</h2><p>Uma única receita líquida institucional por competência. A distribuição aos cursos presenciais é opcional e pode permanecer parcial.</p></div>
-          <button class="button primary" id="newRevenue" data-write-action>+ Receita</button>
+      <section id="section-produtividade" class="page-section cost-engine-section productivity-section">
+        <div class="page-lead dpe-indicator-lead"><div><span class="eyebrow">v0.12.3 · Trabalho mensal</span><h2>Produtividade</h2><p>Reaproveite o que faz sentido do mês anterior, gere despesas recorrentes e aplique políticas já conhecidas sem reconstruir o trabalho manualmente.</p></div></div>
+        <div class="analysis-bar productivity-filterbar"><label class="dpe-local-period-filter"><span>Mês de trabalho</span><select id="productivityPeriodFilter"></select></label><span id="productivityContext" class="analysis-context">Selecione uma competência editável</span></div>
+        <div class="dashboard-grid two-columns productivity-grid">
+          <article class="panel productivity-copy-panel"><div class="panel-heading"><div><span class="eyebrow">Copiar mês anterior</span><h3>Use o mês anterior como ponto de partida</h3><p class="panel-note">A cópia nunca fecha nem calcula o mês. Os dados entram como rascunho para revisão.</p></div></div><div id="productivityCopySummary" class="productivity-summary"></div><div class="productivity-options"><label class="check-field"><input id="copyPreviousRevenues" type="checkbox" checked><span>Receitas e alunos</span></label><label class="check-field"><input id="copyPreviousTeaching" type="checkbox" checked><span>Quadro docente e cargas</span></label><label class="check-field"><input id="overwritePreviousRevenues" type="checkbox"><span>Substituir receitas já preenchidas</span></label></div><div class="form-actions"><button class="button secondary" id="previewPreviousMonth" type="button">Ver prévia</button><button class="button primary" id="copyPreviousMonth" type="button" data-write-action disabled>Copiar itens selecionados</button></div><div id="copyPreviousResult" class="productivity-result hidden"></div></article>
+          <article class="panel productivity-policy-panel"><div class="panel-heading"><div><span class="eyebrow">Políticas em massa</span><h3>Aplicar sugestões conhecidas</h3><p class="panel-note">As políticas da v0.12.1 já valem para todos os meses. Aqui você apenas aplica em lote as sugestões que reconciliam corretamente.</p></div></div><div id="bulkPolicySummary" class="productivity-summary"></div><div class="form-actions"><button class="button secondary" id="previewBulkPolicies" type="button">Conferir sugestões</button><button class="button primary" id="applyBulkPolicies" type="button" data-write-action disabled>Aplicar sugestões válidas</button></div><div id="bulkPolicyResult" class="productivity-result hidden"></div></article>
         </div>
-        <div class="analysis-bar"><label><span>Competência</span><select id="financeRevenuePeriod"></select></label><span class="analysis-context">Atualização automática</span></div>
-        <div id="financeRevenueCards" class="metric-grid executive dpe-metric-grid"></div>
-        <div class="dashboard-grid two-columns executive-grid">
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Histórico</span><h3>Evolução da receita líquida</h3></div></div><div id="financeRevenueChart" class="chart-canvas dpe-chart large"></div></article>
-          <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Distribuição opcional</span><h3>Receita dos cursos presenciais</h3></div><button class="button secondary compact" id="newCourseRevenue" data-write-action>+ Curso</button></div><p class="panel-note">A parcela não distribuída pode corresponder a EAD, semipresencial, cursos técnicos, mestrado e outras receitas institucionais.</p><div class="table-wrap"><table class="data-table"><thead><tr><th>Curso</th><th>Diretoria</th><th>Receita atribuída</th><th>% da receita do mês</th><th></th></tr></thead><tbody id="courseRevenueTable"></tbody></table></div></article>
+        <article class="panel recurring-expense-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Despesas recorrentes</span><h3>Modelos que se repetem todo mês</h3><p class="panel-note">Cadastre uma vez. Ao gerar no mês, o sistema evita duplicidade e pode aplicar a política de distribuição vinculada.</p></div><div class="indicator-actions"><button class="button secondary compact" id="newRecurringExpense" type="button" data-write-action>+ Novo modelo</button><button class="button primary compact" id="generateRecurringExpenses" type="button" data-write-action>Gerar no mês</button></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Modelo</th><th>Valor</th><th>Categoria / setor</th><th>Política</th><th>Dia</th><th>Status</th><th></th></tr></thead><tbody id="recurringExpensesTable"></tbody></table></div></article>
+        <article class="panel productivity-links-panel"><div><span class="eyebrow">Edição em massa</span><h3>Classificação de várias despesas</h3><p>Selecione despesas diretamente em <strong>Despesas → Lançamentos</strong> e aplique categoria/setor em uma única ação. A grade de Receitas já salva várias linhas de forma atômica.</p></div><button class="button secondary" type="button" data-go="central-despesas">Ir para Despesas</button></article>
+      </section>
+
+      <section id="section-catalogo" class="page-section cost-engine-section">
+        <div class="page-lead dpe-indicator-lead">
+          <div><span class="eyebrow">Cadastro econômico</span><h2>Cursos e contextos</h2><p>Os cursos vêm do catálogo acadêmico oficial e são a entidade principal da DPE. Crie um contexto adicional somente quando turno, unidade, local, modalidade ou outro agrupamento precisarem ser analisados separadamente.</p></div>
+          <div class="indicator-actions"><button class="button secondary" type="button" data-go="economia">← Voltar para Resultado por curso</button><button class="button secondary" id="newCostProduct" data-write-action>+ Vincular curso oficial</button><button class="button primary" id="newCostOffering" data-write-action>+ Contexto opcional</button></div>
+        </div>
+        <div id="costCatalogCards" class="metric-grid executive dpe-metric-grid cost-engine-cards"></div>
+        <article class="panel cost-catalog-courses-panel">
+          <div class="panel-heading responsive-heading"><div><span class="eyebrow">1. Cursos</span><h3>Cadastro principal</h3><p class="panel-note">Administração, Direito, Enfermagem, ADS etc. Use “Ver contextos” somente quando aquele curso possuir desdobramentos adicionais.</p></div><span class="chart-unit">cadastro permanente</span></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Código</th><th>Curso</th><th>Nível</th><th>Vigência</th><th>Contextos</th><th>Status</th><th></th></tr></thead><tbody id="costProductsTable"></tbody></table></div>
+        </article>
+        <article class="panel cost-catalog-offerings-panel">
+          <div class="panel-heading responsive-heading"><div><span class="eyebrow">2. Contextos opcionais</span><h3>Desdobramentos do curso</h3><p class="panel-note">Não é obrigatório criar contextos. Use-os apenas quando uma parte do curso precisar ter alunos, receita, docência ou custos analisados separadamente.</p></div><select id="costOfferingProductFilter" class="compact-select" aria-label="Filtrar contextos por curso"><option value="">Todos os cursos</option></select></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Curso / contexto</th><th>Modalidade</th><th>Turno</th><th>Local</th><th>Vigência</th><th>Status</th><th></th></tr></thead><tbody id="costOfferingsTable"></tbody></table></div>
+        </article>
+        <article class="panel cost-engine-principle"><div><span class="eyebrow">Histórico preservado</span><h3>Alterar o cadastro atual não reescreve meses anteriores.</h3><p>Se Direito Noturno mudar de configuração no futuro, os meses já registrados continuam com o retrato que possuíam naquele período.</p></div></article>
+      </section>
+
+      <section id="section-receita-operacional" class="page-section cost-engine-section revenue-operations-section">
+        <div class="page-lead dpe-indicator-lead revenue-operations-lead">
+          <div><span class="eyebrow">Entradas do mês</span><h2>Receitas</h2><p>Registre diretamente a receita dos cursos e outras entradas institucionais. O lançamento financeiro agora utiliza apenas o valor efetivo da receita.</p></div>
+          <div class="indicator-actions"><button class="button primary" id="saveRevenueGrid" data-write-action type="button" disabled>Salvar receitas dos cursos</button></div>
+        </div>
+        <div class="analysis-bar revenue-filterbar"><label class="dpe-local-period-filter"><span>Mês</span><select id="revenuePeriodFilter"></select></label><span id="revenueContext" class="analysis-context">Selecione um mês</span></div>
+        <div id="revenueCards" class="metric-grid executive dpe-metric-grid revenue-summary-grid"></div>
+        <article class="panel revenue-grid-panel">
+          <div class="panel-heading responsive-heading"><div><span class="eyebrow">Cursos do mês</span><h3>Receita por curso/contexto</h3><p class="panel-note">Informe apenas o valor da receita atribuída a cada curso. Contextos só aparecem quando o curso foi desdobrado operacionalmente.</p></div><span id="revenueGridStatus" class="chart-unit">Nenhuma alteração</span></div>
+          <div class="table-wrap revenue-table-wrap"><table class="data-table revenue-grid-table"><thead><tr><th>Curso / contexto</th><th>Receita</th><th>Situação</th></tr></thead><tbody id="revenueGridBody"></tbody></table></div>
+          <div id="revenueGridErrors" class="form-errors revenue-grid-errors hidden" role="alert"></div>
+        </article>
+        <article class="panel revenue-other-panel">
+          <div class="panel-heading responsive-heading"><div><span class="eyebrow">Outras entradas</span><h3>Outras receitas</h3><p class="panel-note">Registre aluguel de salas, quadras, utilização de estrutura ou filial, serviços, eventos e qualquer outra receita institucional.</p></div></div>
+          <form id="otherRevenueForm" class="filter-grid compact-form">
+            <label><span>Categoria</span><select id="otherRevenueCategory" required></select></label>
+            <label><span>Vinculação</span><select id="otherRevenueCourse"><option value="">Institucional (sem curso)</option></select></label><label><span>Descrição</span><input id="otherRevenueDescription" maxlength="255" placeholder="Ex.: Aluguel da quadra - setembro"></label>
+            <label><span>Valor</span><input id="otherRevenueAmount" type="number" min="0" step="0.01" required placeholder="0,00"></label>
+            <label><span>Observação</span><input id="otherRevenueNotes" maxlength="500" placeholder="Opcional"></label>
+            <div class="filter-actions"><button class="button primary" type="submit" data-write-action>+ Adicionar receita</button></div>
+          </form>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Categoria</th><th>Descrição</th><th>Valor</th><th></th></tr></thead><tbody id="otherRevenueTable"></tbody></table></div>
+          <div class="panel-heading responsive-heading revenue-category-heading"><div><span class="eyebrow">Categorias</span><h3>Criar categoria própria</h3></div></div>
+          <form id="revenueCategoryForm" class="filter-grid compact-form">
+            <label><span>Nome</span><input id="revenueCategoryName" maxlength="160" placeholder="Ex.: Convênios"></label>
+            <label><span>Código</span><input id="revenueCategoryCode" maxlength="80" placeholder="CONVENIOS"></label>
+            <label><span>Uso</span><select id="revenueCategoryScope"><option value="INSTITUTIONAL">Institucional</option><option value="BOTH">Institucional ou curso</option><option value="COURSE">Somente curso</option></select></label>
+            <div class="filter-actions"><button class="button secondary" type="submit" data-write-action>+ Criar categoria</button></div>
+          </form>
+        </article>
+        <article class="panel cost-engine-principle"><div><span class="eyebrow">Regra financeira</span><h3>Receita institucional não melhora automaticamente a margem de um curso.</h3><p>Receitas sem vínculo com curso entram no resultado institucional. Só receitas explicitamente ligadas a um curso participam do resultado daquele curso.</p></div></article>
+      </section>
+
+      <section id="section-central-despesas" class="page-section cost-engine-section">
+        <div class="page-lead dpe-indicator-lead expense-page-lead">
+          <div><span class="eyebrow">Gastos do mês</span><h2>Despesas</h2><p>Trabalhe uma tarefa por vez: registre os gastos, confira entradas recebidas e ajuste categorias ou setores somente quando necessário.</p></div>
+          <div class="indicator-actions"><button class="button primary" id="newCostExpense" data-write-action>+ Nova despesa</button></div>
+        </div>
+
+        <nav class="expense-subnav" role="tablist" aria-label="Áreas de despesas">
+          <button type="button" class="expense-subnav-item active" role="tab" data-expense-view="ledger" aria-selected="true" aria-controls="expenseViewLedger"><span>Lançamentos</span><small>Registrar e conferir gastos do mês</small></button>
+          <button type="button" class="expense-subnav-item" role="tab" data-expense-view="imports" aria-selected="false" aria-controls="expenseViewImports"><span>Importações <b id="expenseImportsBadge" class="expense-tab-badge hidden"></b></span><small>Arquivos e entradas aguardando conferência</small></button>
+          <button type="button" class="expense-subnav-item" role="tab" data-expense-view="settings" aria-selected="false" aria-controls="expenseViewSettings"><span>Categorias e setores</span><small>Cadastros usados para classificar despesas</small></button>
+        </nav>
+
+        <div class="expense-meaning-guide" aria-label="Como a DPE interpreta uma despesa">
+          <div><span>1</span><strong>Quem absorve?</strong><small>Direta, compartilhada ou institucional</small></div>
+          <div><span>2</span><strong>O que é?</strong><small>Categoria do gasto</small></div>
+          <div><span>3</span><strong>Onde surgiu?</strong><small>Setor / centro de custo opcional</small></div>
+          <div><span>4</span><strong>Se compartilhada</strong><small>Revise a divisão em Distribuição</small></div>
+        </div>
+
+        <div id="expenseViewLedger" class="expense-view" data-expense-panel="ledger">
+          <div id="costExpenseCards" class="metric-grid executive dpe-metric-grid expense-summary-grid"></div>
+          <div class="analysis-bar cost-expense-filterbar expense-primary-filters">
+            <label class="dpe-local-period-filter"><span>Mês</span><select id="costExpensePeriodFilter"></select></label>
+            <label><span>Categoria</span><select id="costExpenseCategoryFilter"><option value="">Todas</option></select></label>
+            <label><span>Tratamento</span><select id="costExpenseScopeFilter"><option value="">Todos</option><option value="DIRECT">Diretas</option><option value="SHARED">Compartilhadas</option><option value="INSTITUTIONAL">Institucionais</option></select></label>
+            <label><span>Status</span><select id="costExpenseStatusFilter"><option value="ACTIVE" selected>Ativas</option><option value="VOIDED">Estornadas</option><option value="">Todas</option></select></label>
+            <label class="cost-expense-search"><span>Buscar</span><input id="costExpenseSearch" type="search" placeholder="Descrição, fornecedor ou documento"></label>
+            <details class="expense-filter-details">
+              <summary>Mais filtros</summary>
+              <div class="expense-filter-details-body">
+                <label><span>Tipo</span><select id="costExpenseKindFilter"><option value="">Todos</option><option value="GENERAL">Demais despesas</option><option value="PAYROLL">Folha / pessoal</option></select></label>
+                <label><span>Setor</span><select id="costExpenseCenterFilter"><option value="">Todos</option></select></label>
+                <label><span>Origem</span><select id="costExpenseSourceFilter"><option value="">Todas</option><option value="MANUAL">Manual</option><option value="EXCEL">Excel</option><option value="API">API</option><option value="REQUEST">Requisição</option><option value="OTHER">Outra</option></select></label>
+              </div>
+            </details>
+          </div>
+          <article class="panel cost-expense-ledger-panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow">Lançamentos</span><h3>Despesas registradas</h3><p class="panel-note">O tratamento mostra imediatamente se o gasto pertence a um curso, será dividido entre cursos ou ficará somente no resultado institucional.</p></div><span id="costExpenseLedgerContext" class="chart-unit"></span></div>
+            <div class="expense-bulk-bar"><label class="bulk-select-all"><input id="selectAllCostExpenses" type="checkbox"><span>Selecionar visíveis</span></label><span id="costExpenseSelectionContext">Nenhuma selecionada</span><button class="button secondary compact" id="bulkClassifyExpenses" data-write-action disabled>Classificar selecionadas</button></div>
+            <div class="table-wrap"><table class="data-table cost-expense-table"><thead><tr><th class="bulk-check-column"></th><th>Despesa</th><th>Valor</th><th>Categoria</th><th>Setor</th><th>Tratamento</th><th></th></tr></thead><tbody id="costExpensesTable"></tbody></table></div>
+          </article>
+        </div>
+
+        <div id="expenseViewImports" class="expense-view hidden" data-expense-panel="imports">
+          <article class="panel cost-expense-import-panel expense-focus-panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow">Excel com validação</span><h3>Importar despesas reais</h3><p class="panel-note">Envie a planilha, confira a prévia e confirme somente quando todas as linhas estiverem válidas. Duplicatas bloqueiam o lote antes de chegar ao financeiro.</p></div><div class="indicator-actions"><a class="button secondary compact" href="/api/dpe/cost-engine/expense-import-template.xlsx?diretoria=DPE">Baixar modelo</a><button class="button primary compact" id="uploadCostExpenseExcel" data-write-action>Importar Excel</button><input class="hidden" id="costExpenseExcelFile" type="file" accept=".xlsx,.xlsm"></div></div>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>Mês</th><th>Origem</th><th>Identificação</th><th>Status</th><th>Linhas</th><th>Criado por</th><th></th></tr></thead><tbody id="costExpenseBatchesTable"></tbody></table></div>
+          </article>
+          <article class="panel cost-engine-principle expense-helper-panel"><span class="eyebrow">Como funciona</span><h3>Receber não significa contabilizar.</h3><p>Uma entrada só passa a compor as despesas do mês depois de ser validada e transformada em lançamento oficial. Isso permite conectar Excel, API ou requisições sem contaminar o histórico financeiro.</p></article>
+        </div>
+
+        <div id="expenseViewSettings" class="expense-view hidden" data-expense-panel="settings">
+          <div class="dashboard-grid two-columns cost-expense-master-grid">
+            <article class="panel">
+              <div class="panel-heading responsive-heading"><div><span class="eyebrow">Setores</span><h3>Centros de custo</h3><p class="panel-note">Use quando for útil identificar onde o dinheiro foi gasto. É opcional no lançamento.</p></div><button class="button secondary compact" id="newCostCenter" data-write-action>+ Novo setor</button></div>
+              <div class="table-wrap"><table class="data-table"><thead><tr><th>Código</th><th>Setor</th><th>Pai</th><th>Uso</th><th>Status</th><th></th></tr></thead><tbody id="costCentersTable"></tbody></table></div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading responsive-heading"><div><span class="eyebrow">Classificação</span><h3>Categorias de despesa</h3><p class="panel-note">Toda despesa precisa de uma categoria. Ela também pode sugerir como o gasto será distribuído entre os cursos.</p></div><button class="button secondary compact" id="newExpenseCategory" data-write-action>+ Nova categoria</button></div>
+              <div class="table-wrap"><table class="data-table"><thead><tr><th>Código</th><th>Categoria</th><th>Distribuição sugerida</th><th>Uso</th><th>Status</th><th></th></tr></thead><tbody id="costExpenseCategoriesTable"></tbody></table></div>
+            </article>
+          </div>
+          <article class="panel cost-engine-principle expense-helper-panel"><span class="eyebrow">Histórico preservado</span><h3>Renomear uma categoria ou setor não muda despesas antigas.</h3><p>Cada lançamento guarda o retrato da classificação usada naquele mês. Alterações no cadastro afetam apenas novos lançamentos.</p></article>
         </div>
       </section>
 
-      <section id="section-despesas" class="page-section">
-        <div class="page-lead dpe-indicator-lead">
-          <div><span class="eyebrow">Base financeira</span><h2>Despesas e folha</h2><p>Cada despesa existe uma única vez. A folha é uma despesa do tipo Folha e os rateios apenas dizem a quais cursos ela pertence.</p></div>
-          <button class="button primary" id="newExpense" data-write-action>+ Despesa</button>
+      <section id="section-docencia" class="page-section cost-engine-section">
+        <div class="page-lead dpe-indicator-lead teaching-page-lead">
+          <div><span class="eyebrow">Equipe docente do mês</span><h2>Docência</h2><p>Separe o que é cadastro permanente, vínculo do mês, custo conciliado e atividade docente. Cada informação fica no lugar certo sem alterar o histórico dos meses anteriores.</p></div>
         </div>
-        <div class="analysis-bar"><label><span>Competência</span><select id="financeExpensePeriod"></select></label><label><span>Tipo</span><select id="financeExpenseKind"><option value="">Todas</option><option value="PAYROLL">Folha</option><option value="GENERAL">Demais despesas</option></select></label><span class="analysis-context">Atualização automática</span></div>
-        <div id="financeExpenseCards" class="metric-grid executive dpe-metric-grid"></div>
-        <div class="dashboard-grid two-columns executive-grid"><article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Composição</span><h3>Despesas por categoria</h3></div></div><div id="financeExpenseChart" class="chart-canvas dpe-chart large"></div></article><article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Folha</span><h3>Docente × administrativa</h3></div></div><div id="financePayrollChart" class="chart-canvas dpe-chart large"></div></article></div>
-        <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Base única</span><h3>Lançamentos da competência</h3></div><span class="chart-unit">CAPEX é exibido, mas não entra no DPE-02</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Categoria</th><th>Valor</th><th>Rateado</th><th>Não rateado</th><th></th></tr></thead><tbody id="expenseTable"></tbody></table></div></article>
+        <div id="teachingCards" class="metric-grid executive dpe-metric-grid teaching-summary-grid"></div>
+
+        <nav class="teaching-subnav" role="tablist" aria-label="Áreas de docentes">
+          <button type="button" class="teaching-subnav-item active" role="tab" data-teaching-view="activities" aria-selected="true" aria-controls="teachingViewActivities"><span>Atividades docentes</span><small>Disciplina, curso e carga do mês</small></button>
+          <button type="button" class="teaching-subnav-item" role="tab" data-teaching-view="payroll" aria-selected="false" aria-controls="teachingViewPayroll"><span>Vínculos e custos <b id="teachingPayrollBadge" class="teaching-tab-badge hidden"></b></span><small>Vínculo mensal e conciliação financeira</small></button>
+          <button type="button" class="teaching-subnav-item" role="tab" data-teaching-view="teachers" aria-selected="false" aria-controls="teachingViewTeachers"><span>Cadastro de docentes</span><small>Identidade e vínculo padrão da DPE</small></button>
+          <button type="button" class="teaching-subnav-item" role="tab" data-teaching-view="subjects" aria-selected="false" aria-controls="teachingViewSubjects"><span>Disciplinas</span><small>Cadastro permanente</small></button>
+        </nav>
+
+        <div id="teachingViewActivities" class="teaching-view" data-teaching-panel="activities">
+          <div class="analysis-bar teaching-filterbar teaching-activity-filterbar">
+            <label class="dpe-local-period-filter"><span>Mês</span><select id="teachingPeriodFilter"></select></label>
+            <label id="teachingTeacherFilterWrap"><span>Docente</span><select id="teachingTeacherFilter"><option value="">Todos os docentes</option></select></label>
+            <span id="teachingContext" class="analysis-context">Veja somente as atividades e cargas registradas no mês selecionado</span>
+          </div>
+          <article class="panel teaching-activities-panel">
+            <div class="panel-heading responsive-heading">
+              <div><span class="eyebrow">Atividades do mês</span><h3>Carga docente</h3><p class="panel-note">Cada linha representa uma atividade docente vinculada a uma disciplina e aos cursos/contextos realmente atendidos.</p></div>
+              <div class="teaching-panel-actions"><span id="teachingActivityContext" class="chart-unit"></span><button class="button primary compact" id="newTeachingActivity" data-write-action>+ Registrar atividade</button></div>
+            </div>
+            <div class="table-wrap"><table class="data-table teaching-activity-table"><thead><tr><th>Docente</th><th>Disciplina / turma</th><th>Curso(s)</th><th>Carga</th><th>Período</th><th></th></tr></thead><tbody id="teachingActivitiesTable"></tbody></table></div>
+          </article>
+        </div>
+
+        <div id="teachingViewPayroll" class="teaching-view hidden" data-teaching-panel="payroll">
+          <article class="panel teaching-relationships-panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow">Vínculo mensal</span><h3>Docentes do mês e custos conciliados</h3><p class="panel-note">O cadastro permanente define o vínculo padrão. Aqui você confere o vínculo efetivo desta competência, a carga registrada e o custo financeiro já associado ao docente.</p></div><span class="chart-unit">alterações valem somente para o mês selecionado</span></div>
+            <div class="table-wrap"><table class="data-table teaching-relationships-table"><thead><tr><th>Docente</th><th>Vínculo no mês</th><th>Carga</th><th>Custo conciliado</th><th></th></tr></thead><tbody id="teachingPeriodTeachersTable"></tbody></table></div>
+          </article>
+          <article class="panel payroll-reconciliation-panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow">Conciliação financeira</span><h3>Lançamentos de custo docente</h3><p class="panel-note">Vincule cada lançamento financeiro ao docente correto. O lançamento continua sendo a fonte do custo; o cadastro do docente não cria despesas automaticamente.</p></div><span class="chart-unit">nenhuma sugestão é confirmada automaticamente</span></div>
+            <div id="teachingPayrollNotice" class="teaching-context-notice"></div>
+            <div class="table-wrap"><table class="data-table payroll-match-table"><thead><tr><th>Lançamento</th><th>Valor</th><th>Docente</th><th>Situação</th><th></th></tr></thead><tbody id="payrollReconciliationTable"></tbody></table></div>
+          </article>
+        </div>
+
+        <div id="teachingViewTeachers" class="teaching-view hidden" data-teaching-panel="teachers">
+          <article class="panel teaching-master-panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow">Cadastro permanente da DPE</span><h3>Docentes</h3><p class="panel-note">A identidade é institucional, mas a participação na DPE possui perfil próprio. Defina o vínculo padrão aqui; atividades e custos continuam sendo mensais.</p></div><button class="button primary compact" id="newCostTeacher" data-write-action>+ Docente</button></div>
+            <div class="table-wrap"><table class="data-table teachers-master-table"><thead><tr><th>Docente</th><th>Vínculo padrão</th><th>Identificação</th><th>Nomes reconhecidos</th><th>Status DPE</th><th></th></tr></thead><tbody id="costTeachersTable"></tbody></table></div>
+          </article>
+        </div>
+
+        <div id="teachingViewSubjects" class="teaching-view hidden" data-teaching-panel="subjects">
+          <article class="panel teaching-master-panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow">Cadastro permanente</span><h3>Disciplinas</h3><p class="panel-note">A disciplina é cadastrada uma vez e depois pode aparecer com diferentes docentes, turmas e cursos.</p></div><button class="button primary compact" id="newCostSubject" data-write-action>+ Disciplina</button></div>
+            <div class="table-wrap"><table class="data-table subjects-master-table"><thead><tr><th>Código</th><th>Disciplina</th><th>Integração</th><th>Status</th><th></th></tr></thead><tbody id="costSubjectsTable"></tbody></table></div>
+          </article>
+        </div>
+
+        <article class="panel cost-engine-principle teaching-history-note"><span class="eyebrow">Histórico protegido</span><h3>Cadastro, vínculo, custo e atividade são informações diferentes.</h3><p>Alterar o vínculo padrão de um docente não reescreve competências anteriores. Cada mês preserva seu vínculo, suas atividades, seus custos conciliados e os snapshots usados no rateio.</p></article>
       </section>
 
-      <section id="section-cursos" class="page-section">
-        <div class="page-lead dpe-indicator-lead">
-          <div><span class="eyebrow">Análise econômica dos cursos</span><h2>Resultado econômico por curso</h2><p>A leitura começa pela receita e pela despesa/custo conhecido de cada curso. Resultado, despesa sobre receita e margem só são calculados quando os dois lados da apuração existem.</p></div>
-          <button class="button primary" id="newCourseCost" data-write-action>+ Custo do curso</button>
+      <section id="section-rateio" class="page-section cost-engine-section allocation-ux-section">
+        <div class="page-lead dpe-indicator-lead allocation-ux-lead">
+          <div><span class="eyebrow">Custos dos cursos</span><h2>Distribuição de custos</h2><p>Decida como cada despesa direta ou compartilhada chega aos cursos. O sistema sugere uma forma quando possível e mostra a divisão em reais antes de atualizar o mês.</p></div>
+          <div class="indicator-actions"><button class="button primary" id="calculateAllocationRun" data-write-action>Atualizar distribuição</button></div>
         </div>
-        <div class="course-reading-guide" aria-label="Como ler o resultado econômico do curso">
-          <div><span>1 · Receita</span><strong>Quanto foi atribuído ao curso</strong><small>Pode permanecer pendente quando ainda não houver uma distribuição confiável.</small></div>
-          <div><span>2 · Despesa / custo</span><strong>Quanto o curso consome</strong><small>Vem da apuração gerencial ou, quando ela não existe, das despesas reais rateadas.</small></div>
-          <div><span>3 · Resultado</span><strong>Receita − despesa/custo</strong><small>Mostra em reais quanto permanece ou falta depois do custo considerado.</small></div>
-          <div><span>4 · Relação</span><strong>Despesa/receita e margem</strong><small>Mostram quanto da receita é consumido e quanto permanece depois do custo.</small></div>
+        <article class="panel allocation-ux-intro">
+          <div><span class="eyebrow">Decisão administrativa</span><h3>Escolha a lógica; o sistema faz a conta.</h3><p>Despesas Diretas já possuem um curso de destino. Nas Compartilhadas, escolha entre carga horária, alunos, receita, divisão igual ou definição manual. Custos docentes conciliados também podem acompanhar as atividades do docente.</p></div>
+          <div class="dpe-ux-explainer-steps"><span><strong>1.</strong> Escolha como dividir</span><span><strong>2.</strong> Veja quanto vai para cada curso</span><span><strong>3.</strong> Atualize os custos do mês</span></div>
+        </article>
+        <div class="analysis-bar allocation-filterbar allocation-ux-filterbar">
+          <label class="dpe-local-period-filter"><span>Mês</span><select id="allocationPeriodFilter"></select></label>
+          <span id="allocationContext" class="analysis-context">Confira as despesas que precisam de atenção</span>
         </div>
-        <div class="analysis-bar"><label><span>Competência</span><select id="financeCoursePeriod"></select></label><label><span>Curso</span><select id="financeCourseFilter"><option value="">Todos os cursos</option></select></label><span class="analysis-context">Clique em um curso para aprofundar a leitura</span></div>
-        <div id="financeCourseCards" class="metric-grid executive dpe-metric-grid"></div>
-        <div class="dashboard-grid two-columns executive-grid course-analysis-grid">
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Valores absolutos</span><h3>Receita × despesa/custo por curso</h3></div><span class="chart-unit">R$</span></div><p class="panel-note">Quando apenas uma das duas barras aparece, a apuração daquele curso ainda está incompleta.</p><div id="courseRevenueExpenseChart" class="chart-canvas dpe-chart large"></div></article>
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Resultado</span><h3>Resultado econômico conhecido</h3></div><span class="chart-unit">receita − custo</span></div><p class="panel-note">Valores positivos indicam sobra sobre os custos considerados; valores negativos indicam que o custo conhecido supera a receita atribuída.</p><div id="courseResultChart" class="chart-canvas dpe-chart large"></div></article>
+        <div id="allocationCards" class="metric-grid executive dpe-metric-grid cost-engine-cards"></div>
+
+        <article class="panel allocation-review-panel">
+          <div class="panel-heading responsive-heading"><div><span class="eyebrow">Mesa de trabalho</span><h3>Como cada despesa chega aos cursos</h3><p class="panel-note">Despesas institucionais ficam fora desta etapa. Confira as diretas e escolha a forma de distribuição das compartilhadas.</p></div><span id="allocationExpenseContext" class="chart-unit"></span></div>
+          <div class="allocation-workbench-controls"><label><span>Buscar despesa</span><input id="allocationExpenseSearch" type="search" placeholder="Ex.: energia, Adobe, laboratório"></label><label><span>Situação</span><select id="allocationExpenseStatusFilter"><option value="ALL">Todas</option><option value="PENDING">Precisam de revisão</option><option value="READY">Prontas</option></select></label></div>
+          <div class="table-wrap"><table class="data-table allocation-expense-table"><thead><tr><th>Despesa</th><th>Valor / tratamento</th><th>Destino econômico</th><th>Forma de distribuição</th><th>Situação</th><th></th></tr></thead><tbody id="allocationExpensesTable"></tbody></table></div>
+        </article>
+
+        <article class="panel allocation-month-preview-panel">
+          <div class="panel-heading responsive-heading"><div><span class="eyebrow">Prévia consolidada</span><h3>Como o mês ficará com a configuração atual</h3><p class="panel-note">A prévia não grava um novo cálculo. Ela mostra o impacto das configurações atuais por curso antes de atualizar a distribuição.</p></div><span id="allocationMonthPreviewContext" class="chart-unit"></span></div>
+          <div class="table-wrap"><table class="data-table allocation-month-preview-table"><thead><tr><th>Curso / contexto</th><th>Custo confirmado</th><th>Nova prévia</th><th>Variação</th><th>Receita</th><th>Resultado</th><th>Margem</th></tr></thead><tbody id="allocationMonthPreviewTable"></tbody></table></div>
+          <div id="allocationMonthReconciliation" class="allocation-month-reconciliation"></div>
+        </article>
+
+        <div class="dashboard-grid two-columns allocation-result-grid">
+          <article class="panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow">Resultado atual</span><h3>Custo distribuído por curso</h3><p class="panel-note">Abra a composição para entender quais despesas formam o valor de cada curso/contexto.</p></div><span id="allocationResultContext" class="chart-unit"></span></div>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>Curso / contexto</th><th>Custo atribuído</th><th>Despesas</th><th></th></tr></thead><tbody id="allocationByOfferingTable"></tbody></table></div>
+          </article>
+          <article class="panel allocation-issues-panel">
+            <div class="panel-heading responsive-heading"><div><span class="eyebrow">Conferência</span><h3>O que ainda precisa de atenção</h3></div><button class="button primary compact hidden" id="makeAllocationOfficial" data-write-action>Confirmar cálculo do mês</button></div>
+            <div id="allocationIssuesList" class="allocation-issues-list"></div>
+          </article>
         </div>
-        <div class="dashboard-grid two-columns executive-grid course-analysis-grid">
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Eficiência</span><h3>Despesa sobre receita</h3></div><span class="chart-unit">%</span></div><p class="panel-note">Exemplo: 60% significa que R$ 60 de cada R$ 100 de receita são consumidos pelo custo considerado. A linha de referência é 100% menos a meta vigente de margem.</p><div id="courseExpenseRatioChart" class="chart-canvas dpe-chart large"></div></article>
-          <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução</span><h3 id="courseEvolutionTitle">Selecione um curso</h3></div><span class="chart-unit">histórico</span></div><div id="courseEvolutionChart" class="chart-canvas dpe-chart large"><div class="course-breakdown-empty">Selecione um curso para acompanhar receita, despesa/custo e resultado ao longo do tempo.</div></div></article>
-        </div>
-        <article class="panel"><div class="panel-heading"><div><span class="eyebrow">Base por curso</span><h3>Receita, despesa/custo e resultado</h3></div><span class="chart-unit">clique em uma linha para detalhar</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Curso</th><th>Receita</th><th>Despesa / custo considerado</th><th>Resultado</th><th>Despesa / receita</th><th>Margem</th><th>Diferença a reconciliar</th><th>Apuração</th></tr></thead><tbody id="courseFinanceTable"></tbody></table></div></article>
-        <article class="panel" id="courseBreakdownPanel"><div class="panel-heading"><div><span class="eyebrow">Detalhamento do curso</span><h3 id="courseBreakdownTitle">Selecione um curso</h3></div></div><div id="courseBreakdown" class="course-breakdown-empty">Escolha um curso no filtro acima para visualizar como sua apuração foi formada.</div></article>
+
+        <details class="panel allocation-advanced-details">
+          <summary><div><span class="eyebrow">Detalhes do cálculo</span><strong>Dados utilizados e histórico de atualizações</strong><small>Abra somente quando precisar conferir cargas, bases ou cálculos anteriores.</small></div><span class="details-chevron">›</span></summary>
+          <div class="allocation-advanced-body">
+            <div class="analysis-bar allocation-run-selector"><label><span>Resultado exibido</span><select id="allocationRunFilter"><option value="">Sem cálculo</option></select></label><span id="allocationRunContext" class="analysis-context"></span></div>
+            <div class="dashboard-grid two-columns allocation-operational-grid">
+              <article class="panel panel-nested">
+                <div class="panel-heading responsive-heading"><div><span class="eyebrow">Dados utilizados</span><h3>Bases da distribuição</h3></div><button class="button secondary compact" id="editAllocationDrivers" data-write-action>Ajustar carga dos cursos</button></div>
+                <p class="panel-note">A carga pode vir das atividades docentes ou ser ajustada. Alunos são dados econômicos auxiliares; a receita vem do módulo Receitas.</p>
+                <div class="table-wrap"><table class="data-table"><thead><tr><th>Curso / contexto</th><th>Horas</th><th>Alunos</th><th>Receita</th></tr></thead><tbody id="allocationDriversTable"></tbody></table></div>
+              </article>
+              <article class="panel panel-nested allocation-runs-panel">
+                <div class="panel-heading responsive-heading"><div><span class="eyebrow">Histórico</span><h3>Atualizações da distribuição</h3></div></div>
+                <div class="table-wrap"><table class="data-table"><thead><tr><th>Cálculo</th><th>Status</th><th>Despesa</th><th>Distribuído</th><th>Pendente</th><th></th></tr></thead><tbody id="allocationRunsTable"></tbody></table></div>
+              </article>
+            </div>
+          </div>
+        </details>
+
+        <article class="panel cost-engine-principle allocation-memory-note"><span class="eyebrow">Memória do cálculo</span><h3>Todo valor continua rastreável.</h3><p>A interface simplifica a decisão, mas a memória técnica permanece preservada: despesa de origem, critério, base utilizada, percentual e valor atribuído a cada curso.</p></article>
       </section>
 
-      <section id="section-dpe01" class="page-section indicator-page" data-indicator="DPE-01">
+      <section id="section-politicas-rateio" class="page-section cost-engine-section allocation-policy-section">
         <div class="page-lead dpe-indicator-lead">
-          <div><span class="eyebrow">DPE-01 · Margem por curso</span><h2>Resultado econômico por curso</h2><p>A margem continua sendo o indicador do DPE-01, mas passa a ser apresentada como consequência da relação entre receita e despesa/custo — não como um percentual isolado.</p></div>
-          <div class="indicator-actions">
-            <button class="button secondary" type="button" data-go="receitas">Receitas</button>
-            <button class="button primary" type="button" data-go="cursos">Resultado por curso</button>
+          <div><span class="eyebrow">Cadastros e regras</span><h2>Políticas de distribuição</h2><p>Guarde tratamentos recorrentes para não reconstruir a mesma distribuição todo mês. A política sugere critério e cursos; a prévia continua obrigatória antes de salvar a despesa.</p></div>
+          <div class="indicator-actions"><button class="button primary" type="button" data-go="rateio">Criar a partir de uma despesa</button></div>
+        </div>
+        <article class="panel allocation-policy-help"><div><strong>Como criar uma política?</strong><span>Abra uma despesa em Distribuição de custos, configure a divisão e use “Salvar como política”. O sistema pode sugeri-la quando a mesma despesa aparecer em outro mês.</span></div></article>
+        <article class="panel">
+          <div class="panel-heading responsive-heading"><div><span class="eyebrow">Regras reutilizáveis</span><h3>Políticas cadastradas</h3><p class="panel-note">Desativar uma política não altera meses anteriores nem despesas que já receberam sua configuração.</p></div><span id="allocationPolicyContext" class="chart-unit"></span></div>
+          <div class="table-wrap"><table class="data-table allocation-policy-table"><thead><tr><th>Política</th><th>Critério</th><th>Destino padrão</th><th>Sugestão automática</th><th>Status</th><th></th></tr></thead><tbody id="allocationPoliciesTable"></tbody></table></div>
+        </article>
+      </section>
+
+      <section id="section-economia" class="page-section cost-engine-section">
+        <div class="page-lead dpe-indicator-lead courses-ux-lead">
+          <div><span class="eyebrow">Resultado econômico</span><h2>Resultado por curso</h2><p>Consulte receita, custo, resultado e margem dos cursos e de seus contextos. A receita vem exclusivamente do módulo Receitas; alunos ativos são um dado auxiliar editável nesta tela.</p></div>
+          <div class="indicator-actions"><button class="button secondary" type="button" data-go="receita-operacional">Editar receitas do mês</button></div>
+        </div>
+        <div class="analysis-bar economics-filterbar">
+          <label class="dpe-local-period-filter"><span>Mês</span><select id="economicsPeriodFilter"></select></label>
+          <span id="economicsContext" class="analysis-context">Selecione um mês</span>
+        </div>
+        <div id="economicsCards" class="metric-grid executive dpe-metric-grid cost-engine-cards"></div>
+        <article class="panel courses-results-panel">
+          <div class="panel-heading responsive-heading"><div><span class="eyebrow">Resultado por curso</span><h3>Como está cada curso?</h3><p class="panel-note">Abra o curso para conferir seus contextos quando houver mais de um turno, unidade, local ou modalidade.</p></div><span id="economicsOfferingContext" class="chart-unit"></span></div>
+          <div id="economicsCourseList" class="courses-result-list"></div>
+        </article>
+        <article class="panel courses-operational-note">
+          <div><span class="eyebrow">Separação de responsabilidades</span><h3>Resultado analisa; Receitas registra.</h3><p>Esta tela mostra o efeito econômico. Receitas são alteradas somente na área Receitas; alunos ativos podem ser ajustados diretamente aqui.</p></div>
+        </article>
+      </section>
+
+      <section id="section-fechamento" class="page-section cost-engine-section closure-guided-section">
+        <div class="page-lead dpe-indicator-lead closure-guided-lead">
+          <div>
+            <span class="eyebrow">Conclusão do mês</span>
+            <h2>Fechamento</h2>
+            <p>Veja em uma única tela se o mês está pronto. Quando houver algo pendente, o sistema mostra o que falta e leva você diretamente ao ponto de correção.</p>
           </div>
         </div>
-        <div class="indicator-definition indicator-definition-explainer"><strong>Da receita ao resultado</strong><span><b>Resultado = receita atribuída − despesa/custo considerado.</b> <b>Despesa/receita = despesa ou custo ÷ receita × 100.</b> <b>Margem = resultado ÷ receita × 100.</b> Se a despesa/receita for 60%, a margem é 40%: de cada R$ 100 atribuídos ao curso, R$ 60 são consumidos pelos custos considerados e R$ 40 permanecem como resultado gerencial. Sem receita ou sem custo conhecido, o sistema não calcula margem. É uma leitura gerencial do curso e não equivale automaticamente ao lucro líquido contábil da instituição.</span></div>
-        <div class="analysis-bar dpe-indicator-filter"><label><span>Referência</span><select data-reference="DPE-01"></select></label><label><span>Comparação</span><select data-comparison="DPE-01"></select></label><label><span>Janela</span><select data-window="DPE-01"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option><option value="all">Todo histórico</option></select></label><span class="analysis-context">Atualização automática · somente apurações completas entram na margem</span></div>
-        <div id="cardsDPE01" class="metric-grid executive dpe-metric-grid"></div>
-        <div class="dashboard-grid two-columns executive-grid"><article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução</span><h3>Margem agregada dos cursos completos</h3></div></div><div id="chartDPE01" class="chart-canvas dpe-chart large"></div></article><article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Cursos</span><h3>Despesa sobre receita no mês</h3></div><span class="chart-unit">quanto menor, melhor</span></div><p class="panel-note">Essa leitura é o complemento da margem: se 70% da receita é consumida, a margem gerencial correspondente é 30%.</p><div id="barDPE01" class="chart-canvas dpe-chart large"></div></article></div>
-        <article class="panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Base por curso</span><h3>Da receita ao resultado</h3></div><button class="button secondary compact" type="button" data-go="cursos">Análise completa</button></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Curso</th><th>Receita</th><th>Despesa / custo</th><th>Resultado</th><th>Despesa / receita</th><th>Margem</th><th>Apuração</th></tr></thead><tbody id="dimensionTableDPE01"></tbody></table></div></article>
-        <article class="panel dpe-records-panel legacy-records-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Histórico legado</span><h3>Registros anteriores à base financeira única</h3></div><span id="recordsCountDPE01" class="chart-unit"></span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Período</th><th>Dimensão</th><th>Componentes</th><th>Validado</th><th></th></tr></thead><tbody id="recordsDPE01"></tbody></table></div><div class="pagination"><button class="button secondary compact" data-prev-records="DPE-01">Anterior</button><span data-page-records="DPE-01">Página 1</span><button class="button secondary compact" data-next-records="DPE-01">Próxima</button></div></article>
-      </section>
+        <div class="analysis-bar closure-filterbar">
+          <label class="dpe-local-period-filter"><span>Mês</span><select id="closurePeriodFilter"></select></label>
+          <span id="closureContext" class="analysis-context">Selecione um mês</span>
+        </div>
 
-      <section id="section-dpe02" class="page-section indicator-page" data-indicator="DPE-02">
-        <div class="page-lead dpe-indicator-lead"><div><span class="eyebrow">DPE-02</span><h2>Índice de Cobertura entre Receita e Despesa</h2><p>Calculado automaticamente pela receita institucional e pelas despesas reais da mesma competência.</p></div><div class="indicator-actions"><button class="button secondary" type="button" data-go="receitas">Receitas</button><button class="button primary" type="button" data-go="despesas">Despesas</button></div></div>
-        <div class="indicator-definition indicator-definition-explainer"><strong>Como ler a cobertura</strong><span><b>Cobertura = receita líquida ÷ despesa operacional.</b> Um índice de 1,20x significa que existem R$ 1,20 de receita para cada R$ 1,00 de despesa operacional. Referência atual: ≥ 1,11x; atenção em 1,05x.</span></div>
-        <div class="analysis-bar dpe-indicator-filter"><label><span>Referência</span><select data-reference="DPE-02"></select></label><label><span>Comparação</span><select data-comparison="DPE-02"></select></label><label><span>Janela</span><select data-window="DPE-02"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option><option value="all">Todo histórico</option></select></label><span class="analysis-context">Atualização automática · sem lançamento duplicado</span></div>
-        <div id="cardsDPE02" class="metric-grid executive dpe-metric-grid"></div>
-        <div class="dashboard-grid two-columns executive-grid"><article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução</span><h3>Cobertura mensal e acumulada</h3></div></div><div id="chartDPE02" class="chart-canvas dpe-chart large"></div></article><article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Despesas</span><h3>Composição do mês</h3></div></div><div id="barDPE02" class="chart-canvas dpe-chart large"></div></article></div>
-        <article class="panel dpe-records-panel legacy-records-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Histórico legado</span><h3>Registros anteriores à base financeira única</h3></div><span id="recordsCountDPE02" class="chart-unit"></span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Período</th><th>Dimensão</th><th>Receita</th><th>Despesa</th><th>Cobertura</th><th>Validado</th><th></th></tr></thead><tbody id="recordsDPE02"></tbody></table></div><div class="pagination"><button class="button secondary compact" data-prev-records="DPE-02">Anterior</button><span data-page-records="DPE-02">Página 1</span><button class="button secondary compact" data-next-records="DPE-02">Próxima</button></div></article>
-      </section>
+        <article id="closureDecisionHero" class="panel closure-decision-hero">
+          <div class="closure-decision-copy">
+            <span id="closureDecisionEyebrow" class="eyebrow">Situação do mês</span>
+            <h3 id="closureDecisionTitle">Verificando fechamento...</h3>
+            <p id="closureDecisionText">Aguarde enquanto o sistema confere os dados do mês.</p>
+            <div id="closureDecisionMeta" class="closure-decision-meta"></div>
+          </div>
+          <div class="closure-decision-actions">
+            <button class="button secondary hidden" id="closureResolveNext" type="button">Resolver próxima pendência</button>
+            <button class="button secondary hidden" id="returnReviewPeriod" data-write-action type="button">Voltar para conferência</button>
+            <button class="button secondary hidden" id="reopenCostPeriod" data-write-action type="button">Reabrir mês</button>
+            <button class="button primary hidden" id="closeCostPeriod" data-write-action type="button">Fechar mês</button>
+          </div>
+        </article>
 
-      <section id="section-dpe03" class="page-section indicator-page" data-indicator="DPE-03">
-        <div class="page-lead dpe-indicator-lead"><div><span class="eyebrow">DPE-03</span><h2>Folha de Pagamento sobre a Receita</h2><p>Calculado automaticamente sobre a mesma receita mensal e as despesas classificadas como folha.</p></div><div class="indicator-actions"><button class="button secondary" type="button" data-go="receitas">Receitas</button><button class="button primary" type="button" data-go="despesas">Folha e despesas</button></div></div>
-        <div class="indicator-definition indicator-definition-explainer"><strong>Como ler folha / receita</strong><span><b>Folha sobre receita = folha de pagamento ÷ receita líquida × 100.</b> Exemplo: 50% significa que R$ 50 de cada R$ 100 de receita são consumidos pela folha. Referência atual: folha total ≤ 55%; docente ≤ 38%; administrativa ≤ 17%.</span></div>
-        <div class="analysis-bar dpe-indicator-filter"><label><span>Referência</span><select data-reference="DPE-03"></select></label><label><span>Comparação</span><select data-comparison="DPE-03"></select></label><label><span>Janela</span><select data-window="DPE-03"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option><option value="all">Todo histórico</option></select></label><span class="analysis-context">Atualização automática · folha é uma despesa única</span></div>
-        <div id="cardsDPE03" class="metric-grid executive dpe-metric-grid"></div>
-        <div class="dashboard-grid two-columns executive-grid"><article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução</span><h3>Folha total e média trimestral</h3></div></div><div id="chartDPE03" class="chart-canvas dpe-chart large"></div></article><article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Composição</span><h3>Docente × administrativa</h3></div></div><div id="barDPE03" class="chart-canvas dpe-chart large"></div></article></div>
-        <article class="panel dpe-records-panel legacy-records-panel"><div class="panel-heading responsive-heading"><div><span class="eyebrow">Histórico legado</span><h3>Registros anteriores à base financeira única</h3></div><span id="recordsCountDPE03" class="chart-unit"></span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Período</th><th>Dimensão</th><th>Folha total</th><th>Receita</th><th>Percentual</th><th>Validado</th><th></th></tr></thead><tbody id="recordsDPE03"></tbody></table></div><div class="pagination"><button class="button secondary compact" data-prev-records="DPE-03">Anterior</button><span data-page-records="DPE-03">Página 1</span><button class="button secondary compact" data-next-records="DPE-03">Próxima</button></div></article>
-      </section>
+        <section class="closure-readiness-section" aria-labelledby="closureReadinessTitle">
+          <div class="panel-heading responsive-heading closure-readiness-heading">
+            <div><span class="eyebrow">Checklist guiado</span><h3 id="closureReadinessTitle">O que precisa estar pronto?</h3><p class="panel-note">Cada etapa mostra somente o que interessa para fechar o mês. Use “Resolver” quando algo estiver pendente.</p></div>
+            <span id="closureReadinessContext" class="chart-unit"></span>
+          </div>
+          <div id="closureReadinessGrid" class="closure-readiness-grid"></div>
+        </section>
 
-      <section id="section-planos" class="page-section"><div class="page-lead"><div><span class="eyebrow">Gestão</span><h2>Planos de ação da DPE</h2><p>Ações vinculadas a indicador, métrica, período, responsável e prazo.</p></div><button class="button primary" id="newAction" data-write-action>+ Plano</button></div><article class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>Indicador</th><th>Período</th><th>Problema</th><th>Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th><th></th></tr></thead><tbody id="actionsTable"></tbody></table></div></article></section>
-      <section id="section-metas" class="page-section"><div class="page-lead"><div><span class="eyebrow">Gestão</span><h2>Metas dos indicadores</h2><p>Metas versionadas por vigência, com possibilidade de detalhamento por dimensão.</p></div><button class="button primary" id="newTarget" data-write-action>+ Meta</button></div><article class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>Indicador</th><th>Métrica</th><th>Dimensão</th><th>Vigência</th><th>Meta</th><th>Atenção</th><th></th></tr></thead><tbody id="targetsTable"></tbody></table></div></article></section>
-      <section id="section-arquivos" class="page-section"><div class="page-lead"><div><span class="eyebrow">Planilhas</span><h2>Central de arquivos da DPE</h2><p>Os arquivos DPE-01/02/03 abaixo preservam o fluxo anterior para auditoria. Novos lançamentos financeiros devem usar Receitas, Despesas e Resultado por curso.</p></div></div><div class="file-card-grid" id="dpeFileCards"></div></section>
-      <section id="section-governanca" class="page-section"><div class="page-lead"><div><span class="eyebrow">Governança</span><h2>Regras de fechamento e qualidade</h2><p>A DPE é alimentada mensalmente por competência contábil.</p></div></div><div class="dashboard-grid two-columns"><article class="panel"><div class="panel-heading"><div><span class="eyebrow">Rotina</span><h3>Calendário mensal</h3></div></div><ol class="governance-list"><li>1º ao 5º dia útil: alimentação dos dados do mês anterior.</li><li>Até o 7º dia útil: conferência e validação pelo diretor.</li><li>Até o 9º dia útil: consolidação técnica e aplicação das metas.</li><li>Até o 12º dia útil: leitura crítica e planos de ação.</li><li>Até o 15º dia útil: reunião decisória.</li></ol></article><article class="panel"><div class="panel-heading"><div><span class="eyebrow">Conciliação</span><h3>Controles essenciais</h3></div></div><ul class="governance-list"><li>A receita líquida institucional existe uma única vez por competência e alimenta todos os indicadores.</li><li>Cada despesa real existe uma única vez; rateios por curso não criam uma nova despesa.</li><li>Imobilizado não compõe a despesa do índice de cobertura.</li><li>Provisões de férias e 13º são apropriadas mensalmente.</li><li>Nenhuma importação é parcial: qualquer erro cancela toda a operação.</li></ul></article></div></section>
+        <article class="panel closure-attention-panel">
+          <div class="panel-heading responsive-heading">
+            <div><span class="eyebrow">Atenção necessária</span><h3 id="closureAttentionTitle">Pendências do mês</h3><p class="panel-note">Aqui aparecem apenas problemas que exigem alguma decisão ou conferência sua.</p></div>
+            <span id="closureAttentionContext" class="chart-unit"></span>
+          </div>
+          <div id="closureAttentionList" class="closure-attention-list"></div>
+        </article>
+
+        <details class="panel closure-details-panel">
+          <summary>
+            <span><strong>Ver detalhes do fechamento e auditoria</strong><small>Cálculo oficial, verificações técnicas e histórico de reaberturas.</small></span>
+          </summary>
+          <div class="closure-details-body">
+            <div class="dashboard-grid two-columns closure-operational-grid">
+              <article class="closure-detail-block">
+                <div class="panel-heading responsive-heading"><div><span class="eyebrow">Cálculo oficial</span><h3>Custo usado no fechamento</h3></div><span id="closureRunBadge" class="chart-unit"></span></div>
+                <div id="closureRunDetail" class="closure-run-detail"></div>
+              </article>
+              <article class="closure-detail-block">
+                <div class="panel-heading responsive-heading"><div><span class="eyebrow">Verificações detalhadas</span><h3>Checklist técnico</h3></div><span id="closureChecklistContext" class="chart-unit"></span></div>
+                <div id="closureChecklist" class="closure-checklist"></div>
+              </article>
+            </div>
+            <article class="closure-events-panel">
+              <div class="panel-heading responsive-heading"><div><span class="eyebrow">Histórico</span><h3>Fechamentos e reaberturas</h3></div><span id="closureEventContext" class="chart-unit"></span></div>
+              <div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Evento</th><th>Transição</th><th>Versão</th><th>Usuário</th><th>Motivo / observação</th></tr></thead><tbody id="closureEventsTable"></tbody></table></div>
+            </article>
+            <article class="closure-events-panel closure-audit-panel">
+              <div class="panel-heading responsive-heading"><div><span class="eyebrow">Rastreabilidade</span><h3>Trilha de auditoria do mês</h3><p class="panel-note">Alterações financeiras críticas, rateios, revisões de alertas e decisões de fechamento ficam registradas com usuário e horário.</p></div><span id="closureAuditContext" class="chart-unit"></span></div>
+              <div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Operação</th><th>Item</th><th>Usuário</th><th>Mudança / contexto</th></tr></thead><tbody id="closureAuditTable"></tbody></table></div>
+            </article>
+          </div>
+        </details>
+
+        <article class="panel cost-engine-principle closure-history-note"><span class="eyebrow">Segurança do histórico</span><h3>Fechar protege; reabrir exige justificativa.</h3><p>Depois do fechamento, os dados do mês ficam protegidos. Se uma correção for necessária, a reabertura registra quem fez, quando e por quê.</p></article>
+      </section>
+      <section id="section-planos" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">Gestão</span><h2>Planos de ação</h2><p>Transforme desvios reais dos indicadores da DPE em responsáveis, prazos e ações acompanháveis.</p></div><button class="button primary" id="newAction" data-write-action>+ Plano</button></div>
+        <div id="actionSummary" class="management-summary-grid"></div>
+        <article class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>Indicador / métrica</th><th>Competência</th><th>Problema</th><th>Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th><th></th></tr></thead><tbody id="actionsTable"></tbody></table></div></article>
+      </section>
+      <section id="section-metas" class="page-section">
+        <div class="page-lead"><div><span class="eyebrow">Gestão</span><h2>Metas</h2><p>Compare automaticamente as metas vigentes com os valores reais do Cost Engine na competência selecionada.</p></div><button class="button primary" id="newTarget" data-write-action>+ Meta</button></div>
+        <div id="targetPeriodContext" class="management-period-context"></div>
+        <div id="targetSummary" class="management-summary-grid"></div>
+        <article class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>Indicador / métrica</th><th>Escopo</th><th>Valor atual</th><th>Meta</th><th>Situação</th><th>Vigência</th><th></th></tr></thead><tbody id="targetsTable"></tbody></table></div></article>
+      </section>
+      <section id="section-governanca" class="page-section"><div class="page-lead"><div><span class="eyebrow">Governança</span><h2>Regras de fechamento e histórico</h2><p>Cada mês guarda seu próprio retrato. Mudanças posteriores em docentes, cursos, classificações ou critérios não alteram resultados já consolidados.</p></div></div><div class="dashboard-grid two-columns"><article class="panel"><div class="panel-heading"><div><span class="eyebrow">Fluxo oficial</span><h3>Ciclo mensal</h3></div></div><ol class="governance-list"><li>Escolha o mês e confira os cursos incluídos.</li><li>Registre ou importe as despesas; entradas ainda não conferidas não alteram o resultado oficial.</li><li>Confira folha, aulas, alunos e receitas do mês.</li><li>Revise a distribuição de custos e resolva as pendências.</li><li>Confirme os cálculos e feche o mês; correções posteriores exigem reabertura justificada.</li></ol></article><article class="panel"><div class="panel-heading"><div><span class="eyebrow">Rastreabilidade</span><h3>Controles essenciais</h3></div></div><ul class="governance-list"><li>Cada despesa oficial existe uma única vez; a distribuição apenas define a quais cursos o custo pertence.</li><li>Turno, modalidade e localização permanecem preservados no histórico do mês quando forem relevantes.</li><li>O custo docente considera o vínculo financeiro e as atividades registradas naquele mês, não apenas o cadastro atual.</li><li>Receitas possuem uma única base oficial no ledger; alunos ativos são mantidos separadamente como dado auxiliar por curso/contexto.</li><li>Todo custo atribuído a um curso mantém memória de cálculo e origem rastreável.</li><li>Meses fechados só podem ser alterados após uma reabertura registrada na auditoria.</li></ul></article></div></section>
     </main>
   </div>
 
-  <div id="measurementModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="measurementTitle">
-    <div class="modal-card dpe-modal-card">
-      <div class="modal-header">
-        <div><span class="eyebrow" id="measurementCode">DPE</span><h2 id="measurementTitle">Registrar dado</h2><p id="measurementSubtitle" class="modal-subtitle">Preencha somente os dados da competência selecionada.</p></div>
-        <button class="icon-button" type="button" aria-label="Fechar" data-close-modal="measurementModal">×</button>
-      </div>
-      <form id="measurementForm" class="form-grid dpe-measurement-form">
-        <input type="hidden" id="measurementIndicator">
-        <label><span>Competência *</span><input id="measurementPeriod" placeholder="AAAA-MM" inputmode="numeric" required><small>Exemplo: 2026-08</small></label>
-        <div id="measurementDimensions" class="form-grid span-2 nested-grid"></div>
-        <div id="measurementFields" class="form-grid span-2 nested-grid"></div>
-        <label class="span-2"><span>Observações</span><textarea id="measurementNotes" placeholder="Opcional. Registre apenas algo útil para conferência ou fechamento."></textarea></label>
-        <label class="check-field span-2"><input id="measurementValidated" type="checkbox" checked><span>Registro conferido e validado</span></label>
-        <div id="measurementFormErrors" class="form-errors span-2 hidden" role="alert"></div>
-        <div class="form-actions"><button type="button" class="button secondary" data-close-modal="measurementModal">Cancelar</button><button type="submit" class="button primary">Salvar registro</button></div>
-      </form>
-    </div>
-  </div>
-  <div id="importModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card import-card"><div class="modal-header"><div><span class="eyebrow" id="importCode">DPE</span><h2>Importar planilha</h2></div><button class="icon-button" data-close-modal="importModal">×</button></div><p>Use o modelo do indicador. A importação é transacional: se qualquer linha possuir erro, nenhuma linha será gravada.</p><input type="file" id="importFile" accept=".xlsx,.xlsm"><div id="importResult" class="import-result hidden"></div><div class="form-actions"><button class="button secondary" data-close-modal="importModal">Cancelar</button><button class="button primary" id="confirmImport" data-write-action>Importar</button></div></div></div>
-  <div id="managementModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="managementModalTitle">
+  <div id="managementModal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="managementModalTitle">
     <div class="modal-card dpe-modal-card">
       <div class="modal-header">
         <div><span class="eyebrow" id="managementModalEyebrow">DPE</span><h2 id="managementModalTitle">Gestão</h2><p id="managementModalSubtitle" class="modal-subtitle"></p></div>
@@ -220,20 +602,45 @@
       <div id="managementModalBody"></div>
     </div>
   </div>
-  <div id="financeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="financeModalTitle">
-    <div class="modal-card dpe-modal-card finance-modal-card">
+  <div id="costEngineModal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="costEngineModalTitle">
+    <div class="modal-card dpe-modal-card cost-engine-modal-card">
       <div class="modal-header">
-        <div><span class="eyebrow" id="financeModalEyebrow">DPE · BASE FINANCEIRA</span><h2 id="financeModalTitle">Registrar</h2><p id="financeModalSubtitle" class="modal-subtitle"></p></div>
-        <button class="icon-button" type="button" aria-label="Fechar" data-close-modal="financeModal">×</button>
+        <div><span class="eyebrow" id="costEngineModalEyebrow">DPE · GESTÃO MENSAL</span><h2 id="costEngineModalTitle">Cadastro</h2><p id="costEngineModalSubtitle" class="modal-subtitle"></p></div>
+        <button class="icon-button" type="button" aria-label="Fechar" data-close-modal="costEngineModal">×</button>
       </div>
-      <div id="financeModalBody"></div>
+      <div id="costEngineModalBody"></div>
     </div>
   </div>
+
+
+  <div id="dpeConfirmModal" class="modal hidden" role="alertdialog" aria-modal="true" aria-hidden="true" aria-labelledby="dpeConfirmTitle" aria-describedby="dpeConfirmMessage">
+    <div class="modal-card dpe-modal-card dpe-confirm-card" tabindex="-1">
+      <div class="modal-header">
+        <div><span class="eyebrow" id="dpeConfirmEyebrow">CONFIRMAÇÃO</span><h2 id="dpeConfirmTitle">Confirmar ação</h2></div>
+        <button class="icon-button" type="button" aria-label="Cancelar e fechar" id="dpeConfirmClose">×</button>
+      </div>
+      <div class="dpe-confirm-body">
+        <div class="dpe-confirm-icon" id="dpeConfirmIcon" aria-hidden="true">!</div>
+        <div class="dpe-confirm-copy"><p id="dpeConfirmMessage"></p><label id="dpeConfirmReasonWrap" class="hidden"><span id="dpeConfirmReasonLabel">Justificativa</span><textarea id="dpeConfirmReason" rows="4" maxlength="600"></textarea><small id="dpeConfirmReasonHelp">A justificativa ficará vinculada à operação.</small></label><div id="dpeConfirmError" class="form-errors hidden" role="alert"></div></div>
+      </div>
+      <div class="dpe-confirm-actions"><button class="button secondary" type="button" id="dpeConfirmCancel">Cancelar</button><button class="button primary" type="button" id="dpeConfirmAccept">Confirmar</button></div>
+    </div>
+  </div>
+
   <script src="/static/js/data-univc-auth.js?v={{ app_version }}" defer></script>
   <script src="/static/js/data-univc-identity.js?v={{ app_version }}" defer></script>
   <script src="/static/js/data-univc-ui.js?v={{ app_version }}" defer></script>
   <script src="/static/js/ui-v2.js?v={{ app_version }}" defer></script>
   <script src="/static/js/dpe.js?v={{ app_version }}" defer></script>
-  <script src="/static/js/dpe_finance.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_cost_engine.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_cost_expenses.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_cost_teaching.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_cost_allocation.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_cost_revenues.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_cost_economics.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_cost_closure.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_cost_productivity.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_cost_analytics.js?v={{ app_version }}" defer></script>
+  <script src="/static/js/dpe_v2.js?v={{ app_version }}" defer></script>
 </body>
 </html>

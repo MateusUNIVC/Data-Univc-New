@@ -112,7 +112,7 @@ class Course(Base):
     name: Mapped[str] = mapped_column(String(180))
     modality: Mapped[str] = mapped_column(String(30), default="Presencial")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    valid_from: Mapped[str] = mapped_column(String(7), default="2026-01")
+    valid_from: Mapped[str] = mapped_column(String(7))
     valid_to: Mapped[str | None] = mapped_column(String(7), nullable=True)
 
 
@@ -123,7 +123,7 @@ class Discipline(Base):
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
     name: Mapped[str] = mapped_column(String(200))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    valid_from: Mapped[str] = mapped_column(String(7), default="2026-01")
+    valid_from: Mapped[str] = mapped_column(String(7))
     valid_to: Mapped[str | None] = mapped_column(String(7), nullable=True)
     course: Mapped[Course] = relationship()
 
@@ -332,63 +332,6 @@ class DadmInfrastructure(Base):
     inserted_by: Mapped[str | None] = mapped_column(String(255))
 
 
-class DpeOperatingResult(Base):
-    __tablename__ = "dpe_operating_results"
-    __table_args__ = (
-        UniqueConstraint(
-            "directorate_id", "period", "scope_type", "scope_label",
-            name="uq_dpe_result_period_scope",
-        ),
-    )
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
-    period: Mapped[str] = mapped_column(String(7), index=True)
-    scope_type: Mapped[str] = mapped_column(String(60))
-    scope_label: Mapped[str] = mapped_column(String(180))
-    net_revenue: Mapped[Decimal] = mapped_column(Numeric(16, 2))
-    total_expense: Mapped[Decimal] = mapped_column(Numeric(16, 2))
-    inserted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    inserted_by: Mapped[str | None] = mapped_column(String(255))
-
-
-class DpeBudgetExecution(Base):
-    __tablename__ = "dpe_budget_execution"
-    __table_args__ = (
-        UniqueConstraint(
-            "directorate_id", "period", "budget_directorate", "cost_center",
-            name="uq_dpe_budget_period_unit_center",
-        ),
-    )
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
-    period: Mapped[str] = mapped_column(String(7), index=True)
-    budget_directorate: Mapped[str] = mapped_column(String(40))
-    cost_center: Mapped[str] = mapped_column(String(180))
-    budgeted_expense: Mapped[Decimal] = mapped_column(Numeric(16, 2))
-    actual_expense: Mapped[Decimal] = mapped_column(Numeric(16, 2))
-    inserted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    inserted_by: Mapped[str | None] = mapped_column(String(255))
-
-
-class DpeCashMovement(Base):
-    __tablename__ = "dpe_cash_movements"
-    __table_args__ = (
-        UniqueConstraint(
-            "directorate_id", "period", "account", "movement_type", "nature",
-            name="uq_dpe_cash_period_account_type_nature",
-        ),
-    )
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
-    period: Mapped[str] = mapped_column(String(7), index=True)
-    account: Mapped[str] = mapped_column(String(180))
-    movement_type: Mapped[str] = mapped_column(String(20))
-    nature: Mapped[str] = mapped_column(String(180))
-    amount: Mapped[Decimal] = mapped_column(Numeric(16, 2))
-    inserted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    inserted_by: Mapped[str | None] = mapped_column(String(255))
-
-
 class Goal(Base):
     __tablename__ = "goals"
     __table_args__ = (UniqueConstraint("directorate_id", "indicator_code", "scope_label", "valid_from", name="uq_goal_scope_vigency"),)
@@ -401,6 +344,7 @@ class Goal(Base):
     attention: Mapped[float] = mapped_column(Float)
     upper_limit: Mapped[float | None] = mapped_column(Float, nullable=True)
     justification: Mapped[str | None] = mapped_column(Text)
+    metric_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class ActionPlan(Base):
@@ -689,157 +633,1031 @@ class ManagementAction(Base):
     )
 
 
-class DPEMonthlyRevenue(Base):
-    """Official monthly institutional net revenue used by every DPE KPI.
+# ---------------------------------------------------------------------------
+# v0.9.6.13 - DPE Cost Engine Foundation
+# ---------------------------------------------------------------------------
 
-    v0.7.7 intentionally stores the institutional revenue only once. Course
-    revenue is an optional analytical allocation and never replaces this row.
+
+class DPECostPeriod(Base):
+    """Monthly accounting/costing competence for the DPE cost engine.
+
+    A competence is the historical boundary of the new DPE domain. Later
+    stages attach expenses, academic snapshots and calculation runs to this
+    record so changes in the live catalog never rewrite a closed month.
     """
 
-    __tablename__ = "dpe_monthly_revenues"
+    __tablename__ = "dpe_cost_periods"
     __table_args__ = (
-        UniqueConstraint("directorate_id", "period", name="uq_dpe_monthly_revenue_period"),
-        Index("ix_dpe_monthly_revenue_period", "directorate_id", "period"),
-    )
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
-    period: Mapped[str] = mapped_column(String(7), index=True)
-    net_revenue: Mapped[Decimal] = mapped_column(Numeric(16, 2))
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    validated: Mapped[bool] = mapped_column(Boolean, default=False)
-    inserted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    inserted_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
-
-
-class DPECourseRevenue(Base):
-    """Optional allocation of institutional revenue to an academic course.
-
-    The sum is allowed to be lower than the institutional revenue because the
-    institution also has technical, distance, hybrid, graduate and other
-    revenue streams that are not represented by the current DTNH/DCS catalog.
-    """
-
-    __tablename__ = "dpe_course_revenues"
-    __table_args__ = (
-        UniqueConstraint(
-            "directorate_id", "period", "course_id", name="uq_dpe_course_revenue_period_course"
+        UniqueConstraint("directorate_id", "period", name="uq_dpe_cost_period"),
+        CheckConstraint(
+            "status in ('DRAFT','REVIEW','CALCULATED','CLOSED')",
+            name="ck_dpe_cost_period_status",
         ),
-        Index("ix_dpe_course_revenue_period", "directorate_id", "period"),
-        Index("ix_dpe_course_revenue_course", "directorate_id", "course_id", "period"),
+        Index("ix_dpe_cost_period_status", "directorate_id", "status", "period"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
     period: Mapped[str] = mapped_column(String(7), index=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
-    allocated_revenue: Mapped[Decimal] = mapped_column(Numeric(16, 2))
+    status: Mapped[str] = mapped_column(String(20), default="DRAFT", index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    inserted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    inserted_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    opened_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    course: Mapped[Course] = relationship()
+    directorate: Mapped[Directorate] = relationship()
 
 
-class DPEExpense(Base):
-    """Single source of truth for an institutional expense.
+class DPEAcademicProduct(Base):
+    """DPE course identity linked to the official DTNH/DCS academic catalog.
 
-    Payroll is represented as ``expense_kind='PAYROLL'`` instead of living in
-    a separate financial total. Course views are created by allocations, which
-    prevents a payroll amount from being added again when analysing a course.
+    The course is the primary business entity. Internal economic contexts may
+    distinguish shift, unit, location or modality only when separate analysis is
+    actually required.
     """
 
-    __tablename__ = "dpe_expenses"
+    __tablename__ = "dpe_academic_products"
     __table_args__ = (
-        Index("ix_dpe_expense_period", "directorate_id", "period"),
-        Index("ix_dpe_expense_kind", "directorate_id", "expense_kind", "period"),
-        Index("ix_dpe_expense_category", "directorate_id", "category", "period"),
+        UniqueConstraint("directorate_id", "code", name="uq_dpe_academic_product_code"),
+        CheckConstraint(
+            "academic_level in ('GRADUATION','TECHNICAL','POSTGRADUATE','EXTENSION','OTHER')",
+            name="ck_dpe_academic_product_level",
+        ),
+        CheckConstraint("valid_to is null or valid_to >= valid_from", name="ck_dpe_academic_product_validity"),
+        Index("ix_dpe_academic_product_active", "directorate_id", "active", "name"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
-    period: Mapped[str] = mapped_column(String(7), index=True)
-    description: Mapped[str] = mapped_column(String(240))
+    code: Mapped[str] = mapped_column(String(80))
+    name: Mapped[str] = mapped_column(String(220), index=True)
+    academic_level: Mapped[str] = mapped_column(String(30), default="GRADUATION")
+    source_course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("courses.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    external_key: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    valid_from: Mapped[str] = mapped_column(String(7))
+    valid_to: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    directorate: Mapped[Directorate] = relationship()
+    source_course: Mapped[Course | None] = relationship()
+
+
+class DPEAcademicOffering(Base):
+    """Internal economic context used as the DPE cost object.
+
+    Every course can operate through an automatic base context. Additional
+    contexts are optional and exist only when shift, unit, location or modality
+    must be analyzed separately. The historical table name is preserved to avoid
+    breaking cost-engine foreign keys.
+    """
+
+    __tablename__ = "dpe_academic_offerings"
+    __table_args__ = (
+        UniqueConstraint("directorate_id", "code", name="uq_dpe_academic_offering_code"),
+        CheckConstraint("valid_to is null or valid_to >= valid_from", name="ck_dpe_academic_offering_validity"),
+        Index("ix_dpe_academic_offering_product", "product_id", "active"),
+        Index("ix_dpe_academic_offering_dimensions", "directorate_id", "modality", "shift", "active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_academic_products.id", ondelete="RESTRICT"), index=True
+    )
+    code: Mapped[str] = mapped_column(String(100))
+    modality: Mapped[str] = mapped_column(String(40), default="NAO_INFORMADA", index=True)
+    shift: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    campus: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    unit_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    pole_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    external_key: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    valid_from: Mapped[str] = mapped_column(String(7))
+    valid_to: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    directorate: Mapped[Directorate] = relationship()
+    product: Mapped[DPEAcademicProduct] = relationship()
+
+
+class DPECostCenter(Base):
+    """Hierarchical sector/cost-center classification for DPE expenses."""
+
+    __tablename__ = "dpe_cost_centers"
+    __table_args__ = (
+        UniqueConstraint("directorate_id", "code", name="uq_dpe_cost_center_code"),
+        CheckConstraint("parent_id is null or parent_id <> id", name="ck_dpe_cost_center_parent"),
+        Index("ix_dpe_cost_center_active", "directorate_id", "active", "name"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    code: Mapped[str] = mapped_column(String(80))
+    name: Mapped[str] = mapped_column(String(180), index=True)
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_cost_centers.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    external_key: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    directorate: Mapped[Directorate] = relationship()
+    parent: Mapped[DPECostCenter | None] = relationship(remote_side="DPECostCenter.id")
+
+
+class DPEAllocationRule(Base):
+    """Named allocation policy executed by the DPE cost allocation engine."""
+
+    __tablename__ = "dpe_allocation_rules"
+    __table_args__ = (
+        UniqueConstraint("directorate_id", "code", name="uq_dpe_allocation_rule_code"),
+        CheckConstraint(
+            "driver_type in ('DIRECT','TEACHER_HOURS','OFFERING_HOURS','STUDENTS','REVENUE','EQUAL','MANUAL')",
+            name="ck_dpe_allocation_rule_driver",
+        ),
+        Index("ix_dpe_allocation_rule_driver", "directorate_id", "driver_type", "active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    code: Mapped[str] = mapped_column(String(80))
+    name: Mapped[str] = mapped_column(String(180))
+    driver_type: Mapped[str] = mapped_column(String(30), index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parameters_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    system_defined: Mapped[bool] = mapped_column(Boolean, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    directorate: Mapped[Directorate] = relationship()
+
+
+class DPEAllocationPolicy(Base):
+    """Reusable administrative policy for applying an allocation rule and scope across months.
+
+    Policies reference stable academic offerings, while each monthly expense keeps its own
+    period-specific targets. This preserves historical snapshots and lets a recurring expense
+    reuse the same treatment without coupling future months to past period rows.
+    """
+
+    __tablename__ = "dpe_allocation_policies"
+    __table_args__ = (
+        UniqueConstraint("directorate_id", "name", name="uq_dpe_allocation_policy_name"),
+        CheckConstraint("scope_type in ('ALL','SPECIFIC')", name="ck_dpe_allocation_policy_scope"),
+        Index("ix_dpe_allocation_policy_active", "directorate_id", "active", "name"),
+        Index("ix_dpe_allocation_policy_match", "directorate_id", "match_description", "active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    name: Mapped[str] = mapped_column(String(180))
+    allocation_rule_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_allocation_rules.id", ondelete="RESTRICT"), index=True
+    )
+    scope_type: Mapped[str] = mapped_column(String(20), default="ALL")
+    target_offerings_json: Mapped[list] = mapped_column(JSON, default=list)
+    match_description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_expense_categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    auto_suggest: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    directorate: Mapped[Directorate] = relationship()
+    allocation_rule: Mapped[DPEAllocationRule] = relationship()
+
+
+class DPEExpenseCategory(Base):
+    """Hierarchical expense category with an optional default allocation rule."""
+
+    __tablename__ = "dpe_expense_categories"
+    __table_args__ = (
+        UniqueConstraint("directorate_id", "code", name="uq_dpe_expense_category_code"),
+        CheckConstraint("parent_id is null or parent_id <> id", name="ck_dpe_expense_category_parent"),
+        Index("ix_dpe_expense_category_active", "directorate_id", "active", "name"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    code: Mapped[str] = mapped_column(String(80))
+    name: Mapped[str] = mapped_column(String(180), index=True)
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_expense_categories.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    default_rule_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_allocation_rules.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    directorate: Mapped[Directorate] = relationship()
+    parent: Mapped[DPEExpenseCategory | None] = relationship(remote_side="DPEExpenseCategory.id")
+    default_rule: Mapped[DPEAllocationRule | None] = relationship()
+
+
+class DPERecurringExpenseTemplate(Base):
+    """Reusable template for generating a recurring expense once per competence."""
+
+    __tablename__ = "dpe_recurring_expense_templates"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_dpe_recurring_expense_amount_positive"),
+        CheckConstraint("expense_kind in ('GENERAL','PAYROLL')", name="ck_dpe_recurring_expense_kind"),
+        CheckConstraint("day_of_month is null or (day_of_month >= 1 and day_of_month <= 31)", name="ck_dpe_recurring_expense_day"),
+        UniqueConstraint("directorate_id", "name", name="uq_dpe_recurring_expense_name"),
+        Index("ix_dpe_recurring_expense_active", "directorate_id", "active", "name"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    name: Mapped[str] = mapped_column(String(180))
+    description: Mapped[str] = mapped_column(String(280))
     amount: Mapped[Decimal] = mapped_column(Numeric(16, 2))
-    expense_kind: Mapped[str] = mapped_column(String(30), default="GENERAL", index=True)
-    category: Mapped[str] = mapped_column(String(40), default="OTHER", index=True)
-    payroll_group: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
-    payroll_nature: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
-    is_capex: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    expense_kind: Mapped[str] = mapped_column(String(20), default="GENERAL", index=True)
+    counterparty_name: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    cost_center_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_cost_centers.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_expense_categories.id", ondelete="RESTRICT"), index=True
+    )
+    allocation_policy_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_allocation_policies.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    day_of_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    validated: Mapped[bool] = mapped_column(Boolean, default=False)
-    inserted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    inserted_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    directorate: Mapped[Directorate] = relationship()
+    cost_center: Mapped[DPECostCenter | None] = relationship()
+    category: Mapped[DPEExpenseCategory] = relationship()
+    allocation_policy: Mapped[DPEAllocationPolicy | None] = relationship()
 
 
-class DPEExpenseAllocation(Base):
-    """Analytical allocation of one real expense to one course.
+class DPECostPeriodOffering(Base):
+    """Historical snapshot of an offering included in a monthly competence."""
 
-    Allocations never create new institutional expenditure. Their sum may be
-    lower than the expense amount when part of a cost remains institutional or
-    belongs to activities outside the current course catalog.
-    """
-
-    __tablename__ = "dpe_expense_allocations"
+    __tablename__ = "dpe_cost_period_offerings"
     __table_args__ = (
-        UniqueConstraint("expense_id", "course_id", name="uq_dpe_expense_allocation_course"),
-        Index("ix_dpe_expense_allocation_expense", "expense_id"),
-        Index("ix_dpe_expense_allocation_course", "course_id"),
+        UniqueConstraint("period_id", "offering_id", name="uq_dpe_cost_period_offering"),
+        Index("ix_dpe_cost_period_offering_period", "period_id", "included"),
+        Index("ix_dpe_cost_period_offering_offering", "offering_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    expense_id: Mapped[int] = mapped_column(ForeignKey("dpe_expenses.id", ondelete="CASCADE"), index=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
-    allocated_amount: Mapped[Decimal] = mapped_column(Numeric(16, 2))
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    inserted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    inserted_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    period_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_periods.id", ondelete="CASCADE"), index=True
     )
-    expense: Mapped[DPEExpense] = relationship()
-    course: Mapped[Course] = relationship()
+    offering_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_academic_offerings.id", ondelete="RESTRICT"), index=True
+    )
+    offering_snapshot_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    included: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    period: Mapped[DPECostPeriod] = relationship()
+    offering: Mapped[DPEAcademicOffering] = relationship()
 
 
-class DPECourseCostSnapshot(Base):
-    """Optional management total for a course/month used for reconciliation.
+# ---------------------------------------------------------------------------
+# v0.9.6.15 - DPE Central de Despesas / Expense Intake
+# ---------------------------------------------------------------------------
 
-    It is *not* an institutional expense. The institutional expense total comes
-    exclusively from :class:`DPEExpense`. This allows the user to work with a
-    known course total before every component has been allocated, without
-    double counting the same payroll or shared cost.
+
+class DPECostExpenseImportBatch(Base):
+    """Neutral staging batch for future Excel/API/request adapters.
+
+    A batch is deliberately source-agnostic. Raw source rows can be staged and
+    validated before they become official expenses, so a malformed integration
+    never contaminates the monthly cost ledger.
     """
 
-    __tablename__ = "dpe_course_cost_snapshots"
+    __tablename__ = "dpe_cost_expense_import_batches"
     __table_args__ = (
-        UniqueConstraint(
-            "directorate_id", "period", "course_id", name="uq_dpe_course_cost_period_course"
+        CheckConstraint(
+            "source_type in ('EXCEL','API','REQUEST','OTHER')",
+            name="ck_dpe_cost_expense_batch_source",
         ),
-        Index("ix_dpe_course_cost_period", "directorate_id", "period"),
-        Index("ix_dpe_course_cost_course", "directorate_id", "course_id", "period"),
+        CheckConstraint(
+            "status in ('STAGING','READY','COMMITTED','FAILED','CANCELLED')",
+            name="ck_dpe_cost_expense_batch_status",
+        ),
+        UniqueConstraint(
+            "directorate_id", "period_id", "source_type", "external_key",
+            name="uq_dpe_cost_expense_batch_external",
+        ),
+        Index("ix_dpe_cost_expense_batch_period", "directorate_id", "period_id", "created_at"),
+        Index("ix_dpe_cost_expense_batch_status", "directorate_id", "status", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
-    period: Mapped[str] = mapped_column(String(7), index=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
-    reported_total_cost: Mapped[Decimal] = mapped_column(Numeric(16, 2))
-    details_json: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
+    period_id: Mapped[int] = mapped_column(ForeignKey("dpe_cost_periods.id", ondelete="RESTRICT"), index=True)
+    source_type: Mapped[str] = mapped_column(String(20), index=True)
+    source_label: Mapped[str] = mapped_column(String(220))
+    original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    external_key: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="STAGING", index=True)
+    mapping_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    summary_json: Mapped[dict] = mapped_column(JSON, default=dict)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    inserted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    inserted_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    course: Mapped[Course] = relationship()
+    directorate: Mapped[Directorate] = relationship()
+    period: Mapped[DPECostPeriod] = relationship()
+
+
+class DPECostExpense(Base):
+    """Official normalized monthly expense used by the new DPE Cost Engine.
+
+    This is the official expense table for the Cost Engine. An official
+    expense always belongs to a cost competence and preserves a
+    classification snapshot so later catalog edits cannot rewrite the history.
+    """
+
+    __tablename__ = "dpe_cost_expenses"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_dpe_cost_expense_amount_positive"),
+        CheckConstraint(
+            "expense_kind in ('GENERAL','PAYROLL')",
+            name="ck_dpe_cost_expense_kind",
+        ),
+        CheckConstraint(
+            "expense_scope in ('DIRECT','SHARED','INSTITUTIONAL')",
+            name="ck_dpe_cost_expense_scope",
+        ),
+        CheckConstraint(
+            "source_type in ('MANUAL','EXCEL','API','REQUEST','OTHER')",
+            name="ck_dpe_cost_expense_source",
+        ),
+        CheckConstraint(
+            "status in ('ACTIVE','VOIDED')",
+            name="ck_dpe_cost_expense_status",
+        ),
+        UniqueConstraint(
+            "directorate_id", "period_id", "source_type", "external_key",
+            name="uq_dpe_cost_expense_external",
+        ),
+        Index("ix_dpe_cost_expense_period", "directorate_id", "period_id", "status"),
+        Index("ix_dpe_cost_expense_category", "directorate_id", "category_id", "period_id"),
+        Index("ix_dpe_cost_expense_center", "directorate_id", "cost_center_id", "period_id"),
+        Index("ix_dpe_cost_expense_source", "directorate_id", "source_type", "period_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    period_id: Mapped[int] = mapped_column(ForeignKey("dpe_cost_periods.id", ondelete="RESTRICT"), index=True)
+    expense_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    description: Mapped[str] = mapped_column(String(280), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(16, 2))
+    expense_kind: Mapped[str] = mapped_column(String(20), default="GENERAL", index=True)
+    expense_scope: Mapped[str] = mapped_column(String(20), default="SHARED", index=True)
+    counterparty_name: Mapped[str | None] = mapped_column(String(240), nullable=True, index=True)
+    document_number: Mapped[str | None] = mapped_column(String(140), nullable=True, index=True)
+    cost_center_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_cost_centers.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_expense_categories.id", ondelete="RESTRICT"), index=True
+    )
+    allocation_rule_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_allocation_rules.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    source_type: Mapped[str] = mapped_column(String(20), default="MANUAL", index=True)
+    source_batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_cost_expense_import_batches.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    source_reference: Mapped[str | None] = mapped_column(String(220), nullable=True)
+    external_key: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="ACTIVE", index=True)
+    period_teacher_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_cost_period_teachers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    teacher_match_status: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    teacher_match_method: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    teacher_snapshot_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    classification_snapshot_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    source_payload_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    voided_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    void_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    directorate: Mapped[Directorate] = relationship()
+    period: Mapped[DPECostPeriod] = relationship()
+    cost_center: Mapped[DPECostCenter | None] = relationship()
+    category: Mapped[DPEExpenseCategory] = relationship()
+    allocation_rule: Mapped[DPEAllocationRule | None] = relationship()
+    source_batch: Mapped[DPECostExpenseImportBatch | None] = relationship()
+    period_teacher: Mapped[DPECostPeriodTeacher | None] = relationship()
+
+
+# ---------------------------------------------------------------------------
+# v0.9.6.16 - DPE Docencia, disciplinas e carga horaria
+# ---------------------------------------------------------------------------
+
+
+class DPETeacherProfile(Base):
+    """DPE-specific participation profile for an institutional teacher identity."""
+
+    __tablename__ = "dpe_teacher_profiles"
+    __table_args__ = (
+        UniqueConstraint("directorate_id", "teacher_id", name="uq_dpe_teacher_profile"),
+        CheckConstraint(
+            "default_relationship_type in ('UNSPECIFIED','EMPLOYEE','HOURLY','SERVICE_PROVIDER','OTHER')",
+            name="ck_dpe_teacher_profile_relationship",
+        ),
+        Index("ix_dpe_teacher_profile_active", "directorate_id", "active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.id", ondelete="RESTRICT"), index=True)
+    default_relationship_type: Mapped[str] = mapped_column(String(30), default="UNSPECIFIED")
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    directorate: Mapped[Directorate] = relationship()
+    teacher: Mapped[Teacher] = relationship()
+
+
+class DPETeacherAlias(Base):
+    """Alternative teacher identifier used to reconcile payroll/import names."""
+
+    __tablename__ = "dpe_teacher_aliases"
+    __table_args__ = (
+        UniqueConstraint("normalized_alias", name="uq_dpe_teacher_alias_normalized"),
+        Index("ix_dpe_teacher_alias_teacher", "teacher_id", "active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.id", ondelete="CASCADE"), index=True)
+    alias_name: Mapped[str] = mapped_column(String(240))
+    normalized_alias: Mapped[str] = mapped_column(String(240), index=True)
+    source_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    external_key: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    teacher: Mapped[Teacher] = relationship()
+
+
+class DPECostSubject(Base):
+    """Course-independent discipline/subject master for DPE costing."""
+
+    __tablename__ = "dpe_cost_subjects"
+    __table_args__ = (
+        UniqueConstraint("directorate_id", "code", name="uq_dpe_cost_subject_code"),
+        Index("ix_dpe_cost_subject_active", "directorate_id", "active", "name"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    code: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(220), index=True)
+    external_key: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    directorate: Mapped[Directorate] = relationship()
+
+
+class DPECostPeriodTeacher(Base):
+    """Historical teacher snapshot attached to one costing competence."""
+
+    __tablename__ = "dpe_cost_period_teachers"
+    __table_args__ = (
+        UniqueConstraint("period_id", "teacher_id", name="uq_dpe_cost_period_teacher"),
+        CheckConstraint(
+            "relationship_type in ('UNSPECIFIED','EMPLOYEE','HOURLY','SERVICE_PROVIDER','OTHER')",
+            name="ck_dpe_cost_period_teacher_relationship",
+        ),
+        Index("ix_dpe_cost_period_teacher_period", "directorate_id", "period_id", "included"),
+        Index("ix_dpe_cost_period_teacher_relationship", "directorate_id", "period_id", "relationship_type"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    period_id: Mapped[int] = mapped_column(ForeignKey("dpe_cost_periods.id", ondelete="RESTRICT"), index=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.id", ondelete="RESTRICT"), index=True)
+    teacher_snapshot_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    relationship_type: Mapped[str] = mapped_column(String(30), default="UNSPECIFIED", index=True)
+    included: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    directorate: Mapped[Directorate] = relationship()
+    period: Mapped[DPECostPeriod] = relationship()
+    teacher: Mapped[Teacher] = relationship()
+
+
+class DPECostTeachingActivity(Base):
+    """Monthly teaching workload used as the teacher-cost allocation basis."""
+
+    __tablename__ = "dpe_cost_teaching_activities"
+    __table_args__ = (
+        CheckConstraint("workload_hours > 0", name="ck_dpe_cost_teaching_activity_hours"),
+        CheckConstraint(
+            "source_type in ('MANUAL','EXCEL','API','REQUEST','OTHER')",
+            name="ck_dpe_cost_teaching_activity_source",
+        ),
+        CheckConstraint("status in ('ACTIVE','VOIDED')", name="ck_dpe_cost_teaching_activity_status"),
+        UniqueConstraint(
+            "directorate_id", "period_id", "source_type", "external_key",
+            name="uq_dpe_cost_teaching_activity_external",
+        ),
+        Index("ix_dpe_cost_teaching_activity_period", "directorate_id", "period_id", "status"),
+        Index("ix_dpe_cost_teaching_activity_teacher", "period_teacher_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    period_id: Mapped[int] = mapped_column(ForeignKey("dpe_cost_periods.id", ondelete="RESTRICT"), index=True)
+    period_teacher_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_period_teachers.id", ondelete="RESTRICT"), index=True
+    )
+    subject_id: Mapped[int] = mapped_column(ForeignKey("dpe_cost_subjects.id", ondelete="RESTRICT"), index=True)
+    class_group: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    effective_start_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    effective_end_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    workload_hours: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    workload_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source_type: Mapped[str] = mapped_column(String(20), default="MANUAL", index=True)
+    external_key: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    context_snapshot_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(20), default="ACTIVE", index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    voided_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    void_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    directorate: Mapped[Directorate] = relationship()
+    period: Mapped[DPECostPeriod] = relationship()
+    period_teacher: Mapped[DPECostPeriodTeacher] = relationship()
+    subject: Mapped[DPECostSubject] = relationship()
+
+
+class DPECostTeachingActivityOffering(Base):
+    """Split of one teaching activity across one or more monthly offerings."""
+
+    __tablename__ = "dpe_cost_teaching_activity_offerings"
+    __table_args__ = (
+        CheckConstraint("allocated_hours > 0", name="ck_dpe_cost_teaching_activity_offering_hours"),
+        UniqueConstraint("activity_id", "period_offering_id", name="uq_dpe_cost_teaching_activity_offering"),
+        Index("ix_dpe_cost_teaching_activity_offering_snapshot", "period_offering_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    activity_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_teaching_activities.id", ondelete="CASCADE"), index=True
+    )
+    period_offering_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_period_offerings.id", ondelete="RESTRICT"), index=True
+    )
+    allocated_hours: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    offering_snapshot_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    activity: Mapped[DPECostTeachingActivity] = relationship()
+    period_offering: Mapped[DPECostPeriodOffering] = relationship()
+
+
+# ---------------------------------------------------------------------------
+# v0.9.6.17 - DPE Cost Allocation Engine
+# ---------------------------------------------------------------------------
+
+
+class DPECostPeriodOfferingDriverValue(Base):
+    """Monthly driver basis attached to an offering snapshot.
+
+    OFFERING_HOURS can be derived from teaching activities when no explicit
+    value exists. STUDENTS and REVENUE are explicit inputs in this release and
+    will be connected to the richer revenue/student domain in the next stage.
+    """
+
+    __tablename__ = "dpe_cost_period_offering_driver_values"
+    __table_args__ = (
+        CheckConstraint(
+            "metric_type in ('OFFERING_HOURS','STUDENTS','REVENUE')",
+            name="ck_dpe_cost_driver_value_metric",
+        ),
+        CheckConstraint(
+            "source_type in ('MANUAL','DERIVED','IMPORT','SYSTEM')",
+            name="ck_dpe_cost_driver_value_source",
+        ),
+        CheckConstraint("value >= 0", name="ck_dpe_cost_driver_value_nonnegative"),
+        UniqueConstraint("period_offering_id", "metric_type", name="uq_dpe_cost_driver_value_metric"),
+        Index("ix_dpe_cost_driver_value_period", "directorate_id", "period_id", "metric_type"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    period_id: Mapped[int] = mapped_column(ForeignKey("dpe_cost_periods.id", ondelete="RESTRICT"), index=True)
+    period_offering_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_period_offerings.id", ondelete="CASCADE"), index=True
+    )
+    metric_type: Mapped[str] = mapped_column(String(30), index=True)
+    value: Mapped[Decimal] = mapped_column(Numeric(20, 6))
+    source_type: Mapped[str] = mapped_column(String(20), default="MANUAL")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    period: Mapped[DPECostPeriod] = relationship()
+    period_offering: Mapped[DPECostPeriodOffering] = relationship()
+
+
+class DPECostExpenseAllocationTarget(Base):
+    """Optional eligibility/manual target configuration for one expense.
+
+    Absence of rows means all included offerings are eligible for shared
+    drivers. DIRECT requires one selected target; MANUAL requires values or
+    percentages on the selected targets.
+    """
+
+    __tablename__ = "dpe_cost_expense_allocation_targets"
+    __table_args__ = (
+        CheckConstraint("manual_amount is null or manual_amount >= 0", name="ck_dpe_cost_target_amount"),
+        CheckConstraint(
+            "manual_percentage is null or (manual_percentage >= 0 and manual_percentage <= 100)",
+            name="ck_dpe_cost_target_percentage",
+        ),
+        UniqueConstraint("expense_id", "period_offering_id", name="uq_dpe_cost_expense_target"),
+        Index("ix_dpe_cost_expense_target_expense", "expense_id"),
+        Index("ix_dpe_cost_expense_target_offering", "period_offering_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    expense_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_expenses.id", ondelete="CASCADE"), index=True
+    )
+    period_offering_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_period_offerings.id", ondelete="RESTRICT"), index=True
+    )
+    manual_amount: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), nullable=True)
+    manual_percentage: Mapped[Decimal | None] = mapped_column(Numeric(10, 6), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    expense: Mapped[DPECostExpense] = relationship()
+    period_offering: Mapped[DPECostPeriodOffering] = relationship()
+
+
+class DPECostAllocationRun(Base):
+    """Immutable calculation attempt for one competence."""
+
+    __tablename__ = "dpe_cost_allocation_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('BLOCKED','CALCULATED','OFFICIAL','SUPERSEDED')",
+            name="ck_dpe_cost_allocation_run_status",
+        ),
+        UniqueConstraint("period_id", "run_number", name="uq_dpe_cost_allocation_run_number"),
+        Index("ix_dpe_cost_allocation_run_period", "directorate_id", "period_id", "run_number"),
+        Index("ix_dpe_cost_allocation_run_status", "directorate_id", "status", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    period_id: Mapped[int] = mapped_column(ForeignKey("dpe_cost_periods.id", ondelete="RESTRICT"), index=True)
+    run_number: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20), default="CALCULATED", index=True)
+    input_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    expense_total: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0)
+    allocated_total: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0)
+    unallocated_total: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0)
+    summary_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    official_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    official_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    superseded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    period: Mapped[DPECostPeriod] = relationship()
+
+
+class DPECostAllocationResult(Base):
+    """Traceable expense-to-offering result generated by a calculation run."""
+
+    __tablename__ = "dpe_cost_allocation_results"
+    __table_args__ = (
+        CheckConstraint("allocated_amount >= 0", name="ck_dpe_cost_allocation_result_amount"),
+        UniqueConstraint(
+            "run_id", "expense_id", "period_offering_id",
+            name="uq_dpe_cost_allocation_result_target",
+        ),
+        Index("ix_dpe_cost_allocation_result_run", "run_id", "expense_id"),
+        Index("ix_dpe_cost_allocation_result_offering", "run_id", "period_offering_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_allocation_runs.id", ondelete="CASCADE"), index=True
+    )
+    expense_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_expenses.id", ondelete="RESTRICT"), index=True
+    )
+    period_offering_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_period_offerings.id", ondelete="RESTRICT"), index=True
+    )
+    allocation_rule_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_allocation_rules.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    driver_type: Mapped[str] = mapped_column(String(30), index=True)
+    allocated_amount: Mapped[Decimal] = mapped_column(Numeric(16, 2))
+    numerator: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
+    denominator: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
+    percentage: Mapped[Decimal | None] = mapped_column(Numeric(14, 10), nullable=True)
+    basis_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    expense_snapshot_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    offering_snapshot_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    run: Mapped[DPECostAllocationRun] = relationship()
+    expense: Mapped[DPECostExpense] = relationship()
+    period_offering: Mapped[DPECostPeriodOffering] = relationship()
+    allocation_rule: Mapped[DPEAllocationRule | None] = relationship()
+
+
+class DPECostAllocationIssue(Base):
+    """Persisted blocker/warning explaining why a run is incomplete."""
+
+    __tablename__ = "dpe_cost_allocation_issues"
+    __table_args__ = (
+        CheckConstraint("severity in ('BLOCKER','WARNING')", name="ck_dpe_cost_allocation_issue_severity"),
+        Index("ix_dpe_cost_allocation_issue_run", "run_id", "severity"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_allocation_runs.id", ondelete="CASCADE"), index=True
+    )
+    expense_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_cost_expenses.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    severity: Mapped[str] = mapped_column(String(20), default="BLOCKER", index=True)
+    code: Mapped[str] = mapped_column(String(80), index=True)
+    message: Mapped[str] = mapped_column(Text)
+    context_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    run: Mapped[DPECostAllocationRun] = relationship()
+    expense: Mapped[DPECostExpense | None] = relationship()
+
+
+# ---------------------------------------------------------------------------
+# v0.9.6.18 - DPE Receita, Alunos e Ticket Medio
+# ---------------------------------------------------------------------------
+
+
+class DPECostOfferingEconomics(Base):
+    """Monthly auxiliary facts for one historical course/context snapshot.
+
+    Revenue no longer lives in this table at runtime. The canonical source is
+    ``dpe_revenue_entries``. This model intentionally keeps only active-student
+    facts and their source metadata because students may be used by analytics
+    and allocation rules independently from revenue.
+    """
+
+    __tablename__ = "dpe_cost_offering_economics"
+    __table_args__ = (
+        CheckConstraint(
+            "active_students is null or active_students >= 0",
+            name="ck_dpe_cost_economics_active_students",
+        ),
+        CheckConstraint(
+            "source_type in ('MANUAL','IMPORT','API','REQUEST','SYSTEM')",
+            name="ck_dpe_cost_economics_source_type",
+        ),
+        UniqueConstraint(
+            "period_offering_id", name="uq_dpe_cost_offering_economics_snapshot"
+        ),
+        Index(
+            "ix_dpe_cost_economics_period",
+            "directorate_id", "period_id", "period_offering_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    period_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_periods.id", ondelete="RESTRICT"), index=True
+    )
+    period_offering_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_period_offerings.id", ondelete="RESTRICT"), index=True
+    )
+    active_students: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_type: Mapped[str] = mapped_column(String(20), default="MANUAL", index=True)
+    source_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    period: Mapped[DPECostPeriod] = relationship()
+    period_offering: Mapped[DPECostPeriodOffering] = relationship()
+
+
+# ---------------------------------------------------------------------------
+# v0.13.0-dev.6 - DPE Revenue Ledger
+# ---------------------------------------------------------------------------
+
+
+class DPERevenueCategory(Base):
+    __tablename__ = "dpe_revenue_categories"
+    __table_args__ = (
+        UniqueConstraint("directorate_id", "code", name="uq_dpe_revenue_category_code"),
+        CheckConstraint("scope in ('COURSE','INSTITUTIONAL','BOTH')", name="ck_dpe_revenue_category_scope"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    code: Mapped[str] = mapped_column(String(80), index=True)
+    name: Mapped[str] = mapped_column(String(160))
+    scope: Mapped[str] = mapped_column(String(20), default="BOTH", index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    system: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class DPERevenueEntry(Base):
+    __tablename__ = "dpe_revenue_entries"
+    __table_args__ = (
+        CheckConstraint("amount >= 0", name="ck_dpe_revenue_entry_amount_nonnegative"),
+        CheckConstraint("source_type in ('MANUAL','IMPORT','API','SYSTEM','MIGRATION')", name="ck_dpe_revenue_entry_source"),
+        Index("ix_dpe_revenue_period", "directorate_id", "period_id"),
+        Index("ix_dpe_revenue_period_offering", "period_id", "period_offering_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    period_id: Mapped[int] = mapped_column(ForeignKey("dpe_cost_periods.id", ondelete="RESTRICT"), index=True)
+    period_offering_id: Mapped[int | None] = mapped_column(ForeignKey("dpe_cost_period_offerings.id", ondelete="RESTRICT"), nullable=True, index=True)
+    category_id: Mapped[int] = mapped_column(ForeignKey("dpe_revenue_categories.id", ondelete="RESTRICT"), index=True)
+    description: Mapped[str] = mapped_column(String(255))
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    source_type: Mapped[str] = mapped_column(String(20), default="MANUAL", index=True)
+    source_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    category: Mapped[DPERevenueCategory] = relationship()
+    period: Mapped[DPECostPeriod] = relationship()
+    period_offering: Mapped[DPECostPeriodOffering | None] = relationship()
+
+
+# ---------------------------------------------------------------------------
+# v0.9.6.19 - DPE Fechamento Mensal e Auditoria
+# ---------------------------------------------------------------------------
+
+
+class DPECostPeriodEvent(Base):
+    """Immutable governance event for competence close/reopen operations.
+
+    The period row stores only the current state. This event ledger preserves
+    every closure and controlled reopening with the checklist snapshot and the
+    allocation version that supported the decision.
+    """
+
+    __tablename__ = "dpe_cost_period_events"
+    __table_args__ = (
+        CheckConstraint(
+            "event_type in ('CLOSED','REOPENED')",
+            name="ck_dpe_cost_period_event_type",
+        ),
+        Index(
+            "ix_dpe_cost_period_event_period",
+            "directorate_id", "period_id", "created_at",
+        ),
+        Index(
+            "ix_dpe_cost_period_event_type",
+            "directorate_id", "event_type", "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    period_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_periods.id", ondelete="RESTRICT"), index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(20), index=True)
+    from_status: Mapped[str] = mapped_column(String(20))
+    to_status: Mapped[str] = mapped_column(String(20))
+    allocation_run_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_cost_allocation_runs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    checklist_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    period: Mapped[DPECostPeriod] = relationship()
+    allocation_run: Mapped[DPECostAllocationRun | None] = relationship()
+
+
+class DPECostExpenseStagingRow(Base):
+    """Raw/normalized row waiting for an adapter-specific validation step."""
+
+    __tablename__ = "dpe_cost_expense_staging_rows"
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('PENDING','VALID','ERROR','IGNORED','COMMITTED')",
+            name="ck_dpe_cost_expense_staging_status",
+        ),
+        UniqueConstraint("batch_id", "row_number", name="uq_dpe_cost_expense_staging_row"),
+        Index("ix_dpe_cost_expense_staging_batch", "batch_id", "status", "row_number"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    batch_id: Mapped[int] = mapped_column(
+        ForeignKey("dpe_cost_expense_import_batches.id", ondelete="CASCADE"), index=True
+    )
+    row_number: Mapped[int] = mapped_column(Integer)
+    raw_data_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    normalized_data_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING", index=True)
+    errors_json: Mapped[list] = mapped_column(JSON, default=list)
+    committed_expense_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dpe_cost_expenses.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    batch: Mapped[DPECostExpenseImportBatch] = relationship()
+    committed_expense: Mapped[DPECostExpense | None] = relationship()
+
 
 # ---------------------------------------------------------------------------
 # v0.8.5 - Avaliações institucionais importadas do SEI

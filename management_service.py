@@ -195,38 +195,6 @@ def _validate_component_consistency(indicator_code: str, values: dict[str, Any])
             errors["values.respondents"] = "Não pode superar os atendimentos elegíveis."
         if (values.get("satisfied") or 0) + (values.get("dissatisfied") or 0) > respondents:
             errors["values.satisfied"] = "Satisfeitos e insatisfeitos não podem superar os respondentes."
-    elif indicator_code == "DPE-01":
-        if (values.get("net_revenue") or 0) <= 0:
-            errors["values.net_revenue"] = "A receita líquida precisa ser maior que zero."
-        if (values.get("weekly_teaching_hours") or 0) <= 0:
-            errors["values.weekly_teaching_hours"] = "As horas-aula semanais precisam ser maiores que zero."
-        if (values.get("teacher_count") or 0) <= 0:
-            errors["values.teacher_count"] = "O número de docentes precisa ser maior que zero."
-    elif indicator_code == "DPE-02":
-        if (values.get("net_revenue") or 0) <= 0:
-            errors["values.net_revenue"] = "A receita líquida precisa ser maior que zero."
-        total_expense = sum(float(values.get(key) or 0) for key in (
-            "personnel_expense", "operational_expense", "administrative_expense", "financial_expense"
-        ))
-        if total_expense <= 0:
-            errors["values.personnel_expense"] = "A despesa total precisa ser maior que zero."
-    elif indicator_code == "DPE-03":
-        if (values.get("net_revenue") or 0) <= 0:
-            errors["values.net_revenue"] = "A receita líquida precisa ser maior que zero."
-        breakdown_keys = ("gross_salaries", "charges", "provisions")
-        informed = [values.get(key) is not None for key in breakdown_keys]
-        if any(informed) and not all(informed):
-            errors["values.gross_salaries"] = (
-                "Preencha salários brutos, encargos e provisões em conjunto, ou deixe os três campos vazios."
-            )
-        elif all(informed):
-            payroll_by_category = float(values.get("faculty_payroll") or 0) + float(values.get("administrative_payroll") or 0)
-            payroll_by_nature = sum(float(values.get(key) or 0) for key in breakdown_keys)
-            tolerance = max(1.0, abs(payroll_by_category) * 0.005)
-            if abs(payroll_by_category - payroll_by_nature) > tolerance:
-                errors["values.gross_salaries"] = (
-                    "Salários, encargos e provisões devem totalizar a mesma folha informada nas categorias docente e administrativa."
-                )
     elif indicator_code == "DM-02":
         if (values.get("graduated_within_24") or 0) > (values.get("cohort_entrants") or 0):
             errors["values.graduated_within_24"] = "Não pode superar os ingressantes da coorte."
@@ -366,70 +334,12 @@ def enrich_rolling_metrics(
     indicator: dict[str, Any],
     period_rows: list[dict[str, Any]],
 ) -> None:
-    """Enriquece indicadores móveis usando os componentes consolidados.
+    """Compatibility hook for generic management dashboards.
 
-    A janela é sempre baseada nos períodos cronológicos disponíveis, sem somar
-    percentuais. Margens e índices são recalculados a partir dos numeradores e
-    denominadores acumulados, preservando a equivalência matemática entre site
-    e Excel.
+    DPE rolling indicators were retired in v0.13; DADM/DM currently require no
+    additional rolling enrichment here.
     """
-    code = indicator.get("code")
-    if code not in {"DPE-01", "DPE-02", "DPE-03"}:
-        return
-    ordered = sorted(period_rows, key=lambda item: period_sort_key(item["period"]))
-    for index, item in enumerate(ordered):
-        current_components = item.get("components") or {}
-
-        if code == "DPE-01":
-            window = ordered[max(0, index - 11): index + 1]
-            revenue = sum(_number((row.get("components") or {}).get("net_revenue")) or 0 for row in window)
-            cost = 0.0
-            for row in window:
-                components = row.get("components") or {}
-                cost += sum(_number(components.get(key)) or 0 for key in (
-                    "faculty_cost", "coordination_cost", "other_direct_cost", "indirect_cost"
-                ))
-            item["metrics"]["net_margin_12m_pct"] = _safe_ratio(revenue - cost, revenue, 100)
-            continue
-
-        if code == "DPE-02":
-            window = ordered[max(0, index - 11): index + 1]
-            revenue = sum(_number((row.get("components") or {}).get("net_revenue")) or 0 for row in window)
-            expense = 0.0
-            for row in window:
-                components = row.get("components") or {}
-                expense += sum(_number(components.get(key)) or 0 for key in (
-                    "personnel_expense", "operational_expense", "administrative_expense", "financial_expense"
-                ))
-            coverage = _safe_ratio(revenue, expense, 1)
-            item["metrics"]["coverage_index_12m"] = coverage
-            item["metrics"]["operating_margin_12m_pct"] = (
-                None if coverage in (None, 0) else (1 - 1 / coverage) * 100
-            )
-            continue
-
-        payroll = (_number(current_components.get("faculty_payroll")) or 0) + (
-            _number(current_components.get("administrative_payroll")) or 0
-        )
-        window = ordered[max(0, index - 2): index + 1]
-        revenues = [
-            _number((row.get("components") or {}).get("net_revenue"))
-            for row in window
-        ]
-        revenues = [value for value in revenues if value is not None]
-        average_revenue = sum(revenues) / len(revenues) if revenues else None
-        item["metrics"]["payroll_on_revenue_3m_pct"] = _safe_ratio(payroll, average_revenue, 100)
-        if index == 0:
-            item["metrics"]["payroll_monthly_change_pct"] = None
-        else:
-            previous_components = ordered[index - 1].get("components") or {}
-            previous_payroll = (_number(previous_components.get("faculty_payroll")) or 0) + (
-                _number(previous_components.get("administrative_payroll")) or 0
-            )
-            item["metrics"]["payroll_monthly_change_pct"] = _safe_ratio(
-                payroll - previous_payroll, previous_payroll, 100
-            )
-
+    return
 
 def status_for_metric(value: float | None, metric: dict[str, Any], target: dict[str, Any] | None = None) -> str:
     if value is None:
@@ -629,20 +539,6 @@ def build_management_dashboard(
             response_rate = current["metrics"].get("response_rate_pct")
             if response_rate is not None and response_rate < 25:
                 notes.append("Amostra indicativa: taxa de resposta abaixo de 25%.")
-        if spec["code"] == "DPE-02" and reference:
-            ordered_coverage = sorted(
-                [item for item in all_period_results.get("DPE-02", []) if period_sort_key(item["period"]) <= period_sort_key(reference)],
-                key=lambda item: period_sort_key(item["period"]),
-            )
-            consecutive = 0
-            for item in reversed(ordered_coverage):
-                coverage = item.get("metrics", {}).get("coverage_index")
-                if coverage is not None and coverage < 1.0:
-                    consecutive += 1
-                else:
-                    break
-            if consecutive > 2:
-                notes.append(f"Alerta: {consecutive} meses consecutivos com cobertura abaixo de 1,00.")
         cards.append({
             "indicator_code": spec["code"],
             "indicator_name": spec["name"],
@@ -693,20 +589,8 @@ def build_management_dashboard(
             primary = metric_spec(directorate_code, selected["code"], selected["primary_metric"])
             target_metric = primary
             dimensions = row_dimensions(row)
-            # O documento da DPE define 15% para o consolidado e 10% por curso.
-            # Na ausência de uma meta específica cadastrada para o curso, o
-            # fallback institucional correto para a dimensão curso é 10%.
             dimension_key = row.get("dimension_key", "TOTAL")
             target_candidates = target_rows
-            if selected["code"] == "DPE-01" and dimensions.get("course"):
-                target_metric = {**primary, "target": 10, "attention": 0}
-                # A meta institucional de 15% não deve substituir silenciosamente
-                # a regra específica do documento para cursos (10%). Uma meta
-                # cadastrada para a dimensão exata continua tendo prioridade.
-                target_candidates = [
-                    item for item in target_rows
-                    if item.get("dimension_key", "TOTAL") == dimension_key
-                ]
             target = _target_for(target_metric, target_candidates, reference, dimension_key)
             value = metrics.get(primary["key"])
             dimension_items.append({

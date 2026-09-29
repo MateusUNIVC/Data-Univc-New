@@ -38,7 +38,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-from academic_excel_parser import ler_registros
+from academic_excel_parser import inspecionar_relatorio
 
 from academic_catalog import (
     COURSE_ALIASES,
@@ -1242,7 +1242,7 @@ def validar_xlsx_baixado(
     Para Educação Física, curso é definido exclusivamente pelo campo Curso: do
     relatório; EFB/EFL no nome da turma não participam da identidade.
     """
-    metadata, registros, warnings = ler_registros(file_path)
+    metadata, warnings = inspecionar_relatorio(file_path)
     raw_course = str(metadata.get("curso") or "").strip()
     if not raw_course:
         raise RuntimeError("O XLSX baixado não informa o campo Curso:.")
@@ -1262,7 +1262,7 @@ def validar_xlsx_baixado(
         "curso": raw_course,
         "ano": got_year,
         "semestre": got_semester,
-        "registros": len(registros),
+        "registros": int(metadata.get("total_registros_aluno_disciplina") or 0),
         "avisos": len(warnings),
     }
 

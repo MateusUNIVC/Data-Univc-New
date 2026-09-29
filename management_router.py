@@ -28,6 +28,11 @@ def _require_management(scope: DirectorateScope) -> None:
         raise HTTPException(404, "O novo módulo gerencial está disponível para DADM, DPE e DM.")
 
 
+
+def _reject_dpe_legacy_measurements(scope: DirectorateScope) -> None:
+    if scope.directorate_code == "DPE":
+        raise HTTPException(410, "A DPE v0.13 não utiliza medições gerenciais manuais. Use os endpoints dedicados /api/dpe/*." )
+
 def _repo(db: Session, scope: DirectorateScope) -> ManagementRepository:
     _require_management(scope)
     return ManagementRepository(db, scope)
@@ -88,6 +93,7 @@ def management_dashboard(
     scope: DirectorateScope = Depends(current_scope),
 ):
     try:
+        _reject_dpe_legacy_measurements(scope)
         repo = _repo(db, scope)
         dimension_filters = None
         if dimensions:
@@ -124,6 +130,7 @@ def management_measurements(
     scope: DirectorateScope = Depends(current_scope),
 ):
     try:
+        _reject_dpe_legacy_measurements(scope)
         return _repo(db, scope).list_measurements(
             indicator_code=indicador,
             period=periodo,
@@ -144,6 +151,7 @@ async def management_measurement_create(
     scope: DirectorateScope = Depends(require_scope_write),
 ):
     try:
+        _reject_dpe_legacy_measurements(scope)
         return _repo(db, scope).upsert_measurement(await request.json())
     except Exception as exc:
         _translate(exc)
@@ -157,6 +165,7 @@ async def management_measurement_update(
     scope: DirectorateScope = Depends(require_scope_write),
 ):
     try:
+        _reject_dpe_legacy_measurements(scope)
         return _repo(db, scope).update_measurement(row_id, await request.json())
     except Exception as exc:
         _translate(exc)
@@ -169,6 +178,7 @@ def management_measurement_delete(
     scope: DirectorateScope = Depends(require_scope_write),
 ):
     try:
+        _reject_dpe_legacy_measurements(scope)
         _repo(db, scope).delete_measurement(row_id)
         return {"ok": True}
     except Exception as exc:
@@ -284,6 +294,7 @@ def management_excel(
     scope: DirectorateScope = Depends(current_scope),
 ):
     try:
+        _reject_dpe_legacy_measurements(scope)
         repo = _repo(db, scope)
         buffer = build_management_workbook(
             scope.directorate_code,

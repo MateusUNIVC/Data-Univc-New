@@ -1830,3 +1830,88 @@ th.numeric, td.numeric {
   #dashboardDtnh .metric-grid.executive,
   #dashboardDtnh .executive-nps-grid { grid-template-columns: 1fr; }
 }
+
+/* v0.11.6.5 — leitura por aluno e filtros rápidos de resultados acadêmicos */
+.academic-result-summary-cards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.result-summary-card.actionable {
+  width: 100%;
+  appearance: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease, background .16s ease;
+}
+.result-summary-card.actionable:hover {
+  transform: translateY(-1px);
+  border-color: #9fc6b4;
+  box-shadow: 0 5px 16px rgba(16, 44, 34, .08);
+}
+.result-summary-card.actionable:focus-visible {
+  outline: 3px solid rgba(14, 128, 88, .2);
+  outline-offset: 2px;
+}
+.result-summary-card.actionable.active-filter {
+  border-color: #0e8058;
+  background: #f1faf6;
+  box-shadow: inset 0 0 0 1px rgba(14, 128, 88, .12);
+}
+.result-summary-card > em {
+  display: inline-flex;
+  margin-top: 9px;
+  color: var(--green-700);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+.results-active-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 10px;
+  padding: 7px 9px 7px 11px;
+  border: 1px solid #b8d9ca;
+  border-radius: 999px;
+  background: #f1faf6;
+  color: var(--ink-700);
+  font-size: 10px;
+}
+.results-active-filter strong { color: var(--green-800); }
+.results-active-filter button {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fff;
+  color: var(--ink-600);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.results-active-filter button:hover { color: #8f3434; }
+@media (max-width: 1100px) {
+  .academic-result-summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .academic-result-summary-cards { grid-template-columns: 1fr; }
+  .results-active-filter { width: 100%; border-radius: 8px; flex-wrap: wrap; }
+}
+
+/* v0.11.6.7 — pendências sem classificação ficam como qualidade do dado, não KPI principal. */
+.result-summary-quality {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid rgba(182, 122, 29, .24);
+  border-radius: 10px;
+  background: rgba(182, 122, 29, .07);
+  font-size: .82rem;
+  color: var(--text-muted);
+}
+.result-summary-quality strong { color: #8a5b14; }

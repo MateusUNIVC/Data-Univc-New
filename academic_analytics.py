@@ -366,14 +366,57 @@ def aggregate_nps(rows: list[dict[str, Any]]) -> float | None:
     return round((promoters - detractors) / respondents * 100, 2)
 
 
-def aggregate_teacher_evaluation(rows: list[dict[str, Any]]) -> float | None:
-    valid = [r for r in rows if r.get("nota_media") is not None]
-    if not valid:
-        return None
-    total_resp = sum(int(r.get("respondentes") or 0) for r in valid)
+def aggregate_teacher_evaluation_details(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Agrega o KPI 02 preservando a semantica de favorabilidade.
+
+    Na fonte oficial v0.11.5 cada linha traz contagens de respostas classificadas.
+    Somamos essas contagens antes de calcular o percentual, evitando media simples
+    entre disciplinas. O fallback de nota existe somente para snapshots historicos
+    usados por testes/exportacoes antigas e nao e a fonte do painel atual.
+    """
+    modern = [r for r in rows if r.get("classificados") is not None]
+    if modern:
+        favorable = sum(int(r.get("favoraveis") or 0) for r in modern)
+        intermediate = sum(int(r.get("intermediarias") or 0) for r in modern)
+        unfavorable = sum(int(r.get("desfavoraveis") or 0) for r in modern)
+        classified = sum(int(r.get("classificados") or 0) for r in modern)
+        unclassified = sum(int(r.get("nao_classificados") or 0) for r in modern)
+        unmapped = sum(int(r.get("nao_mapeados") or 0) for r in modern)
+        respondents = sum(int(r.get("respondentes") or 0) for r in modern)
+        value = None if unmapped > 0 or classified <= 0 else round(favorable / classified * 100, 2)
+        return {
+            "valor": value,
+            "respondentes": respondents,
+            "favoraveis": favorable,
+            "intermediarias": intermediate,
+            "desfavoraveis": unfavorable,
+            "classificados": classified,
+            "nao_classificados": unclassified,
+            "nao_mapeados": unmapped,
+            "metrica": "faculty_favorability_pct_v1",
+        }
+
+    legacy = [r for r in rows if r.get("nota_media") is not None]
+    if not legacy:
+        return {
+            "valor": None, "respondentes": 0, "favoraveis": 0, "intermediarias": 0,
+            "desfavoraveis": 0, "classificados": 0, "nao_classificados": 0,
+            "nao_mapeados": 0, "metrica": None,
+        }
+    total_resp = sum(int(r.get("respondentes") or 0) for r in legacy)
     if total_resp > 0:
-        return round(sum(float(r["nota_media"]) * int(r.get("respondentes") or 0) for r in valid) / total_resp, 2)
-    return round(sum(float(r["nota_media"]) for r in valid) / len(valid), 2)
+        value = round(sum(float(r["nota_media"]) * int(r.get("respondentes") or 0) for r in legacy) / total_resp, 2)
+    else:
+        value = round(sum(float(r["nota_media"]) for r in legacy) / len(legacy), 2)
+    return {
+        "valor": value, "respondentes": total_resp, "favoraveis": 0, "intermediarias": 0,
+        "desfavoraveis": 0, "classificados": 0, "nao_classificados": 0,
+        "nao_mapeados": 0, "metrica": "legacy_score_0_10",
+    }
+
+
+def aggregate_teacher_evaluation(rows: list[dict[str, Any]]) -> float | None:
+    return aggregate_teacher_evaluation_details(rows)["valor"]
 
 
 def aggregate_results(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -612,7 +655,10 @@ def _series(
             "cursos": nps_details["cursos"],
             **goal_series_fields(goal_nps),
         })
-        out["avaliacao_docente"].append({"periodo": period, "valor": teacher, **goal_series_fields(goal_teacher)})
+        teacher_details = aggregate_teacher_evaluation_details(
+            _semester_rows(snapshot.get("avaliacao_docente", []), period, course, discipline)
+        )
+        out["avaliacao_docente"].append({"periodo": period, **teacher_details, **goal_series_fields(goal_teacher)})
         out["aprovacao"].append({
             "periodo": period,
             "valor": result["taxa_aprovacao"],
@@ -809,6 +855,12 @@ def build_academic_dashboard(
     faculty_nps_prev = faculty_nps_details_prev["valor"]
     _, teacher_now, result_now = _period_metrics(snapshot, reference, course, discipline, granularity)
     _, teacher_prev, result_prev = _period_metrics(snapshot, comparison, course, discipline, granularity)
+    teacher_details_now = aggregate_teacher_evaluation_details(
+        _semester_rows(snapshot.get("avaliacao_docente", []), reference, course, discipline) if reference else []
+    )
+    teacher_details_prev = aggregate_teacher_evaluation_details(
+        _semester_rows(snapshot.get("avaliacao_docente", []), comparison, course, discipline) if comparison else []
+    )
 
     # Academic results are semester-native. In monthly visualization the same
     # semester summary is intentionally repeated from Jan-Jun / Jul-Dec.
@@ -898,8 +950,8 @@ def build_academic_dashboard(
     if teacher_now is None:
         insights.append({
             "nivel": "informativo",
-            "titulo": "Avaliação docente sem fechamento",
-            "texto": "A avaliação do docente pelo aluno pode ser lançada por professor e disciplina quando o instrumento estiver disponível.",
+            "titulo": "Avaliação docente sem favorabilidade disponível",
+            "texto": "Importe o relatório Disciplina/Professor do SEI para o semestre ou revise categorias ainda não mapeadas. O KPI 02 não aceita mais lançamento manual em nota 0–10.",
         })
 
     try:
@@ -1004,6 +1056,8 @@ def build_academic_dashboard(
                 "status": status_for(teacher_now, goals["avaliacao_docente"], codes["avaliacao_docente"]),
                 "meta": goal_infos["avaliacao_docente"].get("meta") if goal_infos["avaliacao_docente"] else None,
                 "meta_info": goal_infos["avaliacao_docente"],
+                **{k: v for k, v in teacher_details_now.items() if k != "valor"},
+                "comparacao_respondentes": teacher_details_prev.get("respondentes", 0),
             },
             "aprovacao": {
                 "valor": result_now["taxa_aprovacao"],

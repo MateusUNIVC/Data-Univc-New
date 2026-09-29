@@ -33,6 +33,13 @@
     'tallos-departments': '<path d="M4 20V7l8-4 8 4v13"/><path d="M8 10h2M14 10h2M8 14h2M14 14h2M9 20v-3h6v3"/>',
     'tallos-experience': '<circle cx="12" cy="12" r="9"/><path d="M8 14c2.1 2 5.9 2 8 0M9 9h.01M15 9h.01"/>',
     'tallos-sync': '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 8.2A7 7 0 0 1 18 6l2 1M17.8 15.8A7 7 0 0 1 6 18l-2-1"/>',
+    competencias: '<path d="M5 4h14v16H5z"/><path d="M8 2v4M16 2v4M8 10h8M8 14h5"/>',
+    'central-despesas': '<path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+    docencia: '<path d="m3 8 9-5 9 5-9 5z"/><path d="M7 11v5c3 2 7 2 10 0v-5"/>',
+    economia: '<path d="M4 19h16M6 16l4-5 3 2 5-7"/><circle cx="18" cy="6" r="2"/>',
+    rateio: '<path d="M12 4v4M12 16v4M4 12h4M16 12h4"/><circle cx="12" cy="12" r="4"/>',
+    fechamento: '<path d="M6 4h12v16H6z"/><path d="m9 12 2 2 4-5"/>',
+    catalogo: '<path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M7 9h1M16 9h1"/>',
     governanca: '<path d="M12 3 19 6v5c0 4.6-2.8 8-7 10-4.2-2-7-5.4-7-10V6z"/><path d="m9 12 2 2 4-5"/>',
     back: '<path d="m15 18-6-6 6-6"/><path d="M9 12h10"/>'
   };
@@ -40,10 +47,10 @@
   const fallback = '<circle cx="12" cy="12" r="8"/><path d="M8 12h8"/>';
   const svg = (path) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 
-  document.querySelectorAll('.nav-item').forEach((item) => {
+  document.querySelectorAll('.nav-item, [data-nav-icon]').forEach((item) => {
     const icon = item.querySelector('.nav-icon');
     if (!icon) return;
-    let key = item.dataset.section || '';
+    let key = item.dataset.section || item.dataset.navIcon || '';
     if (!key && item.matches('a[href="/"]')) key = 'back';
     icon.innerHTML = svg(icons[key] || fallback);
     const label = item.querySelector(':scope > span:last-child')?.textContent?.trim();

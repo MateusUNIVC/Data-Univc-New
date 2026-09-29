@@ -140,134 +140,235 @@ def parse_ano_semestre(ws) -> tuple[int | None, int | None]:
     return int(m.group(1)), int(m.group(2))
 
 
-def ler_registros(caminho: Path) -> tuple[dict[str, Any], list[dict[str, Any]], list[str]]:
-    wb = load_workbook(caminho, data_only=True, read_only=False)
-    ws = wb[wb.sheetnames[0]]
+def _valor_coluna(row: tuple[Any, ...], index: int) -> Any:
+    return row[index] if index < len(row) else None
 
-    ano, semestre = parse_ano_semestre(ws)
-    warnings: list[str] = []
-    registros: list[dict[str, Any]] = []
 
-    # Cada bloco do relatório começa por "Unidade Ensino:".
-    inicios = [
-        row
-        for row in range(1, ws.max_row + 1)
-        if limpar_texto(ws.cell(row, 1).value) == "Unidade Ensino:"
-    ]
-
-    if not inicios:
-        raise ValueError(
-            "Não encontrei blocos iniciados por 'Unidade Ensino:'. "
-            "O arquivo não parece seguir o modelo esperado do SEI."
-        )
-
-    cursos_encontrados: list[str] = []
-
-    for idx, inicio in enumerate(inicios):
-        fim = inicios[idx + 1] - 1 if idx + 1 < len(inicios) else ws.max_row
-
-        curso = None
-        disciplina = None
-        turma = None
-        periodo = None
-        header_row = None
-        qtd_declarada = None
-
-        for row in range(inicio, fim + 1):
-            a = limpar_texto(ws.cell(row, 1).value)
-
-            if a == "Curso:":
-                curso = limpar_texto(ws.cell(row, 3).value)
-            elif a == "Disciplina:":
-                disciplina = limpar_texto(ws.cell(row, 3).value)
-            elif a == "Turma:":
-                turma = limpar_texto(ws.cell(row, 3).value)
-                # Neste layout "Período:" fica na coluna K e valor na N.
-                periodo = limpar_texto(ws.cell(row, 14).value)
-            elif a == "Matrícula":
-                header_row = row
-            elif a == "Qtd de alunos:":
-                qtd_declarada = ws.cell(row, 3).value
-
-        if curso:
-            cursos_encontrados.append(curso)
-
-        if not header_row:
-            warnings.append(f"Bloco na linha {inicio}: cabeçalho de alunos não encontrado.")
+def _parse_ano_semestre_linha(row: tuple[Any, ...]) -> tuple[int | None, int | None]:
+    for index, value in enumerate(row):
+        if limpar_texto(value) != "Ano/Semestre:":
             continue
+        for candidate in row[index + 1:]:
+            raw = limpar_texto(candidate)
+            if not raw:
+                continue
+            match = re.search(r"(\d{4})\s*[/\-]\s*([12])", raw)
+            if match:
+                return int(match.group(1)), int(match.group(2))
+            break
+    return None, None
 
-        if not disciplina:
-            warnings.append(f"Bloco na linha {inicio}: disciplina não identificada.")
-            continue
 
+def _prepare_read_only_sheet(ws) -> None:
+    """Ignora dimensões subestimadas gravadas por geradores externos de XLSX.
+
+    Alguns relatórios do SEI declaram no XML uma dimensão menor que a área real
+    da planilha. Em ``read_only=True`` o openpyxl pode confiar nesse metadado e
+    parar de iterar antes de alcançar os blocos ``Unidade Ensino:``.
+
+    ``reset_dimensions`` mantém o modo streaming, mas força o leitor a percorrer
+    as células realmente presentes no XML. Isso evita voltar ao modo normal, que
+    tem consumo de memória muito maior.
+    """
+    reset = getattr(ws, "reset_dimensions", None)
+    if callable(reset):
+        reset()
+
+
+def inspecionar_relatorio(caminho: Path) -> tuple[dict[str, Any], list[str]]:
+    """Lê somente o necessário para validar e resumir um relatório do SEI.
+
+    A leitura usa ``read_only=True`` e não materializa os registros em memória.
+    É a primeira passagem usada pela importação robusta antes de qualquer gravação.
+    """
+    wb = load_workbook(caminho, data_only=True, read_only=True)
+    try:
+        ws = wb[wb.sheetnames[0]]
+        _prepare_read_only_sheet(ws)
+        ano: int | None = None
+        semestre: int | None = None
+        warnings: list[str] = []
+        cursos_encontrados: list[str] = []
+        alunos_unicos: set[str] = set()
+        disciplinas: set[str] = set()
+        turmas: set[tuple[str | None, str | None]] = set()
+        total_registros = 0
+        encontrou_bloco = False
+
+        curso: str | None = None
+        disciplina: str | None = None
+        turma: str | None = None
+        periodo: str | None = None
+        lendo_alunos = False
+        qtd_declarada: int | None = None
         alunos_bloco = 0
+        bloco_inicio = 0
 
-        for row in range(header_row + 1, fim + 1):
-            matricula_raw = ws.cell(row, 1).value
-            nome_raw = ws.cell(row, 3).value
+        def conferir_bloco() -> None:
+            nonlocal qtd_declarada, alunos_bloco
+            if qtd_declarada is not None and qtd_declarada != alunos_bloco:
+                warnings.append(
+                    f"Bloco linha {bloco_inicio} ({disciplina or 'disciplina não identificada'} / {turma or 'sem turma'}): "
+                    f"relatório declara {qtd_declarada} aluno(s), parser encontrou {alunos_bloco}."
+                )
+            qtd_declarada = None
+            alunos_bloco = 0
 
-            if limpar_texto(matricula_raw) == "Qtd de alunos:":
-                break
+        for row_number, row in enumerate(ws.iter_rows(values_only=True), start=1):
+            if ano is None or semestre is None:
+                parsed_year, parsed_semester = _parse_ano_semestre_linha(row)
+                ano = ano or parsed_year
+                semestre = semestre or parsed_semester
 
-            matricula = limpar_texto(matricula_raw)
-            nome = limpar_texto(nome_raw)
-
-            # Linhas de aluno possuem matrícula + nome.
-            if not matricula or not nome:
+            first = limpar_texto(_valor_coluna(row, 0))
+            if first == "Unidade Ensino:":
+                if encontrou_bloco:
+                    conferir_bloco()
+                encontrou_bloco = True
+                bloco_inicio = row_number
+                curso = disciplina = turma = periodo = None
+                lendo_alunos = False
                 continue
 
-            media = parse_media(ws.cell(row, 11).value)
-            situacao = limpar_texto(ws.cell(row, 18).value)
+            if not encontrou_bloco:
+                continue
 
-            registros.append(
-                {
-                    "matricula": matricula,
-                    "nome": nome,
-                    "curso": curso,
-                    "ano": ano,
-                    "semestre": semestre,
-                    "disciplina": disciplina,
-                    "turma": turma,
-                    "periodo": periodo,
-                    "media": media,
-                    "situacao": situacao,
-                    "aprovado": classificacao_aprovacao(situacao),
-                    "motivo_reprovacao": motivo_reprovacao(situacao),
-                }
+            if first == "Curso:":
+                curso = limpar_texto(_valor_coluna(row, 2))
+                if curso:
+                    cursos_encontrados.append(curso)
+            elif first == "Disciplina:":
+                disciplina = limpar_texto(_valor_coluna(row, 2))
+                if disciplina:
+                    disciplinas.add(disciplina)
+            elif first == "Turma:":
+                turma = limpar_texto(_valor_coluna(row, 2))
+                periodo = limpar_texto(_valor_coluna(row, 13))
+                if disciplina:
+                    turmas.add((disciplina, turma))
+            elif first == "Matrícula":
+                lendo_alunos = True
+            elif first == "Qtd de alunos:":
+                raw = _valor_coluna(row, 2)
+                try:
+                    qtd_declarada = int(float(str(raw).replace(",", "."))) if raw not in (None, "") else None
+                except (TypeError, ValueError):
+                    qtd_declarada = None
+                conferir_bloco()
+                lendo_alunos = False
+            elif lendo_alunos:
+                matricula = limpar_texto(_valor_coluna(row, 0))
+                nome = limpar_texto(_valor_coluna(row, 2))
+                if matricula and nome:
+                    total_registros += 1
+                    alunos_bloco += 1
+                    alunos_unicos.add(matricula)
+
+        if encontrou_bloco:
+            conferir_bloco()
+        if not encontrou_bloco:
+            raise ValueError(
+                "Não encontrei blocos iniciados por 'Unidade Ensino:'. "
+                "O arquivo não parece seguir o modelo esperado do SEI."
             )
-            alunos_bloco += 1
+        if not total_registros:
+            raise ValueError("Nenhum registro de aluno foi encontrado no arquivo.")
 
-        # Conferência simples do total declarado por bloco, quando possível.
-        if qtd_declarada not in (None, ""):
-            try:
-                qtd = int(float(str(qtd_declarada).replace(",", ".")))
-                if qtd != alunos_bloco:
-                    warnings.append(
-                        f"Bloco linha {inicio} ({disciplina} / {turma}): "
-                        f"relatório declara {qtd} aluno(s), parser encontrou {alunos_bloco}."
-                    )
-            except ValueError:
-                pass
+        curso_principal = Counter(cursos_encontrados).most_common(1)[0][0] if cursos_encontrados else None
+        metadata = {
+            "arquivo_origem": caminho.name,
+            "curso": curso_principal,
+            "cursos_encontrados": sorted(set(cursos_encontrados), key=str.casefold),
+            "ano": ano,
+            "semestre": semestre,
+            "aba": ws.title,
+            "total_registros_aluno_disciplina": total_registros,
+            "total_alunos_unicos": len(alunos_unicos),
+            "total_disciplinas": len(disciplinas),
+            "total_turmas": len(turmas),
+            "parser_mode": "read_only_streaming",
+        }
+        return metadata, warnings
+    finally:
+        wb.close()
 
-    if not registros:
-        raise ValueError("Nenhum registro de aluno foi encontrado no arquivo.")
 
-    curso_principal = Counter(cursos_encontrados).most_common(1)[0][0] if cursos_encontrados else None
+def iterar_registros(caminho: Path):
+    """Produz registros aluno-disciplina sem manter o relatório inteiro em RAM."""
+    wb = load_workbook(caminho, data_only=True, read_only=True)
+    try:
+        ws = wb[wb.sheetnames[0]]
+        _prepare_read_only_sheet(ws)
+        ano: int | None = None
+        semestre: int | None = None
+        curso: str | None = None
+        disciplina: str | None = None
+        turma: str | None = None
+        periodo: str | None = None
+        lendo_alunos = False
 
-    metadados = {
-        "arquivo_origem": caminho.name,
-        "curso": curso_principal,
-        "ano": ano,
-        "semestre": semestre,
-        "aba": ws.title,
-        "total_registros_aluno_disciplina": len(registros),
-        "total_alunos_unicos": len({r["matricula"] for r in registros}),
-        "total_disciplinas": len({r["disciplina"] for r in registros}),
-        "total_turmas": len({(r["disciplina"], r["turma"]) for r in registros}),
-    }
+        for row in ws.iter_rows(values_only=True):
+            if ano is None or semestre is None:
+                parsed_year, parsed_semester = _parse_ano_semestre_linha(row)
+                ano = ano or parsed_year
+                semestre = semestre or parsed_semester
 
-    return metadados, registros, warnings
+            first = limpar_texto(_valor_coluna(row, 0))
+            if first == "Unidade Ensino:":
+                curso = disciplina = turma = periodo = None
+                lendo_alunos = False
+                continue
+            if first == "Curso:":
+                curso = limpar_texto(_valor_coluna(row, 2))
+                continue
+            if first == "Disciplina:":
+                disciplina = limpar_texto(_valor_coluna(row, 2))
+                continue
+            if first == "Turma:":
+                turma = limpar_texto(_valor_coluna(row, 2))
+                periodo = limpar_texto(_valor_coluna(row, 13))
+                continue
+            if first == "Matrícula":
+                lendo_alunos = True
+                continue
+            if first == "Qtd de alunos:":
+                lendo_alunos = False
+                continue
+            if not lendo_alunos or not disciplina:
+                continue
 
+            matricula = limpar_texto(_valor_coluna(row, 0))
+            nome = limpar_texto(_valor_coluna(row, 2))
+            if not matricula or not nome:
+                continue
+            situacao = limpar_texto(_valor_coluna(row, 17))
+            yield {
+                "matricula": matricula,
+                "nome": nome,
+                "curso": curso,
+                "ano": ano,
+                "semestre": semestre,
+                "disciplina": disciplina,
+                "turma": turma,
+                "periodo": periodo,
+                "media": parse_media(_valor_coluna(row, 10)),
+                "situacao": situacao,
+                "aprovado": classificacao_aprovacao(situacao),
+                "motivo_reprovacao": motivo_reprovacao(situacao),
+            }
+    finally:
+        wb.close()
+
+
+def ler_registros(caminho: Path) -> tuple[dict[str, Any], list[dict[str, Any]], list[str]]:
+    """Compatibilidade com consumidores legados.
+
+    Novas importações devem preferir ``inspecionar_relatorio`` + ``iterar_registros``
+    para manter o uso de memória limitado.
+    """
+    metadata, warnings = inspecionar_relatorio(caminho)
+    registros = list(iterar_registros(caminho))
+    return metadata, registros, warnings
 
 def resumo_reprovacoes(registros: list[dict[str, Any]]) -> dict[str, int]:
     por_nota = sum(1 for r in registros if r.get("motivo_reprovacao") == "nota")

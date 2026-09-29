@@ -1,0 +1,31 @@
+Data UNIVC v0.13.0 - Production Validation
+
+Base academica: v0.11.6.7
+Schema: 48
+
+Pre-package checks:
+- Python compile: OK
+- DPE JavaScript syntax: OK
+- Pytest: 164 passed
+- DPE legacy lockout checks: OK
+
+Production-mode smoke:
+- ENVIRONMENT=production: OK
+- AUTH_DISABLED=false: OK
+- COOKIE_SECURE=true: OK
+- REQUIRE_SCHEMA_VERSION=true: OK
+- LOGIN_RATE_LIMIT_ENABLED=true: OK
+- GET /api/health/ready: 200
+- GET /api/dpe/domain without session: 401
+- GET /docs: 404
+
+Docker Compose file included for app-only VPS deployment.
+Docker CLI was not available in the build environment, so `docker compose config -q`
+was not executed here. The application itself was started with uvicorn under the
+production environment and passed the smoke checks above.
+
+Final stripped-package checks:
+- Python compile: OK
+- DPE JavaScript syntax: OK
+- Pytest: 162 passed, 2 skipped (local DEMO database intentionally excluded)
+- Release checks: OK

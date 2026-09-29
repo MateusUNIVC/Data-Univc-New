@@ -56,6 +56,7 @@ INTEGER_FMT = "#,##0"
 DECIMAL_FMT = "0.00"
 NPS_FMT = "0.0"
 PCT_FMT = "0.0%"
+PCT_POINT_FMT = '0.0"%"'
 
 STATUS_COLORS = {
     "Dentro da meta": "DCEFE2",
@@ -169,13 +170,20 @@ def _teacher_rows(snapshot: dict[str, Any], dashboard: dict[str, Any], code: str
         if discipline_filter and discipline != discipline_filter:
             continue
         goal = _academic_goal(snapshot.get("metas", []), code, period or "", course, discipline)
-        value = row.get("nota_media") if row.get("nota_media") is not None else row.get("valor")
+        value = row.get("valor")
         out.append({
             "periodo": period,
             "curso": course,
             "disciplina": discipline,
             "respondentes": int(row.get("respondentes") or 0),
-            "nota_media": float(value) if value is not None else None,
+            "favoraveis": int(row.get("favoraveis") or 0),
+            "intermediarias": int(row.get("intermediarias") or 0),
+            "desfavoraveis": int(row.get("desfavoraveis") or 0),
+            "classificados": int(row.get("classificados") or 0),
+            "nao_classificados": int(row.get("nao_classificados") or 0),
+            "nao_mapeados": int(row.get("nao_mapeados") or 0),
+            "favorabilidade": float(value) if value is not None else None,
+            "fonte": row.get("fonte") or "SEI · Avaliação Institucional · Disciplina/Professor",
             **_goal_fields(goal, code, course=course, discipline=discipline),
             "status": status_for(value, goal, code),
         })
@@ -238,7 +246,9 @@ def _comparison_rows(snapshot: dict[str, Any], dashboard: dict[str, Any], direct
 
         teacher_parts = [row for row in teacher_source if str(row.get("curso") or "") == course]
         teacher_resp = sum(int(row.get("respondentes") or 0) for row in teacher_parts)
-        teacher_weighted = sum(float(row.get("nota_media") or row.get("valor") or 0) * int(row.get("respondentes") or 0) for row in teacher_parts)
+        teacher_favoraveis = sum(int(row.get("favoraveis") or 0) for row in teacher_parts)
+        teacher_classificados = sum(int(row.get("classificados") or 0) for row in teacher_parts)
+        teacher_nao_mapeados = sum(int(row.get("nao_mapeados") or 0) for row in teacher_parts)
 
         result_parts = [row for row in result_source if str(row.get("curso") or "") == course]
         finalized = sum(int(row.get("finalizados") or 0) for row in result_parts)
@@ -253,7 +263,9 @@ def _comparison_rows(snapshot: dict[str, Any], dashboard: dict[str, Any], direct
             "nps_atencao": _goal_fields(nps_goal, f"{directorate}-01B", course=course)["atencao"],
             "nps_status": status_for(nps_map.get(course, {}).get("valor"), nps_goal, f"{directorate}-01B"),
             "teacher_respondentes": teacher_resp,
-            "teacher_weighted_sum": teacher_weighted,
+            "teacher_favoraveis": teacher_favoraveis,
+            "teacher_classificados": teacher_classificados,
+            "teacher_nao_mapeados": teacher_nao_mapeados,
             "teacher_valor": teacher_map.get(course, {}).get("valor"),
             "teacher_meta": _goal_fields(teacher_goal, f"{directorate}-02", course=course)["meta"],
             "teacher_atencao": _goal_fields(teacher_goal, f"{directorate}-02", course=course)["atencao"],
@@ -456,7 +468,7 @@ def _status_formula(value_cell: str, target_cell: str, attention_cell: str) -> s
 def _metric_value_to_excel(key: str, value: Any) -> Any:
     if value is None:
         return None
-    if key == "approval":
+    if key in {"approval", "teacher"}:
         return float(value) / 100.0
     return float(value)
 
@@ -465,7 +477,7 @@ def _goal_value_to_excel(key: str, value: Any) -> Any:
     if value in (None, ""):
         return None
     numeric = float(value)
-    return numeric / 100.0 if key == "approval" else numeric
+    return numeric / 100.0 if key in {"approval", "teacher"} else numeric
 
 
 def _direction_label(value: Any) -> str:
@@ -518,7 +530,7 @@ def _write_summary(wb: Workbook, payload: dict[str, Any]) -> None:
         elif card_key == "aprovacao":
             observation = f"{int(card.get('finalizados') or 0):,} resultados finalizados"
         else:
-            observation = "Média ponderada pelos respondentes"
+            observation = f"{int(card.get('classificados') or 0):,} respostas classificadas · favorabilidade categórica"
         values = [code, label, result, meta, attention, card.get("status"), comparison, None, observation]
         for col, value in enumerate(values, 1):
             ws.cell(row_idx, col, value)
@@ -526,7 +538,7 @@ def _write_summary(wb: Workbook, payload: dict[str, Any]) -> None:
         if result is not None and comparison is not None:
             ws.cell(row_idx, 8, f"=C{row_idx}-G{row_idx}")
             ws.cell(row_idx, 8).font = Font(name="Aptos", size=9, color=INK_800)
-        number_format = PCT_FMT if kind == "approval" else DECIMAL_FMT if kind == "teacher" else NPS_FMT
+        number_format = PCT_FMT if kind in {"approval", "teacher"} else NPS_FMT
         for col in (3, 4, 5, 7, 8):
             ws.cell(row_idx, col).number_format = number_format
         _status_fill(ws.cell(row_idx, 6), card.get("status"))
@@ -576,7 +588,7 @@ def _write_summary(wb: Workbook, payload: dict[str, Any]) -> None:
             inst.get("valor"), inst.get("meta"),
             course.get("valor"), course.get("meta"),
             faculty.get("valor"), faculty.get("meta"),
-            teacher.get("valor"), teacher.get("meta"),
+            _metric_value_to_excel("teacher", teacher.get("valor")), _goal_value_to_excel("teacher", teacher.get("meta")),
             _metric_value_to_excel("approval", approval.get("valor")), _goal_value_to_excel("approval", approval.get("meta")),
         ]
         for col, value in enumerate(values, 1):
@@ -584,8 +596,8 @@ def _write_summary(wb: Workbook, payload: dict[str, Any]) -> None:
             _body_cell(ws.cell(idx, col))
         for col in range(2, 8):
             ws.cell(idx, col).number_format = NPS_FMT
-        ws.cell(idx, 8).number_format = DECIMAL_FMT
-        ws.cell(idx, 9).number_format = DECIMAL_FMT
+        ws.cell(idx, 8).number_format = PCT_FMT
+        ws.cell(idx, 9).number_format = PCT_FMT
         ws.cell(idx, 10).number_format = PCT_FMT
         ws.cell(idx, 11).number_format = PCT_FMT
     if periods:
@@ -617,7 +629,7 @@ def _write_summary(wb: Workbook, payload: dict[str, Any]) -> None:
 
         teacher_chart = LineChart()
         teacher_chart.title = "Avaliação Docente pelo Aluno"
-        teacher_chart.y_axis.title = "Nota"
+        teacher_chart.y_axis.title = "% favorabilidade"
         teacher_chart.x_axis.title = "Semestre"
         teacher_chart.height = 7.0
         teacher_chart.width = 15.0
@@ -626,7 +638,8 @@ def _write_summary(wb: Workbook, payload: dict[str, Any]) -> None:
         teacher_chart.add_data(data, titles_from_data=True)
         teacher_chart.set_categories(cats)
         teacher_chart.y_axis.scaling.min = 0
-        teacher_chart.y_axis.scaling.max = 10
+        teacher_chart.y_axis.numFmt = PCT_FMT
+        teacher_chart.y_axis.scaling.max = 1
         ws.add_chart(teacher_chart, "M20")
 
         approval_chart = LineChart()
@@ -799,20 +812,25 @@ def _write_nps_faculty(wb: Workbook, payload: dict[str, Any]) -> None:
 def _write_teacher(wb: Workbook, payload: dict[str, Any]) -> None:
     ws = wb.create_sheet("Avaliação Docente")
     _setup_sheet(ws, freeze="A5")
-    _title(ws, "Avaliação Docente pelo Aluno (02)", "Dados agregados por semestre, curso e disciplina; linhas individuais de avaliação não são exportadas.", end_col=9)
-    headers = ["Semestre", "Curso", "Disciplina", "Respondentes", "Nota média", "Meta", "Atenção", "Status", "Vigência da meta"]
+    _title(ws, "Avaliação Docente pelo Aluno (02)", "Favorabilidade categórica das perguntas sobre o docente. Não é nota 0–10; 'Não sei' permanece fora do denominador classificado.", end_col=14)
+    headers = ["Semestre", "Curso", "Disciplina", "Participações", "Favoráveis", "Intermediárias", "Desfavoráveis", "Classificadas", "Não classificadas", "Não mapeadas", "Favorabilidade", "Meta", "Atenção", "Status"]
     header_row = 4
     for col, header in enumerate(headers, 1):
         _table_header(ws.cell(header_row, col, header))
     rows = payload.get("teacher", [])
     for row_idx, item in enumerate(rows, header_row + 1):
-        values = [item.get("periodo"), item.get("curso"), item.get("disciplina"), item.get("respondentes"), item.get("nota_media"), item.get("meta"), item.get("atencao"), item.get("status"), item.get("meta_vigencia")]
+        values = [
+            item.get("periodo"), item.get("curso"), item.get("disciplina"), item.get("respondentes"),
+            item.get("favoraveis"), item.get("intermediarias"), item.get("desfavoraveis"), item.get("classificados"),
+            item.get("nao_classificados"), item.get("nao_mapeados"), _metric_value_to_excel("teacher", item.get("favorabilidade")),
+            _goal_value_to_excel("teacher", item.get("meta")), _goal_value_to_excel("teacher", item.get("atencao")), item.get("status"),
+        ]
         for col, value in enumerate(values, 1):
             ws.cell(row_idx, col, value)
-            _body_cell(ws.cell(row_idx, col), imported=col != 8)
-        for col in (5, 6, 7):
-            ws.cell(row_idx, col).number_format = DECIMAL_FMT
-        _status_fill(ws.cell(row_idx, 8), item.get("status"))
+            _body_cell(ws.cell(row_idx, col), imported=col != 14)
+        for col in (11, 12, 13):
+            ws.cell(row_idx, col).number_format = PCT_FMT
+        _status_fill(ws.cell(row_idx, 14), item.get("status"))
     if rows:
         _add_table(ws, "TblTeacherEvaluation", header_row, header_row + len(rows), len(headers))
     _auto_width(ws)
@@ -859,7 +877,7 @@ def _write_course_comparison(wb: Workbook, payload: dict[str, Any]) -> None:
     _title(ws, "Comparação entre cursos", f"Referência: {context.get('referencia') or '—'} · comparação sempre restrita aos cursos da diretoria {payload['directorate']}", end_col=16)
     headers = [
         "Curso", "NPS 01B", "Meta 01B", "Atenção 01B", "Status 01B",
-        "Respondentes NPS", "Avaliação 02", "Meta 02", "Atenção 02", "Status 02",
+        "Respondentes NPS", "Favorabilidade 02", "Meta 02", "Atenção 02", "Status 02",
         "Taxa aprovação 03", "Meta 03", "Atenção 03", "Status 03", "Finalizados", "Aprovados",
     ]
     header_row = 4
@@ -869,7 +887,7 @@ def _write_course_comparison(wb: Workbook, payload: dict[str, Any]) -> None:
     for row_idx, item in enumerate(rows, header_row + 1):
         values = [
             item.get("curso"), None, item.get("nps_meta"), item.get("nps_atencao"), item.get("nps_status"), item.get("nps_respondentes"),
-            None, item.get("teacher_meta"), item.get("teacher_atencao"), item.get("teacher_status"),
+            None, _goal_value_to_excel("teacher", item.get("teacher_meta")), _goal_value_to_excel("teacher", item.get("teacher_atencao")), item.get("teacher_status"),
             None, _goal_value_to_excel("approval", item.get("approval_meta")), _goal_value_to_excel("approval", item.get("approval_atencao")), item.get("approval_status"), item.get("approval_finalizados"), item.get("approval_aprovados"),
         ]
         for col, value in enumerate(values, 1):
@@ -877,14 +895,14 @@ def _write_course_comparison(wb: Workbook, payload: dict[str, Any]) -> None:
             _body_cell(ws.cell(row_idx, col), imported=col not in {2, 7, 11, 5, 10, 14})
         if int(item.get("nps_respondentes") or 0):
             ws.cell(row_idx, 2, f'=({int(item.get("nps_promotores") or 0)}-{int(item.get("nps_detratores") or 0)})/{int(item.get("nps_respondentes") or 0)}*100')
-        if int(item.get("teacher_respondentes") or 0):
-            ws.cell(row_idx, 7, f'={float(item.get("teacher_weighted_sum") or 0)}/{int(item.get("teacher_respondentes") or 0)}')
+        if int(item.get("teacher_classificados") or 0) and not int(item.get("teacher_nao_mapeados") or 0):
+            ws.cell(row_idx, 7, f'={int(item.get("teacher_favoraveis") or 0)}/{int(item.get("teacher_classificados") or 0)}')
         if int(item.get("approval_finalizados") or 0):
             ws.cell(row_idx, 11, f'=P{row_idx}/O{row_idx}')
         for col in (2, 3, 4):
             ws.cell(row_idx, col).number_format = NPS_FMT
         for col in (7, 8, 9):
-            ws.cell(row_idx, col).number_format = DECIMAL_FMT
+            ws.cell(row_idx, col).number_format = PCT_FMT
         for col in (11, 12, 13):
             ws.cell(row_idx, col).number_format = PCT_FMT
         _status_fill(ws.cell(row_idx, 5), item.get("nps_status"))
@@ -897,7 +915,7 @@ def _write_course_comparison(wb: Workbook, payload: dict[str, Any]) -> None:
         cats = Reference(ws, min_col=1, min_row=header_row + 1, max_row=chart_end)
         specs = [
             ("NPS do Curso · status pela meta", 2, "NPS", [row.get("nps_status") for row in rows[:chart_count]], "R4"),
-            ("Avaliação Docente · status pela meta", 7, "Nota", [row.get("teacher_status") for row in rows[:chart_count]], "R20"),
+            ("Favorabilidade docente · status pela meta", 7, "%", [row.get("teacher_status") for row in rows[:chart_count]], "R20"),
             ("Aprovação · status pela meta", 11, "%", [row.get("approval_status") for row in rows[:chart_count]], "R36"),
         ]
         for title, col, ytitle, statuses, anchor in specs:
@@ -922,8 +940,9 @@ def _write_course_comparison(wb: Workbook, payload: dict[str, Any]) -> None:
                 chart.x_axis.scaling.min = 0
                 chart.x_axis.scaling.max = 1
             elif col == 7:
+                chart.x_axis.numFmt = PCT_FMT
                 chart.x_axis.scaling.min = 0
-                chart.x_axis.scaling.max = 10
+                chart.x_axis.scaling.max = 1
             else:
                 chart.x_axis.scaling.min = -100
                 chart.x_axis.scaling.max = 100
@@ -936,12 +955,13 @@ def _write_management(wb: Workbook, payload: dict[str, Any]) -> None:
     _setup_sheet(ws, freeze="A5")
     _title(ws, "Metas e Planos de Ação", "Governança dos cinco KPIs acadêmicos atuais da diretoria. Metas históricas permanecem disponíveis para auditoria.", end_col=12)
     goals = payload.get("goals", [])
-    headers = ["Indicador", "Recorte", "Vigência", "Meta", "Atenção", "Limite superior", "Unidade", "Direção", "Justificativa"]
+    headers = ["Indicador", "Recorte", "Vigência", "Meta", "Atenção", "Limite superior", "Unidade", "Situação da métrica", "Direção", "Justificativa"]
     header_row = 4
     for col, header in enumerate(headers, 1):
         _table_header(ws.cell(header_row, col, header))
     for row_idx, item in enumerate(goals, header_row + 1):
-        values = [item.get("indicador"), item.get("recorte"), item.get("vigencia"), item.get("meta"), item.get("atencao"), item.get("limite_superior"), item.get("unidade"), _direction_label(item.get("direcao")), item.get("justificativa")]
+        metric_status = "LEGADA · nota 0–10 · não aplicada" if item.get("legacy_metric") else (item.get("metric_version") or "vigente")
+        values = [item.get("indicador"), item.get("recorte"), item.get("vigencia"), item.get("meta"), item.get("atencao"), item.get("limite_superior"), item.get("unidade"), metric_status, _direction_label(item.get("direcao")), item.get("justificativa")]
         for col, value in enumerate(values, 1):
             ws.cell(row_idx, col, value)
             _body_cell(ws.cell(row_idx, col))

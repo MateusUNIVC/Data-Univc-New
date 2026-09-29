@@ -285,7 +285,7 @@ def _write_readme(wb: Workbook, directorate_code: str, specs: list[dict[str, Any
     _section(ws, 4, "COMO UTILIZAR", end_col=10)
     instructions = [
         "1. O banco de dados é a fonte oficial. Esta planilha é uma exportação executiva e auditável.",
-        "2. DADM e DPE são alimentados mensalmente; DM é alimentado exclusivamente por semestre nesta versão.",
+        "2. DADM é alimentada mensalmente; DM é alimentada exclusivamente por semestre nesta versão.",
         "3. Use PARAMETROS para conferir o período de referência e de comparação da exportação.",
         "4. Os indicadores são calculados a partir dos componentes visíveis em LANÇAMENTOS; nenhum registro é truncado silenciosamente.",
         "5. A janela dos gráficos limita apenas a apresentação. O histórico completo permanece em LANÇAMENTOS, MATRIZ e CALC.",
@@ -722,7 +722,7 @@ def _chart_for_indicator(
             series.graphicalProperties.line.width = 19050
             series.marker.symbol = "none"
     if primary.get("unit") == "%":
-        chart.y_axis.scaling.min = min(-10, 0) if spec["code"] == "DPE-01" else 0
+        chart.y_axis.scaling.min = 0
         chart.y_axis.scaling.max = 100
         chart.y_axis.numFmt = '0"%"'
     elif primary.get("unit") in {"x", "índice"}:
@@ -1025,7 +1025,7 @@ def _write_quality(wb: Workbook, directorate_code: str, measurements: list[dict[
     controls = [
         "O banco é a fonte oficial; a planilha é uma visão executiva.",
         "Nenhuma base é truncada silenciosamente. Acima do limite físico do XLSX, a exportação falha explicitamente.",
-        "DADM e DPE aceitam somente AAAA-MM; DM aceita somente AAAA-SEM1 ou AAAA-SEM2.",
+        "DADM aceita somente AAAA-MM; DM aceita somente AAAA-SEM1 ou AAAA-SEM2.",
         "Componentes brutos ficam preservados para auditoria e recálculo futuro.",
         "Metas possuem vigência e podem ser específicas por dimensão.",
         "Resultados fora da meta devem gerar plano de ação.",
@@ -1050,17 +1050,7 @@ def build_management_workbook(
     only_indicator: str | None = None,
 ) -> BytesIO:
     if str(directorate_code).strip().upper() == "DPE":
-        # A DPE possui páginas e bases próprias a partir da v0.7.1. A DADM v0.7.8
-        # reutiliza este motor auditável por meio de uma camada dedicada; a DM mantém seu fluxo próprio.
-        from dpe_excel_builder import build_dpe_workbook
-        return build_dpe_workbook(
-            measurements,
-            targets,
-            actions,
-            reference=reference,
-            comparison=comparison,
-            only_indicator=only_indicator,
-        )
+        raise ValueError("A DPE v0.13 possui exportação própria em /api/dpe/excel; o workbook gerencial legado foi aposentado.")
     directorate_code = str(directorate_code).strip().upper()
     directory = directorate_spec(directorate_code)
     specs = indicator_specs(directorate_code)
