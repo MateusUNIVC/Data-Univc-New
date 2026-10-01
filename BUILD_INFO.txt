@@ -13,6 +13,16 @@ Hotfix operacional 2026-10-01 - DM · turmas fragmentadas no SEI:
 
 Perfil: production
 
+Patch operacional 2026-10-01 - Parte 15 convergência visual NPS:
+- distribuição NPS 0-10 compartilhada entre DTNH, DCS e Reitoria;
+- Reitoria recebe tooltips ricos nos gráficos de linha e barras;
+- novo comparativo de NPS da instituição por curso, reconstruído dos agregados oficiais da pergunta institucional;
+- NPS da instituição por curso permanece metodologicamente separado do NPS do Curso;
+- regressão final: 238 testes aprovados, 2 ignorados;
+- JavaScript: 28/28 no node --check e 28/28 referências presentes;
+- sem nova migration; schema permanece 49.
+- detalhes em docs/PART15_NPS_VISUAL_CONVERGENCE_2026-10-01.md.
+
 Patch operacional 2026-10-01 - Parte 12 visão acadêmica geral da Reitoria:
 - nova área acadêmica somente leitura em /reitoria;
 - padrão Todas/UNIVC com filtros de semestre, diretoria, curso e disciplina;

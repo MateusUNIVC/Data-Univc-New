@@ -1227,34 +1227,12 @@ function npsScoreTone(score) {
 
 function renderNpsScoreDistribution(container, payload, opts = {}) {
   if (!container) return;
-  if (!payload || !payload.available || !Array.isArray(payload.items) || !payload.items.length) {
-    container.innerHTML = '<div class="chart-empty"><div><strong>Distribuição 0–10 indisponível</strong><br><small>Este semestre ainda não possui uma fonte oficial com os agregados originais da pergunta NPS.</small></div></div>';
+  const renderer = window.DataUnivcAcademicCharts?.distribution;
+  if (typeof renderer === 'function') {
+    renderer(container, payload, { ...opts, showContext: true });
     return;
   }
-  const items = Array.from({ length: 11 }, (_, score) => {
-    const found = payload.items.find(item => Number(item.score) === score) || {};
-    return { score, count: Number(found.count || 0), percentage: Number(found.percentage || 0) };
-  });
-  const maxCount = Math.max(1, ...items.map(item => item.count));
-  const context = [payload.scope_label, payload.semester ? formatMonth(payload.semester, true) : ''].filter(Boolean).join(' · ');
-  const columns = items.map(item => {
-    const height = item.count ? Math.max(5, item.count / maxCount * 100) : 0;
-    const tone = npsScoreTone(item.score);
-    const title = `Nota ${item.score}: ${formatNumber(item.count,0)} resposta(s) · ${formatNumber(item.percentage,1)}%`;
-    return `<div class="nps-score-column ${tone}" title="${escapeHtml(title)}"><span class="nps-score-count">${formatNumber(item.count,0)}</span><div class="nps-score-bar-track"><div class="nps-score-bar" style="height:${height}%"></div></div><strong>${item.score}</strong><small>${formatNumber(item.percentage,1)}%</small></div>`;
-  }).join('');
-  container.innerHTML = `
-    <div class="nps-score-summary">
-      <div><span>Recorte</span><strong>${escapeHtml(context || opts.label || 'NPS')}</strong></div>
-      <div><span>Respondentes</span><strong>${formatNumber(payload.total,0)}</strong></div>
-      <div><span>Média da pergunta</span><strong>${payload.mean == null ? '—' : `${formatNumber(payload.mean,2)} / 10`}</strong></div>
-      <div><span>NPS</span><strong>${payload.nps == null ? '—' : formatNumber(payload.nps,1)}</strong></div>
-    </div>
-    <div class="nps-score-chart-scroll">
-      <div class="nps-score-chart" role="img" aria-label="Distribuição das avaliações de zero a dez">${columns}</div>
-      <div class="nps-score-groups"><span class="detractor">0–6 · Detratores</span><span class="neutral">7–8 · Neutros</span><span class="promoter">9–10 · Promotores</span></div>
-    </div>
-    <p class="nps-score-note">A média 0–10 é complementar e não substitui o NPS. A distribuição mostra quantas respostas existem em cada nota.</p>`;
+  container.innerHTML = '<div class="chart-empty"><div><strong>Distribuição 0–10 indisponível</strong><br><small>O componente visual não foi carregado.</small></div></div>';
 }
 
 function npsDistributionCacheKey(audience, semester, course = '') {

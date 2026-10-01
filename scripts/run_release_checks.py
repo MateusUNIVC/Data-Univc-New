@@ -107,7 +107,8 @@ def verify_reitoria_academic_overview() -> None:
         'data-academic-section="nps-institution"', 'data-academic-section="nps-course"',
         'data-academic-section="nps-faculty"', 'data-academic-section="faculty"',
         'data-academic-section="results"', 'id="reitoriaAcademicDirectorate"',
-        'id="reitoriaKpiApproval"', 'id="reitoriaChartNpsCourses"', 'href="/reitoria"',
+        'id="reitoriaKpiApproval"', 'id="reitoriaChartNpsCourses"',
+        'id="reitoriaChartNpsInstitutionCourses"', 'href="/reitoria"',
     ]
     missing_template = [token for token in required_template if token not in template]
     if missing_template:
@@ -129,12 +130,21 @@ def verify_reitoria_academic_overview() -> None:
         raise SystemExit("Dedicated Reitoria academic page route is missing")
 
     required_backend = [
-        "class ReitoriaAcademicService", "_projection_nps_history", "_faculty_summary",
-        "_result_payload", "approved_count", "finalized_count",
+        "class ReitoriaAcademicService", "_projection_nps_history", "_nps_institution_course_comparison",
+        "_faculty_summary", "_result_payload", "approved_count", "finalized_count",
     ]
     missing_backend = [token for token in required_backend if token not in backend]
     if missing_backend:
         raise SystemExit("Reitoria academic backend tokens missing: " + ", ".join(missing_backend))
+    shared_charts = (ROOT / "static" / "js" / "data-univc-academic-charts.js").read_text(encoding="utf-8")
+    academic_index = (ROOT / "templates" / "index.html").read_text(encoding="utf-8")
+    required_shared = ["academic-nps-distribution", "chart-hover-card hidden", "Respondentes", "Promotores"]
+    missing_shared = [token for token in required_shared if token not in shared_charts]
+    if missing_shared:
+        raise SystemExit("Shared academic chart contract missing: " + ", ".join(missing_shared))
+    if "data-univc-academic-charts.js" not in academic_index:
+        raise SystemExit("DTNH/DCS do not load the shared academic chart renderer")
+
     if "Depends(require_fresh_reitoria)" not in router:
         raise SystemExit("Reitoria academic endpoints are not protected by require_fresh_reitoria")
 

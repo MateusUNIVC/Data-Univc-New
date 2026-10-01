@@ -292,6 +292,73 @@ class ReitoriaAcademicService:
             })
         return out
 
+    def _nps_institution_course_comparison(self, directorate_ids: set[int], semester: str) -> list[dict[str, Any]]:
+        """NPS institucional dos alunos recortado por curso.
+
+        A projeção ``nps_institution`` é consolidada por diretoria e não possui
+        ``course_id``. O recorte por curso existe, porém, nos agregados da fonte
+        oficial. Recalculamos o NPS pelas contagens 0–10 de cada curso para não
+        confundir este indicador com o NPS do Curso.
+        """
+        sources = self.db.scalars(
+            select(SurveyInstitutionNpsSource).where(
+                SurveyInstitutionNpsSource.directorate_id.in_(directorate_ids),
+                SurveyInstitutionNpsSource.semester == semester,
+            )
+        ).all()
+        grouped: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        meta: dict[int, tuple[str, str]] = {}
+        for source in sources:
+            rows = self.db.execute(
+                select(
+                    Course.id.label("course_id"),
+                    Course.name.label("course_name"),
+                    Directorate.code.label("directorate_code"),
+                    SurveyResponseAggregate.option_label,
+                    SurveyResponseAggregate.numeric_value,
+                    func.sum(SurveyResponseAggregate.response_count).label("response_count"),
+                )
+                .join(Course, Course.id == SurveyResponseAggregate.course_id)
+                .join(Directorate, Directorate.id == Course.directorate_id)
+                .where(
+                    SurveyResponseAggregate.run_id == source.run_id,
+                    SurveyResponseAggregate.question_id == source.question_id,
+                    Course.directorate_id == source.directorate_id,
+                )
+                .group_by(
+                    Course.id,
+                    Course.name,
+                    Directorate.code,
+                    SurveyResponseAggregate.option_label,
+                    SurveyResponseAggregate.numeric_value,
+                )
+            ).all()
+            for row in rows:
+                course_id = int(row.course_id)
+                meta[course_id] = (str(row.course_name), str(row.directorate_code))
+                grouped[course_id].append({
+                    "option_label": row.option_label,
+                    "numeric_value": row.numeric_value,
+                    "response_count": row.response_count,
+                })
+        out: list[dict[str, Any]] = []
+        for course_id, aggregate_rows in grouped.items():
+            payload = SurveyRepository._score_distribution_payload(aggregate_rows)
+            if not payload.get("available"):
+                continue
+            course_name, directorate_code = meta[course_id]
+            out.append({
+                "course_id": course_id,
+                "curso": course_name,
+                "diretoria": directorate_code,
+                "valor": payload.get("nps"),
+                "respondentes": _as_int(payload.get("total")),
+                "promotores": _as_int(payload.get("promoters")),
+                "neutros": _as_int(payload.get("neutrals")),
+                "detratores": _as_int(payload.get("detractors")),
+            })
+        return sorted(out, key=lambda item: str(item["curso"] or "").casefold())
+
     def _nps_course_comparison(self, directorate_ids: set[int], semester: str) -> list[dict[str, Any]]:
         stmt = (
             select(
@@ -725,6 +792,7 @@ class ReitoriaAcademicService:
         faculty_nps_current = next((item for item in faculty_nps_history if item["periodo"] == effective_semester), None)
 
         comparisons = {
+            "nps_institution_courses": self._nps_institution_course_comparison(selected_ids, effective_semester) if effective_semester else [],
             "nps_courses": self._nps_course_comparison(selected_ids, effective_semester) if effective_semester else [],
             "faculty_courses": self._faculty_course_comparison(faculty_rows_current),
             "approval_courses": self._result_course_comparison(
@@ -732,6 +800,7 @@ class ReitoriaAcademicService:
             ) if effective_semester else [],
         }
         if course:
+            comparisons["nps_institution_courses"] = [row for row in comparisons["nps_institution_courses"] if row["course_id"] == int(course.id)]
             comparisons["nps_courses"] = [row for row in comparisons["nps_courses"] if row["course_id"] == int(course.id)]
             comparisons["faculty_courses"] = [row for row in comparisons["faculty_courses"] if row["course_id"] == int(course.id)]
             comparisons["approval_courses"] = [row for row in comparisons["approval_courses"] if row["course_id"] == int(course.id)]

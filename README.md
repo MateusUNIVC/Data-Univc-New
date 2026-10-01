@@ -1,3 +1,15 @@
+## Parte 15 - convergência visual NPS e leitura institucional por curso (01/10/2026)
+
+- DTNH, DCS e Reitoria passam a usar o mesmo componente visual de distribuição NPS 0–10;
+- gráfico 0–10 de DTNH/DCS adota o mesmo padrão visual compacto da Reitoria;
+- gráficos da Reitoria ganham hover detalhado com respondentes, promotores/neutros/detratores, participações e volumes acadêmicos;
+- Reitoria passa a comparar o **NPS da instituição por curso**, reconstruído da pergunta institucional oficial por curso;
+- o novo indicador é mantido separado do NPS do Curso para evitar confusão metodológica;
+- sem migration nova; schema permanece 49;
+- regressão completa: 238 testes aprovados e 2 ignorados.
+
+Detalhes: `docs/PART15_NPS_VISUAL_CONVERGENCE_2026-10-01.md`.
+
 ## Parte 12 - visão acadêmica geral da Reitoria (01/10/2026)
 
 - nova seção `Indicadores Acadêmicos` em `/reitoria`, somente leitura;

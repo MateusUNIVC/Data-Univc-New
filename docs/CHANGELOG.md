@@ -1,3 +1,11 @@
+## 2026-10-01 — Parte 15 · NPS Visual Convergence
+- Unificado o componente de distribuição 0–10 entre Reitoria, DTNH e DCS.
+- Adicionados tooltips ricos aos gráficos acadêmicos da Reitoria.
+- Adicionado comparativo de NPS institucional por curso com base na pergunta institucional oficial.
+- Mantida separação conceitual entre NPS institucional por curso e NPS do Curso.
+- Sem migration; schema 49.
+- Regressão: 238 testes aprovados, 2 ignorados.
+
 
 ## 2026-10-01 — Parte 14 · Reitoria Route Separation
 - Separada a administração da Reitoria do painel acadêmico.
