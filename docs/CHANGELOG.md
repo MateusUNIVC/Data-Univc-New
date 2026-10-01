@@ -1,3 +1,24 @@
+## 2026-10-01 · Parte 21 — DADM/TALLOS Payload Retirement
+
+- conclui TALLOS-COMPACT-03 e TALLOS-COMPACT-04;
+- migration 053 limpa payloads históricos depois da validação do contrato compacto;
+- normalizador deixa de emitir `source_payload_json` para persistência;
+- `source_hash` continua sendo calculado em memória sobre a whitelist operacional sanitizada;
+- coluna legada permanece com `{}` para compatibilidade;
+- testes comparam a auditoria antes/depois da limpeza e confirmam reimportação idempotente;
+- schema 53 via `053_dadm_tallos_payload_retirement_v0130.sql`.
+
+## 2026-10-01 · Parte 20 — DADM/TALLOS Compact Storage Foundation
+
+- consolida TALLOS-COMPACT-01 e TALLOS-COMPACT-02 em uma única etapa segura;
+- audita todas as dependências de `source_payload_json`;
+- adiciona `rating_source_state`, `rating_source_value` e `normalization_version`;
+- auditoria de avaliações deixa de ler o JSON completo;
+- backfill recupera avaliações válidas pela coluna `rating` quando o payload histórico já estiver vazio;
+- `TALLOS_NORMALIZATION_VERSION = 5`;
+- o payload ainda não é apagado nesta etapa, para permitir benchmark/equivalência antes da limpeza definitiva;
+- schema 52 via `052_dadm_tallos_compact_rating_contract_v0130.sql`.
+
 ## 2026-10-01 · Parte 18 — DM-QUEUE-04 + hardening de interface
 
 - registro de eventos do DM desacoplado da carga de identidade;

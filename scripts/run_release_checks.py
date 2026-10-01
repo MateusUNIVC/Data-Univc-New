@@ -154,6 +154,63 @@ def verify_reitoria_academic_overview() -> None:
 
 
 
+
+def verify_tallos_compact_foundation() -> None:
+    normalization = (ROOT / "dadm_tallos_normalization.py").read_text(encoding="utf-8")
+    analytics = (ROOT / "dadm_tallos_analytics.py").read_text(encoding="utf-8")
+    models = (ROOT / "models.py").read_text(encoding="utf-8")
+    compact_migration = (ROOT / "database/052_dadm_tallos_compact_rating_contract_v0130.sql").read_text(encoding="utf-8")
+    retirement_migration = (ROOT / "database" / SCHEMA_MIGRATION).read_text(encoding="utf-8")
+
+    required_normalization = [
+        "TALLOS_NORMALIZATION_VERSION = 5",
+        "def _rating_source(",
+        '"rating_source_state": rating_source_state',
+        '"rating_source_value": rating_source_value',
+        '"normalization_version": TALLOS_NORMALIZATION_VERSION',
+        "source_hash = hashlib.sha256(",
+    ]
+    missing = [token for token in required_normalization if token not in normalization]
+    if missing:
+        raise SystemExit("TALLOS compact normalization markers missing: " + ", ".join(missing))
+
+    if '"source_payload_json": source_json' in normalization:
+        raise SystemExit("TALLOS normalizer still persists raw source_payload_json")
+    if "DADMTallosAttendance.source_payload_json" in analytics or "json.loads(row.source_payload_json" in analytics:
+        raise SystemExit("TALLOS analytics still depends on source_payload_json")
+    for token in ("rating_source_state", "rating_source_value", "normalization_version"):
+        if token not in models or token not in compact_migration:
+            raise SystemExit(f"TALLOS compact contract missing: {token}")
+    for token in ("SET source_payload_json = '{}'", "rating_source_state IS NULL", "normalization_version IS NULL", "VALUES (1, 53"):
+        if token not in retirement_migration:
+            raise SystemExit(f"TALLOS payload retirement marker missing: {token}")
+
+
+def verify_tallos_storage_maintenance() -> None:
+    audit = (ROOT / "scripts/tallos_storage_audit.sql").read_text(encoding="utf-8")
+    vacuum = (ROOT / "scripts/tallos_storage_vacuum.sql").read_text(encoding="utf-8")
+    shell = (ROOT / "scripts/tallos_storage_maintenance.sh").read_text(encoding="utf-8")
+    doc = (ROOT / "docs/DADM_TALLOS_STORAGE_MAINTENANCE_PART22.md").read_text(encoding="utf-8")
+
+    required_audit = [
+        "pg_total_relation_size('public.dadm_tallos_attendances')",
+        "rows_with_payload",
+        "rating_source_state IS NULL",
+        "normalization_version IS NULL",
+        "n_dead_tup",
+    ]
+    missing = [token for token in required_audit if token not in audit]
+    if missing:
+        raise SystemExit("TALLOS storage audit markers missing: " + ", ".join(missing))
+    if "VACUUM FULL" in audit.upper():
+        raise SystemExit("TALLOS read-only audit unexpectedly contains VACUUM FULL")
+    if "VACUUM (ANALYZE, VERBOSE) public.dadm_tallos_attendances" not in vacuum:
+        raise SystemExit("TALLOS safe VACUUM script missing")
+    if "CONFIRM_TALLOS_VACUUM_FULL" not in shell or '!= "YES"' not in shell:
+        raise SystemExit("TALLOS VACUUM FULL confirmation guard missing")
+    if "rows_with_payload = 0" not in doc or "ACCESS EXCLUSIVE" not in doc:
+        raise SystemExit("TALLOS storage maintenance documentation incomplete")
+
 def verify_dm_split_cohort_hotfix() -> None:
     parser = (ROOT / "dm_sei_parser.py").read_text(encoding="utf-8")
     required = [
@@ -206,7 +263,7 @@ def verify_dm_persistent_batch_queue() -> None:
     sei = (ROOT / "sei_student_dates.py").read_text(encoding="utf-8")
     frontend = (ROOT / "static" / "js" / "dm.js").read_text(encoding="utf-8")
     queue_migration = (ROOT / "database" / "050_dm_sei_student_refresh_queue_v0130.sql").read_text(encoding="utf-8")
-    controls_migration = (ROOT / "database" / SCHEMA_MIGRATION).read_text(encoding="utf-8")
+    controls_migration = (ROOT / "database" / "051_dm_sei_refresh_queue_controls_v0130.sql").read_text(encoding="utf-8")
 
     required_router = [
         'DM_SEI_REFRESH_BATCH_SIZE',
@@ -308,6 +365,8 @@ def main() -> int:
     verify_academic_bootstrap_helpers()
     verify_directorate_isolation_guards()
     verify_reitoria_academic_overview()
+    verify_tallos_compact_foundation()
+    verify_tallos_storage_maintenance()
     verify_dm_split_cohort_hotfix()
     verify_dm_queue_foundation()
     verify_dm_persistent_batch_queue()

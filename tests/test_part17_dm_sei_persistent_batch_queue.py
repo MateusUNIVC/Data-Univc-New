@@ -206,5 +206,6 @@ def test_queue_api_frontend_and_schema_contracts_are_present():
     assert "senha" not in migration.lower()
     assert "dm_sei_student_refresh_runs" in migration
     assert "dm_sei_student_refresh_items" in migration
-    assert "SCHEMA_VERSION = 51" in release
-    assert 'SCHEMA_MIGRATION = "051_dm_sei_refresh_queue_controls_v0130.sql"' in release
+    assert (ROOT / "database/051_dm_sei_refresh_queue_controls_v0130.sql").exists()
+    from release_info import SCHEMA_VERSION
+    assert SCHEMA_VERSION >= 51

@@ -1,15 +1,15 @@
-Data UNIVC 0.13.0 - Production - Part 19 DM SEI Button Runtime Hotfix
+Data UNIVC 0.13.0 - Production - Part 22 DADM/TALLOS Storage Maintenance
 Generated: 2026-10-01
-Schema expected: 51
-Migration ledger: 051_dm_sei_refresh_queue_controls_v0130.sql
+Schema expected: 53
+Migration ledger: 053_dadm_tallos_payload_retirement_v0130.sql
 
-Hotfix operacional 2026-10-01 - Parte 19:
-- corrige erro de runtime em openSeiModal() causado por referência residual ao elemento removido #seiCheckDatesWrap;
-- restaura os botões “Buscar direto no SEI” e “Analisar XLSX do SEI”;
-- preserva importação XLSX, fila persistente, pausa/retomada e reprocessamento de falhas;
-- adiciona auditoria automática de IDs do dm.js contra o template dm.html para impedir novas referências diretas a elementos removidos;
-- eleva o asset version do DM para 0.13.0-dmq04b para invalidar cache do JavaScript anterior;
-- validação de runtime em Chromium headless confirmou abertura dos modais SEI direto, SEI XLSX e importação;
-- sem migration nova; schema permanece 51;
-- regressão completa: 250 testes aprovados e 2 ignorados;
-- release checks: 28/28 JavaScripts válidos e referências de template íntegras.
+Parte 22 - TALLOS-COMPACT-05:
+- conclui o bloco de compactação Tallos sem nova migration;
+- adiciona auditoria reproduzível de heap, índices, TOAST, total, footprint por linha e payload residual;
+- audita saúde do contrato compacto, versões de normalização e source_hash;
+- expõe tuplas vivas/mortas e histórico de VACUUM/ANALYZE;
+- adiciona rotina segura `audit` e `vacuum` para a VPS;
+- `vacuum-full` exige confirmação explícita por variável de ambiente e documenta o lock ACCESS EXCLUSIVE;
+- schema permanece 53; nenhuma alteração de KPI ou regra de negócio;
+- próxima frente: Excel Oficial padronizado para todas as diretorias.
+- regressão completa: 260 testes aprovados e 2 ignorados; 28/28 JavaScripts válidos.

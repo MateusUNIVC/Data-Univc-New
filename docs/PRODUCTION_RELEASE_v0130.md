@@ -31,7 +31,7 @@ Defina no servidor, sem gravar segredos no repositório:
 ## Antes do deploy
 
 1. Fazer backup completo do PostgreSQL/Supabase.
-2. Confirmar que todas as migrations até schema 51 foram aplicadas, incluindo `050_dm_sei_student_refresh_queue_v0130.sql` e `051_dm_sei_refresh_queue_controls_v0130.sql`.
+2. Confirmar que todas as migrations até schema 53 foram aplicadas, incluindo `050_dm_sei_student_refresh_queue_v0130.sql`, `051_dm_sei_refresh_queue_controls_v0130.sql`, `052_dadm_tallos_compact_rating_contract_v0130.sql` e `053_dadm_tallos_payload_retirement_v0130.sql`.
 3. Confirmar `AUTH_DISABLED=false`.
 4. Confirmar HTTPS/Nginx e `COOKIE_SECURE=true`.
 5. Confirmar segredos fortes fora do ZIP.

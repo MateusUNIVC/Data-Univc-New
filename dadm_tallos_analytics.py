@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections import defaultdict
 from datetime import date, timedelta
 from math import ceil
@@ -377,10 +376,11 @@ def rating_audit_payload(
     sample_limit: int = 120,
     allowed_departments: tuple[str, ...] | None = None,
 ) -> dict:
-    """Reconcile normalized rating against sanitized TALLOS ``level``.
+    """Reconcile normalized rating against the compact TALLOS source contract.
 
-    This endpoint is intentionally audit-focused and is not used by the regular
-    dashboard. It never exposes customer PII.
+    The dashboard no longer needs ``source_payload_json`` to audit evaluations.
+    ``rating_source_state`` preserves the meaningful distinction between a valid
+    score, ``level=0``, missing/S-A, and an unrecognized value.
     """
     conditions = _conditions(
         directorate_id, start_date, end_date,
@@ -396,7 +396,9 @@ def rating_audit_payload(
             DADMTallosAttendance.reference_date,
             DADMTallosAttendance.month_key,
             DADMTallosAttendance.rating,
-            DADMTallosAttendance.source_payload_json,
+            DADMTallosAttendance.rating_source_state,
+            DADMTallosAttendance.rating_source_value,
+            DADMTallosAttendance.normalization_version,
         )
         .where(*conditions)
         .order_by(DADMTallosAttendance.reference_date.desc(), DADMTallosAttendance.id.desc())
@@ -409,34 +411,24 @@ def rating_audit_payload(
     samples: list[dict] = []
 
     for row in rows:
-        raw_level = None
-        try:
-            payload = json.loads(row.source_payload_json or "{}")
-            raw_level = payload.get("level")
-        except (TypeError, ValueError, json.JSONDecodeError):
-            payload = {}
-        parsed = None
-        if raw_level is not None and not isinstance(raw_level, bool):
-            text = str(raw_level).strip()
-            if text and text.casefold() not in {"s/a", "sa", "n/a", "na", "null", "none", "nan", "-", "--"}:
-                try:
-                    parsed = int(float(text.replace(",", ".")))
-                except ValueError:
-                    parsed = None
-        if parsed == 0:
+        state = str(row.rating_source_state or "missing").strip().casefold()
+        normalized = int(row.rating) if row.rating is not None and 1 <= int(row.rating) <= 10 else None
+        raw_level = row.rating_source_value
+
+        if state == "zero":
             raw_zero += 1
             classification = "sem avaliação (level=0)"
-        elif parsed is not None and 1 <= parsed <= 10:
-            distribution[parsed] += 1
+        elif state == "valid" and normalized is not None:
+            distribution[normalized] += 1
             classification = "avaliação válida"
-        elif raw_level is None or (isinstance(raw_level, str) and raw_level.strip().casefold() in {"", "s/a", "sa", "n/a", "na", "null", "none", "nan", "-", "--"}):
+        elif state == "missing":
             raw_missing += 1
             classification = "sem avaliação"
         else:
             raw_other += 1
             classification = "valor não reconhecido"
 
-        if len(samples) < sample_limit and (parsed == 0 or (parsed is not None and 1 <= parsed <= 10)):
+        if len(samples) < sample_limit and state in {"zero", "valid"}:
             samples.append({
                 "source_id": str(row.source_id),
                 "protocol": row.protocol,
@@ -445,8 +437,10 @@ def rating_audit_payload(
                 "reference_date": row.reference_date.isoformat() if row.reference_date else None,
                 "period": str(row.month_key),
                 "raw_level": raw_level,
-                "normalized_rating": row.rating if row.rating is not None and 1 <= int(row.rating) <= 10 else None,
+                "normalized_rating": normalized,
                 "classification": classification,
+                "source_state": state,
+                "normalization_version": int(row.normalization_version or 0),
             })
 
     valid_count = sum(distribution.values())
@@ -465,6 +459,7 @@ def rating_audit_payload(
             "valid_max": 10,
             "level_zero": "missing",
             "null_or_sa": "missing",
+            "source": "compact_columns",
         },
     }
 

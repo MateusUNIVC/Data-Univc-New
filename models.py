@@ -2085,8 +2085,9 @@ class DADMTallosAttendance(Base):
     """Fato operacional normalizado de ``GET /v4/reports``.
 
     Não persiste nome, telefone, CPF ou CNPJ do cliente. ``customer_ref`` é um
-    identificador opaco usado somente para contagens distintas. O JSON de
-    auditoria é uma whitelist operacional sanitizada.
+    identificador opaco usado somente para contagens distintas. O payload bruto
+    TALLOS não é persistido; ``source_payload_json`` permanece apenas como coluna
+    legada de compatibilidade e deve conter ``{}``.
     """
 
     __tablename__ = "dadm_tallos_attendances"
@@ -2100,6 +2101,10 @@ class DADMTallosAttendance(Base):
         Index("ix_dadm_tallos_attendance_dir_status_date", "directorate_id", "status", "reference_date"),
         Index("ix_dadm_tallos_attendance_dir_protocol", "directorate_id", "protocol"),
         CheckConstraint("rating IS NULL OR rating BETWEEN 1 AND 10", name="ck_dadm_tallos_rating"),
+        CheckConstraint(
+            "rating_source_state IN ('valid','zero','missing','invalid')",
+            name="ck_dadm_tallos_rating_source_state",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -2115,6 +2120,9 @@ class DADMTallosAttendance(Base):
     tabulation: Mapped[str | None] = mapped_column(String(240), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(30), default="unknown", index=True)
     rating: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    rating_source_state: Mapped[str] = mapped_column(String(16), default="missing", index=True)
+    rating_source_value: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    normalization_version: Mapped[int] = mapped_column(Integer, default=5, index=True)
     tme_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     tma_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     tmro_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)

@@ -28,7 +28,7 @@ def _local_timezone():
 
 LOCAL_TZ = _local_timezone()
 NULL_TEXT = {"", "s/a", "sa", "n/a", "na", "null", "none", "nan", "-", "--"}
-TALLOS_NORMALIZATION_VERSION = 4
+TALLOS_NORMALIZATION_VERSION = 5
 
 
 def _text(value: Any) -> str | None:
@@ -187,6 +187,35 @@ def _rating(value: Any) -> int | None:
     return number if number is not None and 1 <= number <= 10 else None
 
 
+def _rating_source(value: Any) -> tuple[str, str | None]:
+    """Compact, auditable representation of the raw TALLOS ``level`` field.
+
+    This deliberately preserves the historical normalization semantics used by
+    ``_rating`` (including integer coercion through ``_int``) while avoiding the
+    need to keep the full sanitized report payload merely to audit evaluations.
+    """
+    if value is None:
+        return "missing", None
+    if isinstance(value, bool):
+        return "invalid", "true" if value else "false"
+
+    if isinstance(value, (dict, list, tuple)):
+        raw = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
+    else:
+        raw = str(value).strip()
+    raw = raw[:64] if raw else None
+
+    if raw is None or raw.casefold() in NULL_TEXT:
+        return "missing", raw
+
+    number = _int(value)
+    if number == 0:
+        return "zero", raw
+    if number is not None and 1 <= number <= 10:
+        return "valid", raw
+    return "invalid", raw
+
+
 def _safe_payload(row: dict) -> dict:
     """Whitelist operacional sem nome/telefone/CPF/CNPJ do cliente."""
     employee = row.get("employee") if isinstance(row.get("employee"), dict) else {}
@@ -251,6 +280,7 @@ def normalize_report(row: dict, *, fallback_date: date) -> dict:
     channel = _text(row.get("channel")) or _text(customer.get("channel"))
     source_payload = _safe_payload(row)
     source_json = json.dumps(source_payload, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
+    rating_source_state, rating_source_value = _rating_source(row.get("level"))
     # Include the normalization contract version in the hash. If a mapping rule
     # changes (for example the evaluation scale), a re-sync updates existing
     # rows even when the raw TALLOS payload itself did not change.
@@ -281,6 +311,9 @@ def normalize_report(row: dict, *, fallback_date: date) -> dict:
         "tabulation": _text(row.get("to_tabulation")),
         "status": status,
         "rating": _rating(row.get("level")),
+        "rating_source_state": rating_source_state,
+        "rating_source_value": rating_source_value,
+        "normalization_version": TALLOS_NORMALIZATION_VERSION,
         "tme_seconds": parse_duration_seconds(tme.get("value")),
         "tma_seconds": parse_duration_seconds(tma.get("value")),
         "tmro_seconds": parse_duration_seconds(metrics.get("tmro")),
@@ -301,5 +334,4 @@ def normalize_report(row: dict, *, fallback_date: date) -> dict:
         "reference_date": reference_date,
         "month_key": reference_date.strftime("%Y-%m"),
         "source_hash": source_hash,
-        "source_payload_json": source_json,
     }

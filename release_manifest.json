@@ -1,8 +1,8 @@
 {
   "app_version": "0.13.0",
   "academic_base_version": "0.11.6.7",
-  "schema_expected": 51,
-  "schema_migration": "051_dm_sei_refresh_queue_controls_v0130.sql",
+  "schema_expected": 53,
+  "schema_migration": "053_dadm_tallos_payload_retirement_v0130.sql",
   "production_hardening": {
     "environment": "production",
     "auth_disabled": false,
@@ -19,9 +19,9 @@
   "local_demo_database_included": false,
   "local_windows_launchers_included": false,
   "docker_compose_app_only_included": true,
-  "artifact_profile": "production-vps-v0130-part18-dm-queue-ux-button-hardening",
-  "created_at_utc": "2026-10-01T20:35:52Z",
-  "release_name": "Data UNIVC 0.13.0 - Production - Part 18 DM Queue UX + Button Hardening",
+  "artifact_profile": "production-vps-v0130-part21-tallos-payload-retirement",
+  "created_at_utc": "2026-10-01T21:45:00Z",
+  "release_name": "Data UNIVC 0.13.0 - Production - Part 21 DADM/TALLOS Payload Retirement",
   "patch_scope": [
     "part1-non-actionable-warning-cleanup",
     "educacao-fisica-licenciatura-sei-current-label-compatibility",
@@ -90,17 +90,16 @@
     "part18-dm-sei-refresh-run-history",
     "part18-dm-sei-pause-resume",
     "part18-dm-sei-retry-failed",
-    "part18-dm-sei-failure-details"
+    "part18-dm-sei-failure-details",
+    "part20-tallos-payload-dependency-audit",
+    "part20-tallos-compact-rating-source-contract",
+    "part20-tallos-rating-audit-without-payload-read",
+    "part20-tallos-normalization-version-5",
+    "part21-tallos-historical-payload-cleanup",
+    "part21-tallos-ingestion-without-payload-persistence",
+    "part21-tallos-source-hash-preserved-before-discard",
+    "part21-tallos-analytics-equivalence-after-cleanup"
   ],
-  "validation": {
-    "pytest": "245 passed, 2 skipped",
-    "javascript": "28/28 syntax OK; 28/28 template references present",
-    "schema": 50,
-    "dm_real_report": "13 cohorts; 433 students; CTE:17 = 51",
-    "dm_queue": "persistent run/items; bounded batches; credentials memory-only",
-    "release_checks": "OK"
-  },
-  "file_count": 403,
   "files": [
     {
       "path": ".dockerignore",
@@ -119,8 +118,8 @@
     },
     {
       "path": "BUILD_INFO.txt",
-      "bytes": 23508,
-      "sha256": "42ece49b8e1495c2e2d2e20900d6c798a5c467b7ac0a933e26475a5a26a85058"
+      "bytes": 906,
+      "sha256": "b0758b41eb20890bf0103aaf5555afe3324d37b5b94b72e33904c8a6825606ac"
     },
     {
       "path": "Dockerfile",
@@ -144,8 +143,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 111992,
-      "sha256": "aa0329e8658a5e09d35712d622790d8b7e257053f0f94bba762f9d5af57b6e97"
+      "bytes": 114542,
+      "sha256": "bd3e398089dbf1599ca70a477a1a77c923366d7affe3ebc262039ad3480a3454"
     },
     {
       "path": "academic_analytics.py",
@@ -314,8 +313,8 @@
     },
     {
       "path": "dadm_tallos_analytics.py",
-      "bytes": 32554,
-      "sha256": "496f36312485ec594b11622b590b4f27e5d1c7df88b8a5c44802c68c310ababb"
+      "bytes": 32289,
+      "sha256": "042cee49f90eef1060d79ef35896c5712ff551344c7f00372f350bb3df23cb35"
     },
     {
       "path": "dadm_tallos_client.py",
@@ -329,8 +328,8 @@
     },
     {
       "path": "dadm_tallos_normalization.py",
-      "bytes": 12256,
-      "sha256": "13ee0f0125485566ebd32d939def5a1d969978b8b72fb2113f70f1873b5ef045"
+      "bytes": 13473,
+      "sha256": "5ee48aa489b16a75453f67d26676d9f2da2d218fb94ccb6342778731a6a4bf85"
     },
     {
       "path": "dadm_tallos_repository.py",
@@ -366,11 +365,6 @@
       "path": "dadm_v2_router.py",
       "bytes": 14093,
       "sha256": "a97c2c01c1c3d836ca4689945d47e7a766467c8747a87bb3a84d4a77a62e40c2"
-    },
-    {
-      "path": "database.py",
-      "bytes": 920,
-      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
     },
     {
       "path": "database/001_init.sql",
@@ -608,6 +602,26 @@
       "sha256": "b20d6156425e82105c496d25773fa9878fb29f9688d6ee73b7c6f794e98fb05e"
     },
     {
+      "path": "database/051_dm_sei_refresh_queue_controls_v0130.sql",
+      "bytes": 776,
+      "sha256": "6bdf7c360225fda30c2e0b23bec01281b2827d44c585378a5c051682c6809cdb"
+    },
+    {
+      "path": "database/052_dadm_tallos_compact_rating_contract_v0130.sql",
+      "bytes": 3308,
+      "sha256": "9369f86c84f3e2d92995a420f008e2e523cad24055c3cf3c031be4c45fe13150"
+    },
+    {
+      "path": "database/053_dadm_tallos_payload_retirement_v0130.sql",
+      "bytes": 1442,
+      "sha256": "ca3772689536e79e06b7089b3bd1b663d8a9d9e36d9b5e1b0917c4db69cb9757"
+    },
+    {
+      "path": "database.py",
+      "bytes": 920,
+      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
+    },
+    {
       "path": "demo_data.py",
       "bytes": 10931,
       "sha256": "6d69d292ea3f064ed3db9481a3785cd4a4682ca6329dc27b415f422e5f47b57b"
@@ -654,13 +668,13 @@
     },
     {
       "path": "dm_repository.py",
-      "bytes": 86697,
-      "sha256": "cdc5d10ed85e2488466306f6ff51182d73872009c88d54d70ad8257147d89b27"
+      "bytes": 91823,
+      "sha256": "4296e6dcc06e18d5a6cf0b1fa458b55d0d1d20e30be0a3db151adfc0b05887f9"
     },
     {
       "path": "dm_router.py",
-      "bytes": 34958,
-      "sha256": "f9f74e7c5f6ea30e2bf58afd5fcbf206ede8ea14c1935d2a178e55ecc585e2c3"
+      "bytes": 37028,
+      "sha256": "cec0632e778fdb36bc84dfb4a057f7339d0c7743ec52b50f36d48495d47ac4ed"
     },
     {
       "path": "dm_sei_parser.py",
@@ -759,8 +773,8 @@
     },
     {
       "path": "docs/CHANGELOG.md",
-      "bytes": 80252,
-      "sha256": "f13b176e851ac1bf70a2511c4ebdda30ba46e6df71dc4bc66b616e41642c1966"
+      "bytes": 82681,
+      "sha256": "0b5466bc5dad52012d78207e2c83dc6fe1d2969deec35c51f966ae0c25824e80"
     },
     {
       "path": "docs/DADM_FULL_ATTENDANCE_EXPLORER_v09611.md",
@@ -786,6 +800,16 @@
       "path": "docs/DADM_TALLOS_ANALYTICS_CENTER.md",
       "bytes": 13354,
       "sha256": "c8fd9036f775d9ecc48984d5c3e016af1bc8c8eba6edcf1f30f8051f8abdf5f1"
+    },
+    {
+      "path": "docs/DADM_TALLOS_COMPACT_STORAGE_PART20.md",
+      "bytes": 1847,
+      "sha256": "5a9a7e70fdeeff07aeb0d2f4cfd9ac3301eeb542f5a674417790d07e1b333bda"
+    },
+    {
+      "path": "docs/DADM_TALLOS_COMPACT_STORAGE_PART21.md",
+      "bytes": 2486,
+      "sha256": "1a50e26d9865f093358366408855e156dbd14421912a4a5320b0b7868944fb66"
     },
     {
       "path": "docs/DADM_TALLOS_IDENTIFIER_ALIGNMENT_v0965.md",
@@ -834,8 +858,8 @@
     },
     {
       "path": "docs/DEPLOY.md",
-      "bytes": 31154,
-      "sha256": "1e324fbf55752192a62002cd7c6447a0349506a46a3378be64e32eb36263115c"
+      "bytes": 31924,
+      "sha256": "d0af0bee6a21b0ec8b59eb946d73da4e07b97361bf508dde61dc958eabadf129"
     },
     {
       "path": "docs/DM_DOMAIN_SIMPLIFICATION_v08290.md",
@@ -1153,6 +1177,16 @@
       "sha256": "f73ca996b7570e71379845bad6d5b1c495b5b99fea8018b3e3b64069d9fd8bd5"
     },
     {
+      "path": "docs/PART18_DM_QUEUE_UX_BUTTON_HARDENING_2026-10-01.md",
+      "bytes": 2272,
+      "sha256": "f39db2045d99889f1c23d04d385edf82d54990b275b3e3f7e040fd8f4bb0214a"
+    },
+    {
+      "path": "docs/PART19_DM_SEI_BUTTON_RUNTIME_HOTFIX_2026-10-01.md",
+      "bytes": 1951,
+      "sha256": "40534c2f9860dcd52d722c61b3a1fb72ba079d3cb121c91e6424edb3ff47e376"
+    },
+    {
       "path": "docs/PART1_UX_CLEANUP_EF_LIC_2026-09-29.md",
       "bytes": 3743,
       "sha256": "84ab539d2b97df9a5bdc69f3a484568f4c28b2a977c452826cf0e9af7ab7121b"
@@ -1214,8 +1248,8 @@
     },
     {
       "path": "docs/PRODUCTION_RELEASE_v0130.md",
-      "bytes": 2447,
-      "sha256": "61ab85455de4a2425bcaf9424acbbc6fa81fa6487e97a5e9973dae6750a1862c"
+      "bytes": 2597,
+      "sha256": "2b6e3bb4deca482a5e75446ab5beb1fdf50cb6a912681bd2a5ed747ccf6e35fc"
     },
     {
       "path": "docs/REITORIA_ADMIN_VISIBILITY_v0969.md",
@@ -1364,8 +1398,8 @@
     },
     {
       "path": "models.py",
-      "bytes": 118391,
-      "sha256": "a760bf124fc0c0280eb9a627546078e9954b56921a7715ad98aa642c2bb74980"
+      "bytes": 118923,
+      "sha256": "487379a5db1d145835b6c8f30032a63f48d33556cff0e96349a3281a1271467d"
     },
     {
       "path": "observability.py",
@@ -1384,8 +1418,8 @@
     },
     {
       "path": "release_info.py",
-      "bytes": 191,
-      "sha256": "34e9f13811d716a4f570f948d28901559b5ba64e708edce0fe6fecf6e411bfb5"
+      "bytes": 193,
+      "sha256": "d13837702e168f1ba16cdd0bbef7f4456a38a6d3499c1cb4faf5fed4e7871fb9"
     },
     {
       "path": "render.yaml",
@@ -1429,8 +1463,8 @@
     },
     {
       "path": "scripts/run_release_checks.py",
-      "bytes": 15010,
-      "sha256": "56e0ae10885a1a189daf2081f8a6dd7bb0dac3347e0d542d0ffc4f7f527e9c30"
+      "bytes": 20325,
+      "sha256": "b5a6674e68b5f1a5378318d80b059ea8227572fce4e8b07a0307fbbce26444df"
     },
     {
       "path": "scripts/seed_dpe_demo.py",
@@ -1534,8 +1568,8 @@
     },
     {
       "path": "static/css/dm.css",
-      "bytes": 24541,
-      "sha256": "99608ee4e5eda884ff542457d16e282cefa0cd6d4fe82ba2c933ccb1497c7565"
+      "bytes": 26947,
+      "sha256": "acd50da5eec1ac78702188bd5cca71abbc1995e8b9df3168fe98c7ddde4aa6f2"
     },
     {
       "path": "static/css/dpe.css",
@@ -1589,8 +1623,8 @@
     },
     {
       "path": "static/js/dadm_tallos.js",
-      "bytes": 52833,
-      "sha256": "b825e1f07cb1887482411aaca78e2682546394706d6f3fcd5a6baa2edd8ac908"
+      "bytes": 52839,
+      "sha256": "83347d09b760ff67871b7d4892fd6d895adbfe24a2dacc63daf57308008f953d"
     },
     {
       "path": "static/js/dadm_v2.js",
@@ -1634,8 +1668,8 @@
     },
     {
       "path": "static/js/dm.js",
-      "bytes": 79326,
-      "sha256": "e3a5c91be0be9513ef0739c60eee0eaaad6e2d3b3e1ee35d158a781f88ef516a"
+      "bytes": 91721,
+      "sha256": "541c75fb175305d0575f992ccdf704fa551aa7ce8448f677cd604a3f663d8b86"
     },
     {
       "path": "static/js/dpe.js",
@@ -1819,8 +1853,8 @@
     },
     {
       "path": "templates/dm.html",
-      "bytes": 39582,
-      "sha256": "8aa89db98c929cdc1f8697c8fec3065adaaa4dd9f1921bf74f4a6dfc88686e77"
+      "bytes": 40659,
+      "sha256": "e7095eb098692ca29da128a5cd81e62948307812e9138633afd8299142ef35ba"
     },
     {
       "path": "templates/dpe.html",
@@ -2079,8 +2113,28 @@
     },
     {
       "path": "tests/test_part17_dm_sei_persistent_batch_queue.py",
-      "bytes": 8068,
-      "sha256": "261d5a0d5c746a64393efc6bc1a4691fca6010e82d781d155a9cd2a1ca6799b6"
+      "bytes": 8108,
+      "sha256": "496b6832ed5558dcadb182d830fb07787e23ec3fa6b770638fccc246dcac4bac"
+    },
+    {
+      "path": "tests/test_part18_dm_queue_ux_button_hardening.py",
+      "bytes": 4309,
+      "sha256": "5752ef0157e58921703d54d99b1e587113ddf8505dccd03edaec44bf88fb84b8"
+    },
+    {
+      "path": "tests/test_part19_dm_sei_button_runtime_hotfix.py",
+      "bytes": 1312,
+      "sha256": "3bfed92b990dc0092b4454a25b803d695ec4c2c0c32bb8c07c0be7e44fb9c146"
+    },
+    {
+      "path": "tests/test_part20_tallos_compact_foundation.py",
+      "bytes": 4306,
+      "sha256": "528ee981617d4edb09c0a7a39581861dc4602f1df6b31b756dec4a35f52f45f8"
+    },
+    {
+      "path": "tests/test_part21_tallos_payload_retirement.py",
+      "bytes": 6149,
+      "sha256": "c3722f4e24b02a5af8c2a61584aa2db6e66acc28080a33ac494a949c383e766e"
     },
     {
       "path": "tests/test_part4_nps_long_course_labels.py",
@@ -2099,8 +2153,8 @@
     },
     {
       "path": "tests/test_release_production_v0130.py",
-      "bytes": 901,
-      "sha256": "3ad686a959a7d701f6f958e251597fb8831a34db930743b518eeb1a277382175"
+      "bytes": 903,
+      "sha256": "3e9f610f5a965b15ac8b3d49d6931eb8fbb83825bba97b031e3099149178d5eb"
     },
     {
       "path": "tests/test_release_reconciliation_v0130_dev15.py",

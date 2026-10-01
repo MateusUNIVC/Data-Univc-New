@@ -1,3 +1,37 @@
+## Parte 22 - DADM/TALLOS · benchmark e manutenção de armazenamento (01/10/2026)
+
+- conclui `TALLOS-COMPACT-05` sem alterar o schema 53;
+- adiciona auditoria reproduzível de tamanho da tabela, índices, TOAST, footprint médio, payload residual e tuplas mortas;
+- valida saúde de `rating_source_state`, `normalization_version` e `source_hash`;
+- adiciona `scripts/tallos_storage_maintenance.sh audit` e `vacuum`;
+- `VACUUM FULL` fica protegido por confirmação explícita e reservado para janela de manutenção;
+- encerra o bloco de compactação Tallos e prepara a entrada na arquitetura do Excel Oficial.
+
+Detalhes: `docs/DADM_TALLOS_STORAGE_MAINTENANCE_PART22.md`.
+
+## Parte 21 - DADM/TALLOS · retirada do payload e ingestão compacta (01/10/2026)
+
+- conclui `TALLOS-COMPACT-03` + `TALLOS-COMPACT-04`;
+- limpa `source_payload_json` histórico somente depois do contrato compacto da migration 052;
+- novas sincronizações calculam `source_hash` em memória e não persistem mais o JSON bruto;
+- a coluna legada permanece apenas como placeholder `{}` para compatibilidade;
+- auditoria de avaliações permanece idêntica antes/depois da limpeza;
+- reimportação idempotente continua baseada em `source_hash`;
+- migration obrigatória `053_dadm_tallos_payload_retirement_v0130.sql`; schema esperado passa a **53**.
+
+Detalhes: `docs/DADM_TALLOS_COMPACT_STORAGE_PART21.md`.
+
+## Parte 20 - DADM/TALLOS · fundação de armazenamento compacto (01/10/2026)
+
+- mapeada toda dependência ativa de `source_payload_json` no Centro de Analytics TALLOS;
+- a auditoria de avaliações passa a usar um contrato compacto (`valid`, `zero`, `missing`, `invalid`) em vez de reler o JSON;
+- adicionados `rating_source_value` e `normalization_version` para rastreabilidade sem manter o payload bruto como dependência funcional;
+- registros históricos cujo payload já tenha sido limpo preservam avaliações 1–10 pela coluna normalizada `rating`;
+- o payload permanece temporariamente armazenado apenas para a próxima etapa de benchmark e limpeza controlada;
+- migration obrigatória `052_dadm_tallos_compact_rating_contract_v0130.sql`; schema esperado passa a **52**.
+
+Detalhes: `docs/DADM_TALLOS_COMPACT_STORAGE_PART20.md`.
+
 ## Parte 18 - DM · fila operacional completa e hardening dos botões (01/10/2026)
 
 - corrige a fragilidade em que um erro durante `loadIdentity()` podia impedir o registro de todos os eventos da página DM;
