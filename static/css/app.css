@@ -1902,3 +1902,53 @@ th.numeric, td.numeric {
 
 /* v0.13.0 Parte 3 — resolução explícita de curso no NPS */
 .sei-course-resolution-select{width:100%;margin-top:7px;min-height:36px;border:1px solid var(--line,#d5ddd8);border-radius:8px;background:#fff;padding:0 8px;font-size:11px}.sei-course-option.survey-resolvable{border-style:dashed;background:#fffdf6}.sei-course-option.survey-resolvable:has(input:checked){border-style:solid;border-color:#c9a85a}
+
+/* v0.13.0 Parte 9 — escalas semânticas e distribuição NPS 0–10 */
+.nps-score-panel { overflow: hidden; }
+.nps-score-distribution-host { min-height: 280px; }
+.nps-score-summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(120px, .7fr));
+  gap: 10px;
+  margin: 4px 0 18px;
+}
+.nps-score-summary > div {
+  padding: 10px 12px;
+  border: 1px solid var(--line, #dfe7e2);
+  border-radius: 10px;
+  background: #fbfdfc;
+}
+.nps-score-summary span { display:block; color:var(--ink-500,#738078); font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+.nps-score-summary strong { display:block; margin-top:4px; color:var(--ink-900,#24342d); font-size:14px; line-height:1.25; }
+.nps-score-chart-scroll { overflow-x:auto; padding-bottom:3px; }
+.nps-score-chart {
+  display:grid;
+  grid-template-columns:repeat(11,minmax(46px,1fr));
+  gap:8px;
+  min-width:620px;
+  height:245px;
+  align-items:end;
+  padding:8px 2px 0;
+  border-bottom:1px solid #dfe7e2;
+}
+.nps-score-column { display:grid; grid-template-rows:18px 1fr 18px 16px; align-items:end; height:100%; text-align:center; }
+.nps-score-column .nps-score-count { color:#52645b; font-size:9px; font-weight:800; }
+.nps-score-bar-track { position:relative; height:165px; display:flex; align-items:flex-end; justify-content:center; border-radius:6px 6px 0 0; background:linear-gradient(to top,#f5f8f6,#fbfdfc); }
+.nps-score-bar { width:min(30px,70%); min-height:0; border-radius:6px 6px 2px 2px; transition:height .18s ease; }
+.nps-score-column.detractor .nps-score-bar { background:#b64a4a; }
+.nps-score-column.neutral .nps-score-bar { background:#c08214; }
+.nps-score-column.promoter .nps-score-bar { background:#0e8058; }
+.nps-score-column > strong { color:#263a31; font-size:11px; }
+.nps-score-column > small { color:#74847c; font-size:8px; }
+.nps-score-groups { display:grid; grid-template-columns:7fr 2fr 2fr; min-width:620px; margin-top:8px; gap:8px; font-size:9px; font-weight:800; text-align:center; }
+.nps-score-groups span { padding:5px 6px; border-radius:999px; }
+.nps-score-groups .detractor { background:#fbefef; color:#934040; }
+.nps-score-groups .neutral { background:#fff7e7; color:#96660b; }
+.nps-score-groups .promoter { background:#edf8f3; color:#0b704e; }
+.nps-score-note { margin:10px 0 0; color:#718078; font-size:9px; line-height:1.45; }
+@media (max-width: 900px) {
+  .nps-score-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 560px) {
+  .nps-score-summary { grid-template-columns:1fr; }
+}

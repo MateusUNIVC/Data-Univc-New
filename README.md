@@ -1,4 +1,22 @@
+## Parte 10 - auditoria final integrada e hardening de domínio (01/10/2026)
+
+- metas de NPS são limitadas a -100/+100 e metas percentuais acadêmicas a 0-100%;
+- limiar de atenção e limite superior recebem validações coerentes com indicadores de direção positiva;
+- formulário de metas aplica os mesmos limites antes do envio;
+- composição NPS no Excel passa a usar eixo 0-100%;
+- preflight de release exige `dpe_cost_v2.py`, migration 049 e helpers ativos do bootstrap (`fillConfig` incluído);
+- sem migration nova; schema permanece 49;
+- regressão final: 208 testes aprovados e 2 ignorados.
+
+Detalhes: `docs/PART10_FINAL_INTEGRATED_AUDIT_2026-10-01.md`.
+
 ## Patch operacional 29/09/2026 — Parte 6
+
+
+
+## Parte 8 - limpeza de legado docente e hardening de release (29/09/2026)
+
+A interface academica nao carrega mais a implementacao historica da Avaliacao Docente em nota 0-10. O KPI 02 permanece exclusivamente no modulo categórico oficial (`faculty-evaluation.js` / `/api/surveys/faculty-student/*`). Os endpoints antigos continuam respondendo HTTP 410 por compatibilidade. O release check agora executa `node --check` em todos os 26 JavaScripts e valida as referencias de scripts dos templates. Regressao: 196 testes aprovados e 2 ignorados. Schema permanece 49.
 
 - importações de NPS/questionários passam a pré-carregar perguntas e vínculos em conjunto;
 - cursos/contextos já importados são consultados uma única vez por run;
@@ -1444,3 +1462,9 @@ Foram adicionados launchers Windows independentes para `DTNH`, `DCS`, `DADM`, `D
 ### Parte 7 — Excel Interativo acadêmico oficial
 
 O Excel Interativo de DTNH/DCS deixa de ser beta. `/api/excel-interativo` gera `Painel_DTNH_Interativo.xlsx` ou `Painel_DCS_Interativo.xlsx`, com PAINEL de cinco gráficos, MATRIZ, parâmetros e bases gerenciais separadas (`NPS`, avaliação docente, resultados acadêmicos, metas, cursos, disciplinas e dimensões). CALC e listas de apoio permanecem ocultas. O Excel tradicional de `/api/excel` continua disponível em paralelo.
+
+## Parte 9 — escalas semânticas e distribuição NPS 0–10 (2026-10-01)
+
+Os gráficos acadêmicos passam a respeitar a natureza da métrica: percentuais usam sempre 0–100, NPS usa -100–+100 e contagens começam em zero. Isso elimina eixos de aprovação acima de 100%, contagens negativas e distorções visuais de pequenas variações. Barras negativas de NPS também deixam de invadir o nome dos cursos, pois o valor passa a ocupar uma coluna separada.
+
+As três áreas de NPS (instituição/alunos, curso e instituição/docentes) passam a exibir a distribuição original das respostas de 0 a 10, com quantidade e percentual por nota, total de respondentes, média 0–10 complementar e NPS. O Excel Interativo oficial ganha a base visível `NPS DISTRIBUICAO`. Não há migration nova; o schema permanece 49. Consulte `docs/PART9_SEMANTIC_CHART_SCALES_NPS_DISTRIBUTION_2026-10-01.md`.

@@ -605,6 +605,7 @@ class DatabaseRepository:
             source_label = "SEI · Questionário" if source_type == "SEI_SURVEY" else "Manual / Excel"
             return {
                 **common,
+                "curso_id": row.course_id,
                 "curso": row.course.name,
                 "respondentes": row.respondents,
                 "promotores": row.promoters,
@@ -1609,13 +1610,31 @@ class DatabaseRepository:
             else:
                 try: clean[field] = float(val)
                 except (TypeError, ValueError): errors[field] = "Informe um número."
-        if code in {"DTNH-02", "DCS-02"}:
+        academic_bounds = None
+        academic_label = None
+        if self.directorate_code in {"DTNH", "DCS"}:
+            if code.endswith(("-01A", "-01B", "-01C")):
+                academic_bounds = (-100.0, 100.0)
+                academic_label = "O NPS"
+            elif code.endswith(("-02", "-03")):
+                academic_bounds = (0.0, 100.0)
+                academic_label = "O indicador percentual"
+
+        if academic_bounds is not None:
+            lower, upper = academic_bounds
             for field in ("meta", "atencao", "limite_superior"):
                 value = clean.get(field)
-                if value is not None and not 0 <= value <= 100:
-                    errors[field] = "A favorabilidade deve estar entre 0% e 100%."
+                if value is not None and not lower <= value <= upper:
+                    if lower == 0:
+                        errors[field] = f"{academic_label} deve estar entre 0% e 100%."
+                    else:
+                        errors[field] = f"{academic_label} deve estar entre -100 e 100 pontos."
             if clean.get("meta") is not None and clean.get("atencao") is not None and clean["atencao"] > clean["meta"]:
-                errors["atencao"] = "Para favorabilidade, o limiar de atenção deve ser menor ou igual à meta."
+                errors["atencao"] = "Para indicadores em que maior é melhor, o limiar de atenção deve ser menor ou igual à meta."
+            if clean.get("meta") is not None and clean.get("limite_superior") is not None and clean["limite_superior"] < clean["meta"]:
+                errors["limite_superior"] = "O limite superior deve ser maior ou igual à meta."
+
+        if code in {"DTNH-02", "DCS-02"}:
             clean["metric_version"] = FACULTY_GOAL_METRIC_VERSION
         else:
             clean["metric_version"] = None

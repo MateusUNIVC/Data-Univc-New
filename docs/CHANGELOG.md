@@ -1,3 +1,12 @@
+# 2026-09-29 — Parte 8 Hotfix · restauração de fillConfig
+
+- corrige `ReferenceError: fillConfig is not defined` introduzido na limpeza de legado da Parte 8;
+- restaura somente o helper ativo da tela Configurações, sem reintroduzir o frontend legado da Avaliação Docente;
+- `fillConfig()` passa a tolerar campos ausentes para não interromper o bootstrap;
+- adiciona teste de regressão para os helpers ativos chamados durante bootstrap/refresh;
+- regressão completa: 197 testes aprovados e 2 ignorados;
+- schema permanece 49; nenhuma migration nova.
+
 # 2026-09-29 — Parte 5 Hotfix · seleção múltipla somente entre cursos candidatos
 
 - Avaliação Docente deixa de pedir curso principal seguido de seleção adicional entre toda a diretoria.
@@ -1229,3 +1238,14 @@ O pacote de produção não carrega mais um arquivo de release/patch/validação
 - preserva a favorabilidade docente vigente em %, sem restaurar a antiga métrica 0–10;
 - mantém `/api/excel` tradicional em paralelo;
 - sem migration nova; schema permanece 49.
+
+## 2026-10-01 — Parte 10 — Auditoria final integrada
+
+- endurece os domínios das metas acadêmicas: NPS -100/+100; favorabilidade e aprovação 0-100%;
+- impede limiar de atenção acima da meta e limite superior abaixo da meta nos KPIs acadêmicos de direção positiva;
+- aplica os mesmos limites no formulário web;
+- fixa em 0-100% o eixo da composição Promotores/Neutros/Detratores no Excel Interativo;
+- adiciona preflight explícito para `dpe_cost_v2.py`, migration 049 e helpers ativos do bootstrap;
+- mantém schema 49 sem migration nova;
+- regressão final: 208 testes aprovados e 2 ignorados.
+

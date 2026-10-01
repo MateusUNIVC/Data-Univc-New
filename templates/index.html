@@ -160,7 +160,7 @@
             <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="01C">DTNH-01C</span><h3>NPS da Instituição · Docentes</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsFacultyExecutive" class="chart-canvas"></div></article>
           </div>
           <div class="dashboard-grid two-columns executive-grid">
-            <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="02">DTNH-02</span><h3>Avaliação docente pelo aluno</h3></div><span class="chart-unit">nota 0–10</span></div><div id="chartAvaliacaoDocente" class="chart-canvas"></div></article>
+            <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="02">DTNH-02</span><h3>Avaliação docente pelo aluno</h3></div><span class="chart-unit">favorabilidade %</span></div><div id="chartAvaliacaoDocente" class="chart-canvas"></div></article>
             <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Taxa de aprovação</h3></div><span class="chart-unit">%</span></div><div id="chartAprovacao" class="chart-canvas"></div></article>
           </div>
           <article class="panel attention-panel"><div class="panel-heading"><div><span class="eyebrow">Síntese</span><h3>Pontos de atenção</h3></div></div><div id="insightsList" class="insights-list compact-insights"></div></article>
@@ -208,6 +208,7 @@
           <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">UNIVC</span><h3 id="npsInstitutionOverallTitle">NPS geral da instituição</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsInstitutionOverall" class="chart-canvas"></div></article>
         </div>
         <article class="panel chart-panel nps-course-benchmark-panel"><div class="panel-heading"><div><span class="eyebrow">Comparação por curso</span><h3 id="npsInstitutionComparisonTitle">NPS institucional por curso</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsInstitutionCourses" class="chart-canvas"></div></article>
+        <article class="panel chart-panel nps-score-panel"><div class="panel-heading"><div><span class="eyebrow">Leitura da escala</span><h3>Distribuição das avaliações 0–10</h3></div><span class="chart-unit">quantidade de respostas</span></div><div id="npsInstitutionDistribution" class="nps-score-distribution-host"></div></article>
         <div class="panel data-panel"><div class="table-toolbar"><div class="search-field"><span>⌕</span><input type="search" id="npsInstitutionSearch" placeholder="Buscar semestre ou pergunta"></div><div class="toolbar-count" id="count-nps-institution"></div></div><div class="table-wrap" id="table-nps-institution"></div></div>
       </section>
 
@@ -230,6 +231,7 @@
           <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução</span><h3 id="npsCourseEvolutionTitle">NPS dos Cursos</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsCourseEvolution" class="chart-canvas"></div></article>
           <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Comparação</span><h3 id="npsCourseComparisonTitle">Cursos no recorte</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsCourseComparison" class="chart-canvas"></div></article>
         </div>
+        <article class="panel chart-panel nps-score-panel"><div class="panel-heading"><div><span class="eyebrow">Leitura da escala</span><h3>Distribuição das avaliações 0–10</h3></div><span class="chart-unit">quantidade de respostas</span></div><div id="npsCourseDistribution" class="nps-score-distribution-host"></div></article>
         <div class="panel data-panel"><div class="table-toolbar"><div class="search-field"><span>⌕</span><input type="search" class="table-search" data-dataset="nps" placeholder="Buscar curso, semestre, fonte ou responsável"></div><div class="toolbar-count" id="count-nps"></div></div><div class="table-wrap" id="table-nps"></div></div>
       </section>
       <section id="section-nps-faculty" class="page-section data-page nps-workspace" data-dataset="nps-faculty">
@@ -250,6 +252,7 @@
           <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Evolução</span><h3>NPS institucional dos docentes</h3></div><span class="chart-unit">pontos</span></div><div id="chartNpsFaculty" class="chart-canvas"></div></article>
           <article class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">Composição</span><h3 id="npsFacultyCompositionTitle">Promotores, neutros e detratores</h3></div><span class="chart-unit">%</span></div><div id="chartNpsFacultyComposition" class="chart-canvas"></div></article>
         </div>
+        <article class="panel chart-panel nps-score-panel"><div class="panel-heading"><div><span class="eyebrow">Leitura da escala</span><h3>Distribuição das avaliações 0–10</h3></div><span class="chart-unit">quantidade de respostas</span></div><div id="npsFacultyDistribution" class="nps-score-distribution-host"></div></article>
         <div class="panel data-panel"><div class="table-toolbar"><div class="search-field"><span>⌕</span><input type="search" id="npsFacultySearch" placeholder="Buscar semestre ou pergunta"></div><div class="toolbar-count" id="count-nps-faculty"></div></div><div class="table-wrap" id="table-nps-faculty"></div></div>
       </section>
 

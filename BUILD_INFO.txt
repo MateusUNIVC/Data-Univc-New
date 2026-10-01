@@ -5,6 +5,26 @@ Schema esperado: 49
 Migration ledger: 049_academic_faculty_context_scopes_v0130.sql
 Perfil: production
 
+Patch operacional 2026-10-01 - Parte 10 auditoria final integrada:
+- dominios de metas academicas alinhados aos graficos (NPS -100/+100; percentuais 0-100);
+- composicao NPS do Excel fixada em 0-100%;
+- preflight verifica dpe_cost_v2.py, migration 049 e helpers ativos do bootstrap;
+- regressao final: 208 testes aprovados, 2 ignorados;
+- sem nova migration; schema permanece 49.
+- detalhes em docs/PART10_FINAL_INTEGRATED_AUDIT_2026-10-01.md.
+
+Patch operacional 2026-09-29 - Parte 8 limpeza de legado docente e hardening de release + hotfix fillConfig:
+- frontend antigo da Avaliacao Docente em nota 0-10 removido de static/js/app.js;
+- modulo oficial permanece em faculty-evaluation.js e /api/surveys/faculty-student/*;
+- endpoints antigos /api/avaliacao-docente/opcoes e /api/avaliacao-docente/analise permanecem com HTTP 410;
+- fillConfig restaurado como helper ativo da tela Configuracoes apos regressao da limpeza de legado;
+- helper agora tolera campos ausentes sem derrubar a inicializacao da aplicacao;
+- release check valida todos os 26 JavaScripts e as referencias <script> dos templates;
+- teste de regressao garante que helpers ativos do bootstrap continuem definidos;
+- regressao: 197 testes aprovados, 2 ignorados;
+- sem nova migration; schema permanece 49;
+- detalhes em docs/PART8_FILLCONFIG_HOTFIX_2026-09-29.md.
+
 Patch operacional 2026-09-29 - Parte 7 Excel Interativo academico oficial:
 - /api/excel-interativo deixa de ser beta em DTNH/DCS;
 - download oficial: Painel_DTNH_Interativo.xlsx / Painel_DCS_Interativo.xlsx;
@@ -272,3 +292,18 @@ Nao faz parte desta etapa:
 - remodelagem de Receitas (DPE-06);
 - simplificacao de Despesas (DPE-07);
 - remocao final DPE-01/02/03 e Excel legado.
+
+Data UNIVC v0.13.0 - Parte 9 - Escalas semanticas e distribuicao NPS 0-10
+Data: 2026-10-01
+Schema: 49 (sem nova migration; preserva 049_academic_faculty_context_scopes_v0130.sql)
+
+Principais mudancas Parte 9:
+- graficos percentuais passam a usar escala fixa 0-100;
+- graficos NPS passam a usar escala fixa -100 a +100;
+- contagens de alunos/matriculas passam a ter minimo zero;
+- valores negativos de barras NPS ficam em coluna separada e nao invadem nomes de curso;
+- endpoint /api/surveys/nps/distribution reconstrui as onze notas 0-10 a partir dos agregados oficiais;
+- NPS de alunos, cursos e docentes exibem distribuicao 0-10, respondentes, media complementar e NPS;
+- Excel Interativo oficial ganha base visivel NPS DISTRIBUICAO / TblNpsDistribuicao;
+- a media 0-10 e complementar e nao substitui a metodologia oficial do NPS;
+- regressao completa: 203 testes aprovados, 2 ignorados.

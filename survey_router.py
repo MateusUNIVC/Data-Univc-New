@@ -726,6 +726,22 @@ def nps_sources(
         raise HTTPException(400, str(exc)) from exc
 
 
+@router.get("/nps/distribution")
+def nps_distribution(
+    audience: str,
+    semester: str,
+    course: str | None = None,
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(current_scope),
+):
+    try:
+        return _repo(db, scope).nps_distribution(
+            audience=audience, semester=semester, course=course
+        )
+    except SurveyIntegrationError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @router.get("/nps/institution/history")
 def institution_nps_history(
     db: Session = Depends(get_db),

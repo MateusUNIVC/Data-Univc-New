@@ -81,7 +81,7 @@
   };
   decorate('.download-link, a[download].ui-action, #dmFullExcel, #dadmFullExcel, #dpeFullExcel, .topbar a[download], .page-lead a[download]', 'download');
   decorate('#quickAddButton, #dmQuickAdd, #dadmQuickAdd, #dpeQuickAdd, #newStudent, #newStudentDM02, #newCohort, #newCohortDM01, #newDmTarget, #newRevenue, #newExpense, #newCourseRevenue, #newCourseCost, #newAction, #newTarget, #addActionButton, #addGoalButton, #addCourseButton, #addDisciplineButton, .add-button, [data-new]', 'add');
-  decorate('#npsCourseSeiImportButton, #npsInstitutionSeiImportButton, #npsFacultySeiImportButton, #seiImportButton, #teacherSeiReadinessButton, #refreshCohortStudents, #refreshSelectedStudents, #refreshAllCohorts, #dmTopSei, #seiDirectButton', 'sei');
+  decorate('#npsCourseSeiImportButton, #npsInstitutionSeiImportButton, #npsFacultySeiImportButton, #seiImportButton, #refreshCohortStudents, #refreshSelectedStudents, #refreshAllCohorts, #dmTopSei, #seiDirectButton', 'sei');
   decorate('[data-import]:not(#seiImportButton)', 'import');
   decorate('#graduateSelectedStudents', 'graduate');
   decorate('#clearStudentSelection, #resetNpsCourseFilters, #resetNpsInstitutionFilters, #resetFilters', 'clear');

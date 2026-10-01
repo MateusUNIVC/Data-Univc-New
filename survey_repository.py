@@ -47,7 +47,7 @@ from models import (
 )
 from security import DirectorateScope
 from academic_catalog import course_aliases, is_ambiguous_course_name
-from survey_metrics import distribution, metric_summary, nps_score
+from survey_metrics import distribution, metric_summary, nps_score, weighted_mean
 from survey_faculty_analytics import (
     classify_faculty_question,
     distribution_with_classification,
@@ -1205,6 +1205,142 @@ class SurveyRepository:
             "question": question.text,
             "courses_synced": [],
             "overall": self._nps_metric_payload(metric),
+        }
+
+    @staticmethod
+    def _score_distribution_payload(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        """Normaliza uma distribuição NPS oficial para as onze notas de 0 a 10."""
+        dist = distribution(rows)
+        counts = {score: 0 for score in range(11)}
+        for item in dist.get("items", []):
+            value = item.get("numeric_value")
+            if value is None:
+                continue
+            numeric = float(value)
+            rounded = int(round(numeric))
+            if abs(numeric - rounded) > 1e-9 or rounded < 0 or rounded > 10:
+                continue
+            counts[rounded] += int(item.get("count") or 0)
+        total = sum(counts.values())
+        normalized_items = [
+            {
+                "score": score,
+                "count": counts[score],
+                "percentage": round((counts[score] / total * 100.0), 2) if total else 0.0,
+            }
+            for score in range(11)
+        ]
+        metric_items = [
+            {"numeric_value": item["score"], "count": item["count"]}
+            for item in normalized_items
+        ]
+        metric = nps_score(metric_items)
+        mean = weighted_mean(metric_items)
+        return {
+            "available": bool(total),
+            "total": total,
+            "mean": round(float(mean), 2) if mean is not None else None,
+            "nps": round(float(metric["score"]), 2) if metric.get("score") is not None else None,
+            "promoters": int(metric.get("promoters") or 0),
+            "neutrals": int(metric.get("passives") or 0),
+            "detractors": int(metric.get("detractors") or 0),
+            "items": normalized_items,
+        }
+
+    def nps_distribution(
+        self,
+        *,
+        audience: str,
+        semester: str,
+        course: str | None = None,
+    ) -> dict[str, Any]:
+        """Retorna a distribuição oficial 0–10 usada pelo NPS no recorte solicitado.
+
+        A distribuição é derivada dos agregados próximos da fonte, sem criar uma
+        segunda projeção ou duplicar contagens no banco.
+        """
+        effective_semester = _semester_to_data_univc(semester)
+        if not effective_semester:
+            raise SurveyIntegrationError("Informe um semestre no formato AAAA-SEM1 ou AAAA-SEM2.")
+        audience_key = str(audience or "").strip().casefold().replace("-", "_")
+        aliases = {
+            "course": "course",
+            "student_course": "course",
+            "curso": "course",
+            "institution": "institution",
+            "student_institution": "institution",
+            "instituicao": "institution",
+            "instituição": "institution",
+            "faculty": "faculty",
+            "docentes": "faculty",
+            "faculty_institution": "faculty",
+        }
+        audience_key = aliases.get(audience_key, audience_key)
+        if audience_key not in {"course", "institution", "faculty"}:
+            raise SurveyIntegrationError("População de NPS inválida. Use course, institution ou faculty.")
+
+        course_row = None
+        if course:
+            if audience_key == "faculty":
+                raise SurveyIntegrationError("O NPS institucional dos docentes não possui recorte por curso.")
+            course_row = self.db.scalar(select(Course).where(
+                Course.directorate_id == self.directorate_id,
+                Course.name == str(course).strip(),
+            ))
+            if course_row is None:
+                raise SurveyIntegrationError("Curso não encontrado na diretoria atual.")
+
+        if audience_key == "faculty":
+            source = self.db.scalar(select(SurveyFacultyNpsSource).where(
+                SurveyFacultyNpsSource.semester == effective_semester
+            ))
+            if not source:
+                return {
+                    "available": False, "audience": "faculty", "semester": effective_semester,
+                    "scope_label": "Todos os docentes", "total": 0, "mean": None, "nps": None, "items": [],
+                }
+            rows = self._faculty_institution_distribution_rows(source.run_id, source.question_id)
+            question = self.db.get(SurveyQuestion, source.question_id)
+            payload = self._score_distribution_payload(rows)
+            return {
+                **payload,
+                "audience": "faculty",
+                "semester": effective_semester,
+                "course": None,
+                "scope_label": "Todos os docentes",
+                "question": question.text if question else None,
+                "run_id": source.run_id,
+                "question_id": source.question_id,
+            }
+
+        SourceModel = SurveyInstitutionNpsSource if audience_key == "institution" else SurveyNpsSource
+        source = self.db.scalar(select(SourceModel).where(
+            SourceModel.directorate_id == self.directorate_id,
+            SourceModel.semester == effective_semester,
+        ))
+        label = course_row.name if course_row else self.directorate_code
+        if not source:
+            return {
+                "available": False, "audience": audience_key, "semester": effective_semester,
+                "course": course_row.name if course_row else None, "scope_label": label,
+                "total": 0, "mean": None, "nps": None, "items": [],
+            }
+        rows = self._distribution_rows(
+            source.run_id,
+            source.question_id,
+            course_id=course_row.id if course_row else None,
+        )
+        question = self.db.get(SurveyQuestion, source.question_id)
+        payload = self._score_distribution_payload(rows)
+        return {
+            **payload,
+            "audience": audience_key,
+            "semester": effective_semester,
+            "course": course_row.name if course_row else None,
+            "scope_label": label,
+            "question": question.text if question else None,
+            "run_id": source.run_id,
+            "question_id": source.question_id,
         }
 
     def nps_source_history(self, nps_scope: str = "course") -> list[dict[str, Any]]:

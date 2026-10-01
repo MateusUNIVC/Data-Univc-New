@@ -53,6 +53,10 @@ def _payload(directorate: str = "DTNH") -> dict:
         "faculty_nps": [
             {"periodo": "2026-SEM2", "respondentes": 60, "promotores": 40, "neutros": 12, "detratores": 8, "valor": 53.3, "fonte": "Questionario"},
         ],
+        "nps_distribution_rows": [
+            {"periodo": "2026-SEM2", "audiencia": "NPS do Curso · Alunos", "escopo": "DTNH", "nota": 6, "respostas": 12, "percentual": 20.0, "respondentes": 60, "media": 7.1, "nps": 35.0},
+            {"periodo": "2026-SEM2", "audiencia": "NPS Instituição · Docentes", "escopo": "Todos os docentes", "nota": 10, "respostas": 18, "percentual": 30.0, "respondentes": 60, "media": 7.6, "nps": 53.3},
+        ],
         "teacher": [
             {"periodo": "2026-SEM2", "curso": "Administração", "disciplina": "Gestão", "respondentes": 32, "favoraveis": 28, "intermediarias": 3, "desfavoraveis": 1, "classificados": 32, "nao_classificados": 0, "nao_mapeados": 0, "favorabilidade": 87.5, "meta": 80, "atencao": 75, "status": "Dentro da meta"},
         ],
@@ -79,7 +83,7 @@ def test_part7_promotes_interactive_excel_to_official_database_workbook():
     wb = _wb()
     expected_visible = [
         "LEIA-ME", "PARAMETROS", "PAINEL", "QUALIDADE E GOVERNANCA", "MATRIZ", "PLANO_DE_ACAO",
-        "NPS DISCENTES", "NPS SEMESTRAL", "NPS DOCENTES", "AVALIACAO DOCENTE", "RESULTADOS ACADEMICOS",
+        "NPS DISCENTES", "NPS SEMESTRAL", "NPS DOCENTES", "NPS DISTRIBUICAO", "AVALIACAO DOCENTE", "RESULTADOS ACADEMICOS",
         "METAS", "CURSOS", "DISCIPLINAS", "INDICADORES", "DIM_PERIODO", "DIM_MES",
     ]
     assert [ws.title for ws in wb.worksheets if ws.sheet_state == "visible"] == expected_visible
@@ -92,6 +96,7 @@ def test_part7_promotes_interactive_excel_to_official_database_workbook():
         "NPS DISCENTES": "TblNpsDiscentes",
         "NPS SEMESTRAL": "TblNpsSemestral",
         "NPS DOCENTES": "TblNpsDocentes",
+        "NPS DISTRIBUICAO": "TblNpsDistribuicao",
         "AVALIACAO DOCENTE": "TblAvaliacaoDocente",
         "RESULTADOS ACADEMICOS": "TblResultadosAcademicos",
         "METAS": "TblMetas",

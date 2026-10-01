@@ -67,6 +67,7 @@ VISIBLE_SHEETS = [
     "NPS DISCENTES",
     "NPS SEMESTRAL",
     "NPS DOCENTES",
+    "NPS DISTRIBUICAO",
     "AVALIACAO DOCENTE",
     "RESULTADOS ACADEMICOS",
     "METAS",
@@ -149,6 +150,36 @@ def build_academic_interactive_payload(
     initial_course = course if course in course_names else "(todos)"
     initial_discipline = discipline if discipline in discipline_names else "(todas)"
 
+    # Distribuição oficial 0–10 para auditoria e leitura complementar no Excel.
+    # A base vem dos mesmos agregados que alimentam o NPS e não cria projeção
+    # paralela no banco.
+    nps_distribution_rows: list[dict[str, Any]] = []
+    distribution_labels = {
+        "institution": "NPS Instituição · Alunos",
+        "course": "NPS do Curso · Alunos",
+        "faculty": "NPS Instituição · Docentes",
+    }
+    for period in semesters:
+        for audience in ("institution", "course", "faculty"):
+            try:
+                dist = survey.nps_distribution(audience=audience, semester=period)
+            except Exception:
+                continue
+            if not dist.get("available"):
+                continue
+            for item in dist.get("items", []):
+                nps_distribution_rows.append({
+                    "periodo": period,
+                    "audiencia": distribution_labels[audience],
+                    "escopo": dist.get("scope_label"),
+                    "nota": item.get("score"),
+                    "respostas": item.get("count"),
+                    "percentual": item.get("percentage"),
+                    "respondentes": dist.get("total"),
+                    "media": dist.get("mean"),
+                    "nps": dist.get("nps"),
+                })
+
     snapshot = repo.academic_dashboard_snapshot()
     metas = snapshot.get("metas", [])
     codes = base["codes"]
@@ -209,6 +240,7 @@ def build_academic_interactive_payload(
         "courses_catalog": courses,
         "disciplines_catalog": disciplines,
         "semesters": semesters,
+        "nps_distribution_rows": nps_distribution_rows,
         "effective_goals": effective_goals,
         "initial": {
             "reference": initial_reference,
@@ -500,6 +532,21 @@ def _write_visible_database(wb: Workbook, payload: dict[str, Any]) -> None:
         table_name="TblNpsDocentes",
         title=f"BASE DE DADOS · {payload['codes']['nps_faculty']} · NPS INSTITUCIONAL DOS DOCENTES",
         subtitle="População institucional anônima. Base alimentada pelo Data UNIVC; evite edição manual.",
+        visible=True,
+    )
+
+    rows_nps_distribution = [[
+        r.get("periodo"), r.get("audiencia"), r.get("escopo"), r.get("nota"),
+        int(r.get("respostas") or 0), r.get("percentual"), int(r.get("respondentes") or 0),
+        r.get("media"), r.get("nps"),
+    ] for r in payload.get("nps_distribution_rows", [])]
+    _write_rows_sheet(
+        wb, "NPS DISTRIBUICAO",
+        ["Periodo", "Audiencia", "Escopo", "Nota", "Respostas", "Percentual", "Respondentes", "Media0a10", "NPS"],
+        rows_nps_distribution,
+        table_name="TblNpsDistribuicao",
+        title="BASE DE DADOS · DISTRIBUIÇÃO NPS 0–10",
+        subtitle="Contagens oficiais por nota. A média 0–10 é complementar e não substitui o NPS.",
         visible=True,
     )
 
@@ -1010,7 +1057,9 @@ def _chart_nps_composition(ws, calc, anchor: str, *, width: float = 10.8, height
     cats = Reference(calc, min_col=20, min_row=5, max_row=7)
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(cats)
-    chart.y_axis.numFmt = INT_FMT
+    chart.y_axis.numFmt = '0.0"%"'
+    chart.y_axis.scaling.min = 0
+    chart.y_axis.scaling.max = 100
     chart.dataLabels = DataLabelList()
     chart.dataLabels.showVal = True
     ws.add_chart(chart, anchor)

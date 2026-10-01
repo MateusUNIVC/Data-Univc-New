@@ -4,15 +4,44 @@ Base academica: v0.11.6.7
 Schema: 49
 Migration obrigatoria acumulada: 049_academic_faculty_context_scopes_v0130.sql
 
-Parte 7 - Excel Interativo academico oficial (2026-09-29):
-- /api/excel-interativo oficial para DTNH e DCS;
-- nomes de download sem beta;
-- 17 abas visiveis organizadas em painel, analise e banco gerencial;
-- CALC, LISTAS DE APOIO e bases tecnicas permanecem ocultas;
-- 12 tabelas Excel filtraveis nas bases visiveis no cenario de regressao;
-- PAINEL com 5 graficos executivos;
-- NPS, favorabilidade docente e aprovacao preservam as metodologias vigentes;
+Parte 10 - Auditoria final integrada (2026-10-01):
+- metas NPS limitadas a -100/+100;
+- metas de favorabilidade/aprovacao limitadas a 0-100%;
+- formulario aplica os mesmos dominios;
+- composicao NPS do Excel fixada em 0-100%;
+- preflight exige dpe_cost_v2.py, migration 049 e helpers de bootstrap, incluindo fillConfig;
+- sem migration nova; schema permanece 49.
+
+Checks finais Parte 10:
+- Python compile: OK
+- JavaScript: 26/26 no node --check
+- Referencias JavaScript dos templates: 26/26 presentes
+- Pytest: 208 passed, 2 skipped
+- Release checks: OK
+
+Parte 9 - Escalas semanticas e distribuicao NPS 0-10 (2026-10-01):
+- taxa de aprovacao, favorabilidade e demais percentuais usam escala fixa 0-100;
+- NPS usa escala fixa -100 a +100;
+- contagens de alunos, aprovados e matriculas usam minimo zero;
+- barras negativas de NPS reservam coluna separada para o valor e nao invadem o nome do curso;
+- endpoint /api/surveys/nps/distribution expõe apenas agregados oficiais 0-10;
+- NPS da instituicao/alunos, NPS do curso e NPS da instituicao/docentes exibem 0-10, contagem, percentual, respondentes, media complementar e NPS;
+- media 0-10 e informacao complementar e nao substitui o NPS;
+- Excel Interativo oficial ganha NPS DISTRIBUICAO / TblNpsDistribuicao;
 - sem nova migration; schema permanece 49.
+
+Parte 8 - Limpeza de legado docente e hotfix de bootstrap:
+- frontend legado de avaliacao docente 0-10 removido;
+- endpoints aposentados preservados com HTTP 410;
+- fillConfig restaurado e protegido contra elementos ausentes;
+- bootstrap coberto por teste de helpers ativos;
+- 26/26 JavaScripts validados.
+
+Parte 7 - Excel Interativo academico oficial:
+- /api/excel-interativo oficial para DTNH e DCS;
+- PAINEL com 5 graficos executivos;
+- bases gerenciais visiveis e camada tecnica oculta;
+- escalas do Excel preservadas em 0-100 para percentuais e -100/+100 para NPS.
 
 Performance acumulada:
 - Resultados Academicos: lote padrao 500;
@@ -24,13 +53,15 @@ Compatibilidade acumulada:
 - NPS do SEI resolve Educacao Fisica atual como Licenciatura apenas no adapter da fonte;
 - upload manual ambiguo continua exigindo resolucao explicita;
 - turmas docentes compartilhadas aceitam varios cursos candidatos sem duplicar respostas;
-- nomes longos de cursos nao sao truncados nos graficos web e recebem quebra controlada no Excel.
+- nomes longos de cursos permanecem completos nos graficos.
 
-Checks finais Parte 7:
+Checks finais Parte 9:
 - Python compile: OK
-- JavaScript syntax (data-univc-ui.js, app.js, faculty-evaluation.js): OK
-- Pytest: 192 passed, 2 skipped
-- Excel estrutural: 5 graficos no PAINEL, 0 formula com #REF!, bases/tabelas presentes
+- JavaScript: 26/26 no node --check
+- Referencias JavaScript dos templates: 26/26 presentes
+- Pytest: 203 passed, 2 skipped
+- Endpoint/distribuicao NPS: contrato 0..10 validado
+- Excel: NPS DISTRIBUICAO / TblNpsDistribuicao presente; 5 graficos executivos preservados
 - Release checks: OK
 
 Antes do deploy em producao, se a migration 049 ainda nao tiver sido aplicada, aplique-a no PostgreSQL antes de iniciar/recriar a aplicacao com REQUIRE_SCHEMA_VERSION=true.
