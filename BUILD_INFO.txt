@@ -353,3 +353,10 @@ Principais mudanças Parte 13:
 - disciplina é ocultada no NPS e mantida em Avaliação Docente / Notas;
 - backend ponderado da Parte 12 preservado;
 - regressão completa: 229 testes aprovados, 2 ignorados.
+
+PART14_REITORIA_ROUTE_SEPARATION
+- /reitoria prioriza Usuários e acessos
+- /reitoria/academico é uma página acadêmica dedicada
+- acadêmico reutiliza app.css + ui-v2.css de DTNH/DCS
+- removida navegação acadêmica por hash/scroll
+- schema permanece 49

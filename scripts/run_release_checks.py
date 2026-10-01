@@ -34,7 +34,9 @@ def verify_critical_release_files() -> None:
         ROOT / "static" / "js" / "faculty-evaluation.js",
         ROOT / "static" / "js" / "data-univc-ui.js",
         ROOT / "static" / "js" / "data-univc-academic-charts.js",
-        ROOT / "static" / "js" / "reitoria_academic.js",
+        ROOT / "static" / "js" / "reitoria_academico.js",
+        ROOT / "templates" / "reitoria_academico.html",
+        ROOT / "static" / "css" / "reitoria-academico.css",
         ROOT / "reitoria_academic.py",
         ROOT / "reitoria_academic_router.py",
         ROOT / "database" / SCHEMA_MIGRATION,
@@ -86,25 +88,46 @@ def verify_directorate_isolation_guards() -> None:
 
 
 def verify_reitoria_academic_overview() -> None:
-    template = (ROOT / "templates" / "reitoria.html").read_text(encoding="utf-8")
-    frontend = (ROOT / "static" / "js" / "reitoria_academic.js").read_text(encoding="utf-8")
+    admin_template = (ROOT / "templates" / "reitoria.html").read_text(encoding="utf-8")
+    template = (ROOT / "templates" / "reitoria_academico.html").read_text(encoding="utf-8")
+    frontend = (ROOT / "static" / "js" / "reitoria_academico.js").read_text(encoding="utf-8")
     backend = (ROOT / "reitoria_academic.py").read_text(encoding="utf-8")
     router = (ROOT / "reitoria_academic_router.py").read_text(encoding="utf-8")
+    admin_router = (ROOT / "admin_router.py").read_text(encoding="utf-8")
+
+    if 'href="/reitoria/academico"' not in admin_template:
+        raise SystemExit("Reitoria admin does not link to the dedicated academic page")
+    if 'reitoria_academico.js' in admin_template or 'data-univc-academic-charts.js' in admin_template:
+        raise SystemExit("Reitoria admin must not load academic JavaScript")
+    if 'data-reitoria-page="usuarios"' not in admin_template:
+        raise SystemExit("Reitoria admin users surface missing")
+
     required_template = [
-        'href="#nps"', 'href="#avaliacao-docente"', 'href="#notas"',
-        'data-reitoria-page="nps"', 'data-reitoria-page="avaliacao-docente"', 'data-reitoria-page="notas"',
-        'id="reitoriaAcademicDirectorate"', 'id="reitoriaKpiApproval"', 'id="reitoriaChartNpsCourses"',
+        '/static/css/app.css', '/static/css/ui-v2.css', '/static/css/reitoria-academico.css',
+        'data-academic-section="nps-institution"', 'data-academic-section="nps-course"',
+        'data-academic-section="nps-faculty"', 'data-academic-section="faculty"',
+        'data-academic-section="results"', 'id="reitoriaAcademicDirectorate"',
+        'id="reitoriaKpiApproval"', 'id="reitoriaChartNpsCourses"', 'href="/reitoria"',
     ]
     missing_template = [token for token in required_template if token not in template]
     if missing_template:
         raise SystemExit("Reitoria academic template tokens missing: " + ", ".join(missing_template))
+    if 'href="#nps"' in template or 'href="#notas"' in template:
+        raise SystemExit("Reitoria academic navigation reverted to hash scrolling")
+
     required_frontend = [
         "/api/reitoria/academic/filters", "/api/reitoria/academic/overview",
-        "DataUnivcAcademicCharts", "Todas · UNIVC", "reitoria:pagechange", "renderActivePage(target)",
+        "DataUnivcAcademicCharts", "Todas · UNIVC", "function navigate(section)",
+        "/reitoria/academico?secao=",
     ]
     missing_frontend = [token for token in required_frontend if token not in frontend]
     if missing_frontend:
         raise SystemExit("Reitoria academic frontend tokens missing: " + ", ".join(missing_frontend))
+    if 'location.hash' in frontend:
+        raise SystemExit("Reitoria academic frontend must not use location.hash navigation")
+    if '@router.get("/reitoria/academico"' not in admin_router or 'name="reitoria_academico.html"' not in admin_router:
+        raise SystemExit("Dedicated Reitoria academic page route is missing")
+
     required_backend = [
         "class ReitoriaAcademicService", "_projection_nps_history", "_faculty_summary",
         "_result_payload", "approved_count", "finalized_count",

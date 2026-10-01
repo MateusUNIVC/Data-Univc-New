@@ -169,13 +169,17 @@ def test_reitoria_filters_can_reduce_to_one_directorate_and_course():
 
 
 def test_reitoria_academic_surface_is_read_only_and_present_in_navigation():
-    html = (ROOT / "templates" / "reitoria.html").read_text(encoding="utf-8")
-    js = (ROOT / "static" / "js" / "reitoria_academic.js").read_text(encoding="utf-8")
-    assert 'href="#nps"' in html
-    assert 'href="#avaliacao-docente"' in html
-    assert 'href="#notas"' in html
+    admin_html = (ROOT / "templates" / "reitoria.html").read_text(encoding="utf-8")
+    html = (ROOT / "templates" / "reitoria_academico.html").read_text(encoding="utf-8")
+    js = (ROOT / "static" / "js" / "reitoria_academico.js").read_text(encoding="utf-8")
+    assert 'href="/reitoria/academico"' in admin_html
+    assert 'data-academic-section="nps-institution"' in html
+    assert 'data-academic-section="nps-course"' in html
+    assert 'data-academic-section="nps-faculty"' in html
+    assert 'data-academic-section="faculty"' in html
+    assert 'data-academic-section="results"' in html
     assert 'Todas · UNIVC' in html
-    assert 'Somente leitura' in js
+    assert 'Somente leitura' in html
     assert '/api/reitoria/academic/overview' in js
     assert '/api/reitoria/academic/filters' in js
 

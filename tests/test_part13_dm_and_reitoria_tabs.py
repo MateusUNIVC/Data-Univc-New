@@ -7,41 +7,50 @@ from dm_sei_parser import parse_dm_sei_workbook
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_reitoria_academic_is_split_into_dedicated_tabs_and_admin_is_separate():
-    html = (ROOT / "templates" / "reitoria.html").read_text(encoding="utf-8")
-    js = (ROOT / "static" / "js" / "admin_users.js").read_text(encoding="utf-8")
+def test_reitoria_admin_and_academic_are_dedicated_routes_and_templates():
+    admin_html = (ROOT / "templates" / "reitoria.html").read_text(encoding="utf-8")
+    academic_html = (ROOT / "templates" / "reitoria_academico.html").read_text(encoding="utf-8")
+    admin_js = (ROOT / "static" / "js" / "admin_users.js").read_text(encoding="utf-8")
+    academic_js = (ROOT / "static" / "js" / "reitoria_academico.js").read_text(encoding="utf-8")
+    router = (ROOT / "admin_router.py").read_text(encoding="utf-8")
+
+    assert 'href="/reitoria/academico"' in admin_html
+    assert 'reitoria_academic.js' not in admin_html
+    assert 'data-univc-academic-charts.js' not in admin_html
+    assert 'data-reitoria-page="usuarios"' in admin_html
+    assert "get('secao') || 'usuarios'" in admin_js
+    assert '@router.get("/reitoria/academico"' in router
+    assert 'name="reitoria_academico.html"' in router
+    assert 'href="/reitoria"' in academic_html
+    assert 'app.css' in academic_html and 'ui-v2.css' in academic_html
+    assert 'data-academic-section="nps-institution"' in academic_html
+    assert 'data-academic-section="results"' in academic_html
+    assert "history.replaceState(null,'',`/reitoria/academico?secao=" in academic_js
+
+
+def test_reitoria_academic_sections_follow_dtnh_dcs_information_architecture():
+    html = (ROOT / "templates" / "reitoria_academico.html").read_text(encoding="utf-8")
+    assert 'NPS da instituição' in html
+    assert 'NPS dos cursos' in html
+    assert 'NPS da instituição · docentes' in html
+    assert 'Avaliação docente' in html
+    assert 'Aprovação e notas' in html
+    assert 'id="academic-nps-institution"' in html
+    assert 'id="academic-nps-course"' in html
+    assert 'id="academic-nps-faculty"' in html
+    assert 'id="academic-faculty"' in html
+    assert 'id="academic-results"' in html
+
+
+def test_reitoria_academic_navigation_does_not_use_hash_scroll():
+    html = (ROOT / "templates" / "reitoria_academico.html").read_text(encoding="utf-8")
+    js = (ROOT / "static" / "js" / "reitoria_academico.js").read_text(encoding="utf-8")
     css = (ROOT / "static" / "css" / "reitoria.css").read_text(encoding="utf-8")
-
-    for target in ("nps", "avaliacao-docente", "notas", "visao", "usuarios", "auditoria"):
-        assert f'data-reitoria-page="{target}"' in html
-    assert 'Painel acadêmico' in html
-    assert 'Administração' in html
-    assert 'reitoria-academic-tabs' in html
-    assert "academicTargets = new Set(['nps', 'avaliacao-docente', 'notas'])" in js
-    assert "pages.forEach(page => page.classList.toggle('active'" in js
-    assert '.reitoria-page{display:none}' in css
-    assert '.reitoria-page.active{display:block}' in css
-
-
-def test_reitoria_nps_tab_has_only_nps_family_and_results_are_separate():
-    html = (ROOT / "templates" / "reitoria.html").read_text(encoding="utf-8")
-    nps = html.split('<section id="nps"', 1)[1].split('<section id="avaliacao-docente"', 1)[0]
-    faculty = html.split('<section id="avaliacao-docente"', 1)[1].split('<section id="notas"', 1)[0]
-    results = html.split('<section id="notas"', 1)[1].split('<section id="visao"', 1)[0]
-
-    assert 'NPS da Instituição · Alunos' in nps
-    assert 'NPS da Instituição · Docentes' in nps
-    assert 'NPS por curso' in nps
-    assert 'Evolução da taxa de aprovação' not in nps
-    assert 'Avaliação do Professor pelo Aluno' in faculty
-    assert 'Notas e Aprovação' in results
-    assert 'Evolução da média das notas' in results
-
-
-def test_reitoria_nps_hides_discipline_filter_but_other_academic_tabs_keep_it():
-    js = (ROOT / "static" / "js" / "reitoria_academic.js").read_text(encoding="utf-8")
-    assert "classList.toggle('hidden', target==='nps')" in js
-    assert "renderActivePage(target)" in js
+    assert 'href="#nps"' not in html
+    assert 'href="#notas"' not in html
+    assert 'data-academic-section=' in html
+    assert 'location.hash' not in js
+    assert 'html{scroll-behavior:auto}' in css
 
 
 def test_dm_split_cohort_hotfix_is_present():

@@ -16,9 +16,9 @@
   "local_demo_database_included": false,
   "local_windows_launchers_included": false,
   "docker_compose_app_only_included": true,
-  "artifact_profile": "production-vps-v0130-part13-dm-hotfix-reitoria-tabs",
-  "created_at_utc": "2026-10-01T17:35:23Z",
-  "release_name": "Data UNIVC 0.13.0 - Production - Part 13 DM Hotfix + Reitoria Academic Tabs",
+  "artifact_profile": "production-vps-v0130-part14-reitoria-route-separation",
+  "created_at_utc": "2026-10-01T18:35:22Z",
+  "release_name": "Data UNIVC 0.13.0 - Production - Part 14 Reitoria Route Separation",
   "patch_scope": [
     "part1-non-actionable-warning-cleanup",
     "educacao-fisica-licenciatura-sei-current-label-compatibility",
@@ -69,7 +69,11 @@
     "part12-reitoria-academic-release-preflight",
     "dm-sei-split-cohort-consolidation",
     "reitoria-academic-tabbed-navigation",
-    "reitoria-admin-academic-separation"
+    "reitoria-admin-academic-separation",
+    "part14-reitoria-admin-academic-route-separation",
+    "part14-reitoria-users-first-admin-entry",
+    "part14-reitoria-academic-dtnh-dcs-design-system",
+    "part14-reitoria-hash-scroll-removal"
   ],
   "validation": {
     "pytest": "229 passed, 2 skipped",

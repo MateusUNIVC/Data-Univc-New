@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
@@ -355,16 +355,19 @@ def reitoria_page(request: Request, _ctx: AuthorizationContext = Depends(require
     )
 
 
-@router.get("/admin/users", response_class=HTMLResponse)
-def users_page(request: Request, _ctx: AuthorizationContext = Depends(require_fresh_reitoria)):
-    # Backward-compatible URL: the old orphaned admin surface now renders the
-    # Reitoria workspace instead of a separate page with missing CSS.
+@router.get("/reitoria/academico", response_class=HTMLResponse)
+def reitoria_academic_page(request: Request, _ctx: AuthorizationContext = Depends(require_fresh_reitoria)):
     return templates.TemplateResponse(
         request=request,
-        name="reitoria.html",
+        name="reitoria_academico.html",
         context={"app_version": APP_VERSION},
         headers={"Cache-Control": "no-store"},
     )
+
+
+@router.get("/admin/users")
+def users_page(_ctx: AuthorizationContext = Depends(require_fresh_reitoria)):
+    return RedirectResponse(url="/reitoria", status_code=307)
 
 
 @router.get("/api/admin/users")

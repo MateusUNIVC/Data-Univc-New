@@ -1,3 +1,10 @@
+
+## 2026-10-01 — Parte 14 · Reitoria Route Separation
+- Separada a administração da Reitoria do painel acadêmico.
+- `/reitoria` volta a priorizar Usuários e acessos.
+- Novo `/reitoria/academico` no mesmo design system visual de DTNH/DCS.
+- Removida navegação acadêmica via hash/scroll e o carregamento de scripts acadêmicos na página administrativa.
+- Backend consolidado DTNH+DCS preservado; sem migration.
 # 2026-10-01 — Parte 11 · isolamento DTNH/DCS
 
 - corrige reaproveitamento da distribuição NPS 0–10 entre diretorias;
