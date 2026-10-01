@@ -19,6 +19,7 @@ const state = {
   selectedStudentIds: new Set(),
   graduationPreview: null,
   seiRefreshScope: null,
+  seiRefreshRunId: null,
   seiLastSelectedCohortIds: [],
   targetCatalog: null,
   targets: [],
@@ -748,6 +749,7 @@ function openSeiRefreshModal({cohortId=null, cohortIds=[], studentIds=[], allCoh
     student_ids: ids,
     all_cohorts: Boolean(allCohorts),
   };
+  state.seiRefreshRunId = null;
   const cohort = singleCohortId ? state.cohorts.find(row => Number(row.id) === singleCohortId) : null;
   $('#seiRefreshScope').textContent = allCohorts
     ? `Todas as turmas · ${(state.cohorts || []).length} cadastrada(s)`
@@ -817,35 +819,69 @@ async function confirmSeiRefresh() {
   button.disabled = true;
   renderSeiOperationProgress('#seiRefreshProgress', {
     title: scope.all_cohorts ? 'Atualizando todas as turmas pelo SEI' : 'Atualizando alunos pelo SEI',
-    message: 'O Data UNIVC consulta cada aluno e aplica as datas encontradas. Esta etapa não expõe um total confiável, portanto o progresso é contínuo.',
-    stage: 'Consultando o SEI e atualizando a base',
+    message: 'Preparando a fila segura de atualização. As credenciais ficam somente nesta sessão e não são armazenadas.',
+    stage: 'Criando fila de alunos',
   });
-  button.textContent = scope.all_cohorts ? 'Atualizando todas as turmas…' : 'Consultando alunos…';
+  button.textContent = 'Processando em lotes…';
   try {
-    const result = await api('/api/dm/sei/refresh-students', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({usuario:username, senha:password, ...scope}),
-    });
-    const summary = result.summary || {};
-    const message = `SEI atualizado: ${fmtNumber(summary.requested)} consultado(s), ${fmtNumber(summary.updated)} atualizado(s), ${fmtNumber(summary.defenses_confirmed)} defesa(s) confirmada(s) e ${fmtNumber(summary.failed)} para revisão.`;
+    let run = null;
+    if (state.seiRefreshRunId) {
+      const existing = await api(`/api/dm/sei/refresh-runs/${state.seiRefreshRunId}`);
+      run = existing.run;
+    } else {
+      const created = await api('/api/dm/sei/refresh-runs', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(scope),
+      });
+      run = created.run;
+      state.seiRefreshRunId = Number(run.id);
+    }
+
+    let updated = 0;
+    let defenses = 0;
+    let batches = 0;
+    const terminal = new Set(['COMPLETED','COMPLETED_WITH_ERRORS','CANCELLED']);
+    while (run && !terminal.has(run.status) && Number(run.remaining || 0) > 0) {
+      const total = Number(run.total || 0);
+      const processed = Number(run.processed || 0);
+      const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+      renderSeiOperationProgress('#seiRefreshProgress', {
+        title: 'Atualizando datas e titulação pelo SEI',
+        message: `${fmtNumber(processed)} de ${fmtNumber(total)} aluno(s) processado(s). Cada lote é salvo antes do próximo começar.`,
+        stage: `Lote ${batches + 1} · ${pct}% concluído`,
+        status: `${fmtNumber(run.completed || 0)} concluído(s) · ${fmtNumber(run.failed || 0)} para revisão`,
+      });
+      const result = await api(`/api/dm/sei/refresh-runs/${run.id}/batch`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({usuario:username, senha:password}),
+      });
+      run = result.run;
+      batches += 1;
+      updated += Number(result.batch?.updated || 0);
+      defenses += Number(result.batch?.defenses_confirmed || 0);
+    }
+
+    const message = `SEI atualizado: ${fmtNumber(run?.processed || 0)} processado(s), ${fmtNumber(updated)} atualizado(s), ${fmtNumber(defenses)} defesa(s) confirmada(s) e ${fmtNumber(run?.failed || 0)} para revisão.`;
     resultBox.innerHTML = `<strong>Atualização concluída</strong><div class="sei-preview-summary compact-summary">
-      <div class="sei-preview-card"><span>Consultados</span><strong>${fmtNumber(summary.requested)}</strong></div>
-      <div class="sei-preview-card"><span>Atualizados</span><strong>${fmtNumber(summary.updated)}</strong></div>
-      <div class="sei-preview-card"><span>Defesas confirmadas</span><strong>${fmtNumber(summary.defenses_confirmed)}</strong></div>
-      <div class="sei-preview-card"><span>Revisar</span><strong>${fmtNumber(summary.failed)}</strong></div>
-    </div>${(result.warnings||[]).length?`<small>${escapeHtml((result.warnings||[]).slice(0,3).join(' · '))}</small>`:''}`;
+      <div class="sei-preview-card"><span>Processados</span><strong>${fmtNumber(run?.processed || 0)}</strong></div>
+      <div class="sei-preview-card"><span>Atualizados</span><strong>${fmtNumber(updated)}</strong></div>
+      <div class="sei-preview-card"><span>Defesas confirmadas</span><strong>${fmtNumber(defenses)}</strong></div>
+      <div class="sei-preview-card"><span>Revisar</span><strong>${fmtNumber(run?.failed || 0)}</strong></div>
+    </div><small>Fila #${fmtNumber(run?.id)} · ${fmtNumber(batches)} lote(s). As credenciais do SEI não foram persistidas.</small>`;
     resultBox.classList.remove('hidden');
     state.selectedStudentIds.clear();
     await refreshAll();
     closeModal('seiRefreshModal');
     state.seiRefreshScope = null;
-    alertMessage(message, Number(summary.failed || 0) ? 'warning' : 'success');
+    state.seiRefreshRunId = null;
+    alertMessage(message, Number(run?.failed || 0) ? 'warning' : 'success');
     if (scope.cohort_id) navigateToStudents({cohortId:scope.cohort_id});
     else if (scope.all_cohorts || (scope.cohort_ids || []).length) navigateToStudents({all:true});
     else showSection('alunos');
   } catch (error) {
-    errorBox.textContent = error.message || 'Não foi possível consultar o SEI.';
+    errorBox.textContent = `${error.message || 'Não foi possível consultar o SEI.'}${state.seiRefreshRunId ? ` A fila #${state.seiRefreshRunId} foi preservada e pode continuar nesta sessão ao tentar novamente.` : ''}`;
     errorBox.classList.remove('hidden');
   } finally {
     $('#seiRefreshPassword').value = '';

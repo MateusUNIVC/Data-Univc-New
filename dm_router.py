@@ -46,6 +46,35 @@ DM_TARGET_METRICS = {
 }
 
 
+def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
+    try:
+        value = int(str(os.getenv(name, default)).strip())
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(value, maximum))
+
+
+DM_SEI_REFRESH_BATCH_SIZE = _env_int("DM_SEI_REFRESH_BATCH_SIZE", 4, minimum=1, maximum=10)
+DM_SEI_REFRESH_BATCH_BUDGET_SECONDS = _env_int(
+    "DM_SEI_REFRESH_BATCH_BUDGET_SECONDS", 30, minimum=10, maximum=50
+)
+DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS = _env_int(
+    "DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS", 15, minimum=5, maximum=30
+)
+
+
+def _dm_refresh_scope(payload: dict[str, Any]) -> dict[str, Any]:
+    cohort_id = payload.get("cohort_id")
+    raw_cohort_ids = payload.get("cohort_ids") or []
+    raw_student_ids = payload.get("student_ids") or []
+    return {
+        "cohort_id": int(cohort_id) if cohort_id not in (None, "") else None,
+        "cohort_ids": [int(value) for value in raw_cohort_ids if str(value or "").strip()],
+        "student_ids": [int(value) for value in raw_student_ids if str(value or "").strip()],
+        "all_cohorts": bool(payload.get("all_cohorts", False)),
+    }
+
+
 def _is_dm_target(indicator_code: str, metric_key: str) -> bool:
     return (str(indicator_code or "").upper(), str(metric_key or "")) in DM_TARGET_METRICS
 
@@ -684,32 +713,163 @@ async def dm_sei_refresh_students(
         if not username or not password:
             raise DMValidationError("Informe usuário e senha do SEI para atualizar início e defesa dos alunos.")
 
-        cohort_id = payload.get("cohort_id")
-        raw_cohort_ids = payload.get("cohort_ids") or []
-        cohort_ids = [int(value) for value in raw_cohort_ids if str(value or "").strip()]
-        raw_student_ids = payload.get("student_ids") or []
-        student_ids = [int(value) for value in raw_student_ids if str(value or "").strip()]
-        all_cohorts = bool(payload.get("all_cohorts", False))
+        scope_payload = _dm_refresh_scope(payload)
 
         repo = _repo(db, scope)
         targets = repo.students_for_sei_dates(
-            cohort_id=int(cohort_id) if cohort_id not in (None, "") else None,
-            cohort_ids=cohort_ids or None,
-            student_ids=student_ids or None,
-            all_cohorts=all_cohorts,
+            cohort_id=scope_payload["cohort_id"],
+            cohort_ids=scope_payload["cohort_ids"] or None,
+            student_ids=scope_payload["student_ids"] or None,
+            all_cohorts=scope_payload["all_cohorts"],
         )
+        if len(targets) > DM_SEI_REFRESH_BATCH_SIZE:
+            raise HTTPException(
+                409,
+                {
+                    "erro": (
+                        "A atualização em massa agora usa a fila segura do DM. "
+                        "Atualize a página e inicie novamente a consulta pelo SEI."
+                    ),
+                    "fila_obrigatoria": True,
+                    "selecionados": len(targets),
+                    "limite_endpoint_legado": DM_SEI_REFRESH_BATCH_SIZE,
+                },
+            )
         lookup = await run_in_threadpool(
-            lookup_student_course_dates, username, password, targets
+            lookup_student_course_dates,
+            username,
+            password,
+            targets,
+            max_seconds=DM_SEI_REFRESH_BATCH_BUDGET_SECONDS,
+            request_timeout_seconds=DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS,
         )
         result = repo.apply_sei_course_dates(lookup, source_type="sei_atualizacao_defesas")
-        result["scope"] = {
-            "cohort_id": int(cohort_id) if cohort_id not in (None, "") else None,
-            "cohort_ids": cohort_ids,
-            "student_ids": student_ids,
-            "all_cohorts": all_cohorts,
-        }
+        result["scope"] = scope_payload
+        result["legacy_endpoint"] = True
         return result
     except Exception as exc:
+        _translate(exc)
+
+
+@router.post("/api/dm/sei/refresh-runs")
+async def dm_sei_create_refresh_run(
+    request: Request,
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_edit("DM")),
+):
+    """Create a persistent credential-free queue for individual SEI lookups."""
+
+    try:
+        _require_dm(scope)
+        payload = await request.json()
+        selection = _dm_refresh_scope(payload)
+        run = _repo(db, scope).create_sei_student_refresh_run(
+            cohort_id=selection["cohort_id"],
+            cohort_ids=selection["cohort_ids"] or None,
+            student_ids=selection["student_ids"] or None,
+            all_cohorts=selection["all_cohorts"],
+        )
+        return {
+            "ok": True,
+            "run": run,
+            "batch_size": DM_SEI_REFRESH_BATCH_SIZE,
+            "credentials_persisted": False,
+        }
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.get("/api/dm/sei/refresh-runs/{run_id}")
+def dm_sei_refresh_run_status(
+    run_id: int,
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_edit("DM")),
+):
+    try:
+        return {"ok": True, "run": _repo(db, scope).get_sei_student_refresh_run(run_id)}
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.post("/api/dm/sei/refresh-runs/{run_id}/batch")
+async def dm_sei_process_refresh_batch(
+    run_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_edit("DM")),
+):
+    """Process one bounded SEI batch; credentials exist only for this request."""
+
+    repo = _repo(db, scope)
+    claimed_ids: list[int] = []
+    try:
+        payload = await request.json()
+        username = str(payload.get("usuario") or "").strip()
+        password = str(payload.get("senha") or "")
+        if not username or not password:
+            raise DMValidationError("Informe usuário e senha do SEI para continuar a fila.")
+
+        requested_size = payload.get("batch_size", DM_SEI_REFRESH_BATCH_SIZE)
+        try:
+            batch_size = max(1, min(int(requested_size), 10, DM_SEI_REFRESH_BATCH_SIZE))
+        except (TypeError, ValueError):
+            batch_size = DM_SEI_REFRESH_BATCH_SIZE
+
+        claimed = repo.claim_sei_student_refresh_batch(run_id, batch_size=batch_size)
+        targets = list(claimed.get("items") or [])
+        if not targets:
+            return {
+                "ok": True,
+                "run": claimed["run"],
+                "batch": {"requested": 0, "processed": 0, "deferred": 0},
+                "credentials_persisted": False,
+            }
+        claimed_ids = [int(item["queue_item_id"]) for item in targets]
+
+        lookup = await run_in_threadpool(
+            lookup_student_course_dates,
+            username,
+            password,
+            targets,
+            max_seconds=DM_SEI_REFRESH_BATCH_BUDGET_SECONDS,
+            request_timeout_seconds=DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS,
+        )
+        processed_student_ids = [
+            int(item["student_id"])
+            for item in (lookup.get("items") or [])
+            if item.get("student_id") not in (None, "")
+        ]
+        applied = repo.apply_sei_course_dates(lookup, source_type="sei_refresh_batch")
+        run = repo.finish_sei_student_refresh_batch(
+            run_id,
+            queue_item_ids=claimed_ids,
+            applied_result=applied,
+            processed_student_ids=processed_student_ids,
+        )
+        return {
+            "ok": True,
+            "run": run,
+            "batch": {
+                **(applied.get("summary") or {}),
+                "claimed": len(targets),
+                "processed": len(processed_student_ids),
+                "deferred": max(0, len(targets) - len(processed_student_ids)),
+                "elapsed_seconds": lookup.get("elapsed_seconds"),
+            },
+            "warnings": applied.get("warnings") or [],
+            "items": applied.get("items") or [],
+            "credentials_persisted": False,
+        }
+    except Exception as exc:
+        if claimed_ids:
+            try:
+                repo.release_sei_student_refresh_batch(
+                    run_id,
+                    claimed_ids,
+                    decrement_attempt=True,
+                )
+            except Exception:
+                LOGGER.exception("Falha ao devolver lote DM/SEI para a fila após erro de requisição")
         _translate(exc)
 
 

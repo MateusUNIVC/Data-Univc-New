@@ -1,3 +1,25 @@
+# v0.13.0 · Parte 17 — migration 050 obrigatória
+
+A fila persistente de atualização individual da Diretoria de Mestrado exige a migration:
+
+```text
+database/050_dm_sei_student_refresh_queue_v0130.sql
+```
+
+Ela cria somente tabelas operacionais de fila e atualiza `data_univc_schema_version` para **50**. Não armazena usuário ou senha do SEI.
+
+Em produção com `REQUIRE_SCHEMA_VERSION=true`, aplique a migration **antes** de publicar o código. Depois confirme `/api/health/ready` com schema esperado/atual 50.
+
+Defaults opcionais:
+
+```text
+DM_SEI_REFRESH_BATCH_SIZE=4
+DM_SEI_REFRESH_BATCH_BUDGET_SECONDS=30
+DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS=15
+```
+
+---
+
 # v0.11.5 — migration 040 obrigatória
 
 A v0.11.5 altera a semântica oficial do KPI 02 e adiciona `goals.metric_version`. Antes de publicar a aplicação, aplique no PostgreSQL/Supabase:

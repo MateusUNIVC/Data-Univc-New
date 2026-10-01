@@ -1,8 +1,8 @@
 {
   "app_version": "0.13.0",
   "academic_base_version": "0.11.6.7",
-  "schema_expected": 49,
-  "schema_migration": "049_academic_faculty_context_scopes_v0130.sql",
+  "schema_expected": 50,
+  "schema_migration": "050_dm_sei_student_refresh_queue_v0130.sql",
   "production_hardening": {
     "environment": "production",
     "auth_disabled": false,
@@ -13,12 +13,15 @@
   },
   "faculty_import_batch_size_default": 100,
   "survey_import_batch_size_default": 50,
+  "dm_sei_refresh_batch_size_default": 4,
+  "dm_sei_refresh_batch_budget_seconds_default": 30,
+  "dm_sei_refresh_request_timeout_seconds_default": 15,
   "local_demo_database_included": false,
   "local_windows_launchers_included": false,
   "docker_compose_app_only_included": true,
-  "artifact_profile": "production-vps-v0130-part14-reitoria-route-separation",
-  "created_at_utc": "2026-10-01T18:35:22Z",
-  "release_name": "Data UNIVC 0.13.0 - Production - Part 14 Reitoria Route Separation",
+  "artifact_profile": "production-vps-v0130-part17-dm-sei-persistent-batch-queue",
+  "created_at_utc": "2026-10-01T20:16:28Z",
+  "release_name": "Data UNIVC 0.13.0 - Production - Part 17 DM SEI Persistent Batch Queue",
   "patch_scope": [
     "part1-non-actionable-warning-cleanup",
     "educacao-fisica-licenciatura-sei-current-label-compatibility",
@@ -73,16 +76,25 @@
     "part14-reitoria-admin-academic-route-separation",
     "part14-reitoria-users-first-admin-entry",
     "part14-reitoria-academic-dtnh-dcs-design-system",
-    "part14-reitoria-hash-scroll-removal"
+    "part14-reitoria-hash-scroll-removal",
+    "part16-reitoria-searchable-course-discipline-comboboxes",
+    "dm-queue-01-roster-student-enrichment-separation",
+    "part17-dm-persistent-student-refresh-runs",
+    "part17-dm-persistent-student-refresh-items",
+    "part17-dm-bounded-sei-batch-processing",
+    "part17-dm-legacy-mass-refresh-safety-limit",
+    "part17-dm-browser-sequential-batch-runner",
+    "part17-dm-credentials-memory-only"
   ],
   "validation": {
-    "pytest": "229 passed, 2 skipped",
+    "pytest": "245 passed, 2 skipped",
     "javascript": "28/28 syntax OK; 28/28 template references present",
-    "schema": 49,
+    "schema": 50,
     "dm_real_report": "13 cohorts; 433 students; CTE:17 = 51",
+    "dm_queue": "persistent run/items; bounded batches; credentials memory-only",
     "release_checks": "OK"
   },
-  "file_count": 387,
+  "file_count": 403,
   "files": [
     {
       "path": ".dockerignore",
@@ -91,18 +103,18 @@
     },
     {
       "path": ".env.example",
-      "bytes": 3451,
-      "sha256": "1210c10c4f6ea02076863e2cf258c9b568d9448d319ec06b2c175c84b431f712"
+      "bytes": 3560,
+      "sha256": "a44e503087448023fc01e725bda77c8f7ab7c053e2960dce90a14d0bd26499ff"
     },
     {
       "path": ".env.production.example",
-      "bytes": 3575,
-      "sha256": "89ba8ce858c41880e936ac021d9e086e0a7200a6f24593955400e54b23b94c3c"
+      "bytes": 3684,
+      "sha256": "960b8b7945b1b934da3de710bee0082bad7f21e2614193e2bd8494db19612b6e"
     },
     {
       "path": "BUILD_INFO.txt",
-      "bytes": 19902,
-      "sha256": "077aebcdf9d923bb6b5c85984126f539abc8eb359aebd5e8b452d3b29d646983"
+      "bytes": 23508,
+      "sha256": "42ece49b8e1495c2e2d2e20900d6c798a5c467b7ac0a933e26475a5a26a85058"
     },
     {
       "path": "Dockerfile",
@@ -121,13 +133,13 @@
     },
     {
       "path": "PRODUCTION_VALIDATION.txt",
-      "bytes": 4409,
-      "sha256": "d68b400becd028015dbbb9f28369ce406311e6ef1b3f1e20c3b7a3ee971420d0"
+      "bytes": 5621,
+      "sha256": "3f1509e20e096b909ad6d17fdcf2daaa3861f8cd40694373b6e31bb62d930019"
     },
     {
       "path": "README.md",
-      "bytes": 108467,
-      "sha256": "13d27f7fa39eb79588a320a8bdcc406b3af0ddcfeef017538080456de74c8e5f"
+      "bytes": 111992,
+      "sha256": "aa0329e8658a5e09d35712d622790d8b7e257053f0f94bba762f9d5af57b6e97"
     },
     {
       "path": "academic_analytics.py",
@@ -161,8 +173,8 @@
     },
     {
       "path": "admin_router.py",
-      "bytes": 28060,
-      "sha256": "cd92786b00fbbcb516eb068530a89e9175361f6f52b8233236fc78096ce982e8"
+      "bytes": 28129,
+      "sha256": "ebe86eacd95042269e23df4ffdd1361accdb5543888a816a0b91a855f291be38"
     },
     {
       "path": "analytics.py",
@@ -348,6 +360,11 @@
       "path": "dadm_v2_router.py",
       "bytes": 14093,
       "sha256": "a97c2c01c1c3d836ca4689945d47e7a766467c8747a87bb3a84d4a77a62e40c2"
+    },
+    {
+      "path": "database.py",
+      "bytes": 920,
+      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
     },
     {
       "path": "database/001_init.sql",
@@ -580,9 +597,9 @@
       "sha256": "6dee5e034419a39cc15bbf79a1afd197db87e00090b2f55549e593daa66fa657"
     },
     {
-      "path": "database.py",
-      "bytes": 920,
-      "sha256": "2a31d9c3104e73172252eab33da3876da2d31d7f1e47de3f203debb5c261ad45"
+      "path": "database/050_dm_sei_student_refresh_queue_v0130.sql",
+      "bytes": 2370,
+      "sha256": "b20d6156425e82105c496d25773fa9878fb29f9688d6ee73b7c6f794e98fb05e"
     },
     {
       "path": "demo_data.py",
@@ -631,18 +648,18 @@
     },
     {
       "path": "dm_repository.py",
-      "bytes": 74431,
-      "sha256": "7c9296b78c3cdfbf79403873ff867c04971953f12cda6ca40a0722f187d75922"
+      "bytes": 86697,
+      "sha256": "cdc5d10ed85e2488466306f6ff51182d73872009c88d54d70ad8257147d89b27"
     },
     {
       "path": "dm_router.py",
-      "bytes": 30001,
-      "sha256": "e59840911030ccb4c76a55116a2e175cc1a4eab6bb7e2d317377744ec12c78c6"
+      "bytes": 34958,
+      "sha256": "f9f74e7c5f6ea30e2bf58afd5fcbf206ede8ea14c1935d2a178e55ecc585e2c3"
     },
     {
       "path": "dm_sei_parser.py",
-      "bytes": 22226,
-      "sha256": "2a5deaa4b36070c29466ac106d44d61471e5dba629bd219f2a5dd76b4fa1c600"
+      "bytes": 27738,
+      "sha256": "735e1c187d658920fb0b820b268838fe5ee13d5fd1aec3d66e27e01f1fb4ce0a"
     },
     {
       "path": "docker-compose.production.yml",
@@ -736,8 +753,8 @@
     },
     {
       "path": "docs/CHANGELOG.md",
-      "bytes": 78547,
-      "sha256": "399556a1c9fe5c30a76c0a2e2b54b962121b3a55631945994ff0d470e158a3bc"
+      "bytes": 80252,
+      "sha256": "f13b176e851ac1bf70a2511c4ebdda30ba46e6df71dc4bc66b616e41642c1966"
     },
     {
       "path": "docs/DADM_FULL_ATTENDANCE_EXPLORER_v09611.md",
@@ -811,8 +828,8 @@
     },
     {
       "path": "docs/DEPLOY.md",
-      "bytes": 30487,
-      "sha256": "7112149accbf80036ea4813abb430a6025674526fc4b9aa43b8a507beef3ff33"
+      "bytes": 31154,
+      "sha256": "1e324fbf55752192a62002cd7c6447a0349506a46a3378be64e32eb36263115c"
     },
     {
       "path": "docs/DM_DOMAIN_SIMPLIFICATION_v08290.md",
@@ -1095,9 +1112,39 @@
       "sha256": "bba39fb380900940d183bca1a54c360d1eeea4bc38b95feb9cce05a7b277ccb9"
     },
     {
+      "path": "docs/PART12_DM_SEI_SPLIT_COHORT_HOTFIX_2026-10-01.md",
+      "bytes": 1807,
+      "sha256": "a283b0d88eb5971a5a541c747615485d5aa661ccfb638971bb104fd08b5e44d0"
+    },
+    {
       "path": "docs/PART12_REITORIA_ACADEMIC_OVERVIEW_2026-10-01.md",
       "bytes": 3468,
       "sha256": "dc75eca4458a5ba1d7d5a3eda38537bc0c2249de5640a2c38428f666cb20a880"
+    },
+    {
+      "path": "docs/PART13_DM_HOTFIX_REITORIA_TABS_2026-10-01.md",
+      "bytes": 3091,
+      "sha256": "7ad9ad38c4e291febc45d6040eb634494d11e75c872a260664e846102ee11d57"
+    },
+    {
+      "path": "docs/PART14_REITORIA_ROUTE_SEPARATION_2026-10-01.md",
+      "bytes": 1057,
+      "sha256": "0993ab3ca8adf77a7efd8ff490f30fea139fbd0971d3073928c84b32290f718e"
+    },
+    {
+      "path": "docs/PART15_NPS_VISUAL_CONVERGENCE_2026-10-01.md",
+      "bytes": 1693,
+      "sha256": "3f586433aaa7dbe5f53997e4e67b4fe8993363bfaf0fc2e869dc7583e9fc7dac"
+    },
+    {
+      "path": "docs/PART16_REITORIA_COMBOBOX_DM_QUEUE_FOUNDATION_2026-10-01.md",
+      "bytes": 1578,
+      "sha256": "a9abbad80e525afbee8401ec3aaaa22cacb400dedcc073535830ed8ab953da4b"
+    },
+    {
+      "path": "docs/PART17_DM_SEI_PERSISTENT_BATCH_QUEUE_2026-10-01.md",
+      "bytes": 3545,
+      "sha256": "f73ca996b7570e71379845bad6d5b1c495b5b99fea8018b3e3b64069d9fd8bd5"
     },
     {
       "path": "docs/PART1_UX_CLEANUP_EF_LIC_2026-09-29.md",
@@ -1161,8 +1208,8 @@
     },
     {
       "path": "docs/PRODUCTION_RELEASE_v0130.md",
-      "bytes": 2232,
-      "sha256": "ab40fa75a44a2947fe5d5c968ba5613f7672cff16d31284086ec1c779d0ae29d"
+      "bytes": 2447,
+      "sha256": "61ab85455de4a2425bcaf9424acbbc6fa81fa6487e97a5e9973dae6750a1862c"
     },
     {
       "path": "docs/REITORIA_ADMIN_VISIBILITY_v0969.md",
@@ -1311,8 +1358,8 @@
     },
     {
       "path": "models.py",
-      "bytes": 115337,
-      "sha256": "f0b7766be7c7deb18ebee0b5826cc8289c739dedff97d7c57f184b06cf4ea756"
+      "bytes": 118391,
+      "sha256": "a760bf124fc0c0280eb9a627546078e9954b56921a7715ad98aa642c2bb74980"
     },
     {
       "path": "observability.py",
@@ -1321,8 +1368,8 @@
     },
     {
       "path": "reitoria_academic.py",
-      "bytes": 37499,
-      "sha256": "8f8975080bb02813e9ae37dfa1b737487fdc3ba1d8be5db2b3535cf6646dcf58"
+      "bytes": 41093,
+      "sha256": "6849cb59998801515c3ed702047450899d66ceb438a0d54b96e0e2b931e25152"
     },
     {
       "path": "reitoria_academic_router.py",
@@ -1331,8 +1378,8 @@
     },
     {
       "path": "release_info.py",
-      "bytes": 194,
-      "sha256": "cd19c560f4d210fd10bccb02f15828b4d549fabd6a79116ccb8e5f6b6a3e21f9"
+      "bytes": 191,
+      "sha256": "34e9f13811d716a4f570f948d28901559b5ba64e708edce0fe6fecf6e411bfb5"
     },
     {
       "path": "render.yaml",
@@ -1376,8 +1423,8 @@
     },
     {
       "path": "scripts/run_release_checks.py",
-      "bytes": 7867,
-      "sha256": "198f2f2df3c03cff2fffe86e29f32ced8c742c9dde437f2c2f4c95c5ee15ca00"
+      "bytes": 15010,
+      "sha256": "56e0ae10885a1a189daf2081f8a6dd7bb0dac3347e0d542d0ffc4f7f527e9c30"
     },
     {
       "path": "scripts/seed_dpe_demo.py",
@@ -1451,13 +1498,13 @@
     },
     {
       "path": "sei_student_dates.py",
-      "bytes": 23652,
-      "sha256": "72305616a371b45723a42aaecd59df729edb062d31f4e2e9c2e373f85b223a00"
+      "bytes": 24955,
+      "sha256": "2c2b1b1f792d477c90922537a004d2005bcb48a8bcbc6ee0ce423c436b833b79"
     },
     {
       "path": "static/css/app.css",
-      "bytes": 75998,
-      "sha256": "6b3a8f93202fa2aad4cdb253d3bccd84e1fe454cb0026f29d4bf91a67b9105c1"
+      "bytes": 78696,
+      "sha256": "0ebc036b6b6b47e656227ebc45ebb70023ec5d76626f3c03f60acb27ead896c7"
     },
     {
       "path": "static/css/dadm.css",
@@ -1500,9 +1547,14 @@
       "sha256": "d4ce38a9a298529565a85286705fcefd44ad2350a70eeb511bc0e05b0f50356c"
     },
     {
+      "path": "static/css/reitoria-academico.css",
+      "bytes": 4903,
+      "sha256": "fd1e994dec8ad1a8d343ea18646ab6127a787e67f35ed0104b1e7a70039cd48c"
+    },
+    {
       "path": "static/css/reitoria.css",
-      "bytes": 19168,
-      "sha256": "e0624e6ab6112e3aaff551cdc689740289e2a65cc08a286fe3df6a1a19ab9806"
+      "bytes": 23845,
+      "sha256": "5174cee34d4650dc7245d3e64420b676a8db46fa133c85e9e6ed131eba51d486"
     },
     {
       "path": "static/css/ui-v2.css",
@@ -1516,13 +1568,13 @@
     },
     {
       "path": "static/js/admin_users.js",
-      "bytes": 22902,
-      "sha256": "74e21acee0508fdf0c0bef8dbc4d6cad13c4436dbff4510c6efb0294794b8bf0"
+      "bytes": 24009,
+      "sha256": "ff8a6141b5b4601e69515b43916daa5d9f57e4629e70dd819cb0dd664b1e6bee"
     },
     {
       "path": "static/js/app.js",
-      "bytes": 220579,
-      "sha256": "f6976531e030775ce1fcc2fda53cb55bc54eef7cc803c6f050d45f6068421030"
+      "bytes": 218494,
+      "sha256": "f9c261e2bee95ffa12f7e30a1ced93bd655d0832ac0e63a8399d8b2fdd6c2fa5"
     },
     {
       "path": "static/js/dadm.js",
@@ -1556,8 +1608,8 @@
     },
     {
       "path": "static/js/data-univc-academic-charts.js",
-      "bytes": 8483,
-      "sha256": "df5d8a2f616a4e9c9253eff23d95f56bb973fb0510536616830a59a8bed520cb"
+      "bytes": 13887,
+      "sha256": "cff5c55a1af3b204b7d1e329dbdf87e89391bbc206f92cdef6c39df3b415cfde"
     },
     {
       "path": "static/js/data-univc-auth.js",
@@ -1576,8 +1628,8 @@
     },
     {
       "path": "static/js/dm.js",
-      "bytes": 78482,
-      "sha256": "0b0fe01603a17f22a571c38cdd6f8604f04803c484cf8bb336ce9f758129194b"
+      "bytes": 79326,
+      "sha256": "e3a5c91be0be9513ef0739c60eee0eaaad6e2d3b3e1ee35d158a781f88ef516a"
     },
     {
       "path": "static/js/dpe.js",
@@ -1645,9 +1697,9 @@
       "sha256": "ac6518e22f1215ff3f23084d82523e773d8b03e3c492b0d997e733e47b3c850c"
     },
     {
-      "path": "static/js/reitoria_academic.js",
-      "bytes": 8888,
-      "sha256": "ee4e7f6f2314e637bd5d3f9b059bd3494266e30224517697f9a73dc33b0236e8"
+      "path": "static/js/reitoria_academico.js",
+      "bytes": 13969,
+      "sha256": "380a45084d5ff07e2beaa36d8199645f6ceb8dd2c13e71bf94c68c863dae2096"
     },
     {
       "path": "static/js/ui-v2.js",
@@ -1761,8 +1813,8 @@
     },
     {
       "path": "templates/dm.html",
-      "bytes": 39586,
-      "sha256": "a44efc24ad7b45921cbe9143dd01f150ae283cd86d488382d92d4dc95c0a08f2"
+      "bytes": 39582,
+      "sha256": "8aa89db98c929cdc1f8697c8fec3065adaaa4dd9f1921bf74f4a6dfc88686e77"
     },
     {
       "path": "templates/dpe.html",
@@ -1771,8 +1823,8 @@
     },
     {
       "path": "templates/index.html",
-      "bytes": 49813,
-      "sha256": "6abeced2fee021d4466c956d79d0cd991c035e9ba2f3bc06c813b5014f776efa"
+      "bytes": 49902,
+      "sha256": "a6147bf8293b93ae1fcf1f31bde7c4e6462a5c9b499598cfa833c1178badf95c"
     },
     {
       "path": "templates/management.html",
@@ -1781,8 +1833,13 @@
     },
     {
       "path": "templates/reitoria.html",
-      "bytes": 16722,
-      "sha256": "5b37d29db3d37d7a91f78dd7382ed69200b7f79d771adba5e9c414e7a9effcab"
+      "bytes": 9978,
+      "sha256": "6534984368bf7f412e04469d483c2d506841c8844cf649229afae923e865c009"
+    },
+    {
+      "path": "templates/reitoria_academico.html",
+      "bytes": 14203,
+      "sha256": "c0b35f37e650cf056c9320c11fd18de62fc203fcb738a807a63286178ab6a45c"
     },
     {
       "path": "tests/test_academic_interactive_excel_part7.py",
@@ -1818,6 +1875,11 @@
       "path": "tests/test_academic_searchable_select_part2.py",
       "bytes": 2478,
       "sha256": "6f35d5546bb6fb3107d2faecf5ab0fe7d2b2b349106ceb07301f245bb6726761"
+    },
+    {
+      "path": "tests/test_dm_sei_split_cohorts_hotfix.py",
+      "bytes": 5020,
+      "sha256": "f6a7c1ff511d370b1d14e523466d2e5779ebbaf81ef3490a50a99103ecfe3836"
     },
     {
       "path": "tests/test_dpe_v0120.py",
@@ -1976,13 +2038,43 @@
     },
     {
       "path": "tests/test_part11_directorate_isolation.py",
-      "bytes": 4574,
-      "sha256": "0c43de40910ee1b49634cfb5e201bf9fe1264741b9f5ebc7aa4a5654ec17c9bb"
+      "bytes": 4672,
+      "sha256": "03df84c6da68cd46ecc56344dd61f74456ac566df105260fe677e64310f79363"
     },
     {
       "path": "tests/test_part12_reitoria_academic_overview.py",
-      "bytes": 8905,
-      "sha256": "8820b3e696a2e921e779dbfa76efa95b445b8a06174ceb731343f109cdcd6cac"
+      "bytes": 9305,
+      "sha256": "611e0dfea9b41805c40abadb4006868ed9081d341cd5fba1a8f504bf5ea0f9d0"
+    },
+    {
+      "path": "tests/test_part13_dm_and_reitoria_tabs.py",
+      "bytes": 3332,
+      "sha256": "ccf293aa779c6523e29052d900dbfc4130c84c1807a87ebe28289cb5abb76795"
+    },
+    {
+      "path": "tests/test_part14_reitoria_route_separation.py",
+      "bytes": 1793,
+      "sha256": "9fb6e3896d81e8f8c7afc55104cc9b9d222a00463e4135ad84cf47f4f1c56469"
+    },
+    {
+      "path": "tests/test_part15_nps_visual_convergence.py",
+      "bytes": 1811,
+      "sha256": "17afb9c1ab4ec3043f2b8c20d5a4bb63fabc6797a09714159441e842861060f5"
+    },
+    {
+      "path": "tests/test_part15_reitoria_institution_nps_by_course.py",
+      "bytes": 3879,
+      "sha256": "0cc9e4130241013352a3b18b84b0da50af5843ca690aeea079ef533e257085ee"
+    },
+    {
+      "path": "tests/test_part16_reitoria_combobox_dm_queue_foundation.py",
+      "bytes": 2190,
+      "sha256": "bf99e5d5770fba2accc719445295e4c38eaccd6ede737ff0c6b45453a0df81e4"
+    },
+    {
+      "path": "tests/test_part17_dm_sei_persistent_batch_queue.py",
+      "bytes": 8068,
+      "sha256": "261d5a0d5c746a64393efc6bc1a4691fca6010e82d781d155a9cd2a1ca6799b6"
     },
     {
       "path": "tests/test_part4_nps_long_course_labels.py",
@@ -2001,8 +2093,8 @@
     },
     {
       "path": "tests/test_release_production_v0130.py",
-      "bytes": 904,
-      "sha256": "a8ea63dd487133ed7716fbb9fc66f1e8060bdf92557d93c224ec9a9e667d077a"
+      "bytes": 901,
+      "sha256": "3ad686a959a7d701f6f958e251597fb8831a34db930743b518eeb1a277382175"
     },
     {
       "path": "tests/test_release_reconciliation_v0130_dev15.py",

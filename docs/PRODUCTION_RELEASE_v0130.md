@@ -4,8 +4,8 @@
 
 - Aplicação: `0.13.0`
 - Base acadêmica: `0.11.6.7`
-- Schema esperado: `49`
-- Migration registrada: `049_academic_faculty_context_scopes_v0130.sql`
+- Schema esperado: `50`
+- Migration registrada: `050_dm_sei_student_refresh_queue_v0130.sql`
 
 ## Variáveis obrigatórias
 
@@ -24,11 +24,14 @@ Defina no servidor, sem gravar segredos no repositório:
 - `SUPABASE_SECRET_KEY`
 - `DATA_UNIVC_JWT_SECRET` ou keyring JWT configurado
 - `TALLOS_API_TOKEN` quando a sincronização DADM for utilizada
+- `DM_SEI_REFRESH_BATCH_SIZE=4` (opcional; 1–10)
+- `DM_SEI_REFRESH_BATCH_BUDGET_SECONDS=30` (opcional)
+- `DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS=15` (opcional)
 
 ## Antes do deploy
 
 1. Fazer backup completo do PostgreSQL/Supabase.
-2. Confirmar que todas as migrations até schema 49 foram aplicadas.
+2. Confirmar que todas as migrations até schema 50 foram aplicadas, incluindo `050_dm_sei_student_refresh_queue_v0130.sql`.
 3. Confirmar `AUTH_DISABLED=false`.
 4. Confirmar HTTPS/Nginx e `COOKIE_SECURE=true`.
 5. Confirmar segredos fortes fora do ZIP.

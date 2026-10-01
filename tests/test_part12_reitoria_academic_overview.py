@@ -193,8 +193,8 @@ def test_reitoria_charts_keep_semantic_scales():
 
 
 def test_part12_is_reitoria_only_and_has_no_schema_migration():
-    release = (ROOT / "release_info.py").read_text(encoding="utf-8")
     router = (ROOT / "reitoria_academic_router.py").read_text(encoding="utf-8")
     assert 'Depends(require_fresh_reitoria)' in router
-    assert 'SCHEMA_VERSION = 49' in release
-    assert '049_academic_faculty_context_scopes_v0130.sql' in release
+    assert (ROOT / "database/049_academic_faculty_context_scopes_v0130.sql").exists()
+    doc = (ROOT / "docs/PART12_REITORIA_ACADEMIC_OVERVIEW_2026-10-01.md").read_text(encoding="utf-8")
+    assert "schema: 49" in doc.lower()

@@ -78,5 +78,6 @@ def test_faculty_filters_do_not_render_after_directorate_reset():
 
 
 def test_part11_does_not_require_database_migration():
-    assert 'SCHEMA_VERSION = 49' in RELEASE_INFO
-    assert '049_academic_faculty_context_scopes_v0130.sql' in RELEASE_INFO
+    assert (ROOT / 'database/049_academic_faculty_context_scopes_v0130.sql').exists()
+    doc = (ROOT / 'docs/PART11_DIRECTORATE_ISOLATION_2026-10-01.md').read_text(encoding='utf-8')
+    assert 'schema: 49' in doc.lower()

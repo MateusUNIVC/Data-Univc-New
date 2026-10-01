@@ -525,6 +525,63 @@ class DmSeiSyncRun(Base):
     inserted_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
+class DmSeiStudentRefreshRun(Base):
+    """Persistent queue header for the DM student-by-student SEI refresh.
+
+    Credentials are deliberately never persisted.  A run only stores the selected
+    scope, operational counters/timestamps and the requesting Data UNIVC user.
+    """
+
+    __tablename__ = "dm_sei_student_refresh_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('PENDING','IN_PROGRESS','COMPLETED','COMPLETED_WITH_ERRORS','CANCELLED')",
+            name="ck_dm_sei_student_refresh_run_status",
+        ),
+        Index("ix_dm_sei_student_refresh_run_dir_created", "directorate_id", "created_at"),
+        Index("ix_dm_sei_student_refresh_run_status", "status", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    directorate_id: Mapped[int] = mapped_column(ForeignKey("directorates.id"), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="PENDING", index=True)
+    scope_type: Mapped[str] = mapped_column(String(30), default="students")
+    scope_json: Mapped[str] = mapped_column(Text, default="{}")
+    total_items: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_batch_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    requested_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class DmSeiStudentRefreshItem(Base):
+    """One persisted student in a DM SEI refresh queue run."""
+
+    __tablename__ = "dm_sei_student_refresh_items"
+    __table_args__ = (
+        UniqueConstraint("run_id", "student_id", name="uq_dm_sei_student_refresh_run_student"),
+        CheckConstraint(
+            "status in ('PENDING','RUNNING','COMPLETED','FAILED')",
+            name="ck_dm_sei_student_refresh_item_status",
+        ),
+        Index("ix_dm_sei_student_refresh_item_run_status", "run_id", "status", "id"),
+        Index("ix_dm_sei_student_refresh_item_student", "student_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("dm_sei_student_refresh_runs.id", ondelete="CASCADE"), index=True
+    )
+    student_id: Mapped[int] = mapped_column(ForeignKey("dm_students.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class ManagementMeasurement(Base):
     """Generic, auditable measurements for the redesigned DADM, DPE and DM modules.
 

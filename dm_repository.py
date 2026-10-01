@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from auth.objects import require_object_for_directorate
@@ -23,7 +23,14 @@ from dm_catalog import (
     validate_student_payload,
 )
 from dm_sei_parser import DMSEIReport, filter_report
-from models import DmCohort, DmGraduationEvent, DmSeiSyncRun, DmStudent
+from models import (
+    DmCohort,
+    DmGraduationEvent,
+    DmSeiStudentRefreshItem,
+    DmSeiStudentRefreshRun,
+    DmSeiSyncRun,
+    DmStudent,
+)
 from security import DirectorateScope
 
 
@@ -1026,6 +1033,316 @@ class DMRepository:
             }
             for row in rows
         ]
+
+    @staticmethod
+    def _refresh_scope_type(
+        *,
+        cohort_id: int | None = None,
+        cohort_ids: list[int] | None = None,
+        student_ids: list[int] | None = None,
+        all_cohorts: bool = False,
+    ) -> str:
+        if cohort_id is not None:
+            return "cohort"
+        if cohort_ids:
+            return "cohorts"
+        if student_ids:
+            return "students"
+        if all_cohorts:
+            return "all_cohorts"
+        return "students"
+
+    def _refresh_run_counts(self, run_id: int) -> dict[str, int]:
+        counts = {"pending": 0, "running": 0, "completed": 0, "failed": 0}
+        rows = self.db.execute(
+            select(DmSeiStudentRefreshItem.status, func.count(DmSeiStudentRefreshItem.id))
+            .where(DmSeiStudentRefreshItem.run_id == int(run_id))
+            .group_by(DmSeiStudentRefreshItem.status)
+        ).all()
+        for status, count in rows:
+            key = str(status or "").strip().lower()
+            if key in counts:
+                counts[key] = int(count or 0)
+        counts["processed"] = counts["completed"] + counts["failed"]
+        counts["remaining"] = counts["pending"] + counts["running"]
+        return counts
+
+    def _refresh_run_to_dict(self, row: DmSeiStudentRefreshRun) -> dict[str, Any]:
+        try:
+            scope = json.loads(row.scope_json or "{}")
+        except (TypeError, ValueError):
+            scope = {}
+        counts = self._refresh_run_counts(row.id)
+        return {
+            "id": row.id,
+            "status": row.status,
+            "scope_type": row.scope_type,
+            "scope": scope,
+            "total": int(row.total_items or 0),
+            **counts,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "started_at": row.started_at.isoformat() if row.started_at else None,
+            "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+            "last_batch_at": row.last_batch_at.isoformat() if row.last_batch_at else None,
+            "requested_by": row.requested_by,
+            "credentials_persisted": False,
+        }
+
+    def get_sei_student_refresh_run(self, run_id: int) -> dict[str, Any]:
+        row = self.db.scalar(
+            select(DmSeiStudentRefreshRun).where(
+                DmSeiStudentRefreshRun.id == int(run_id),
+                DmSeiStudentRefreshRun.directorate_id == self.directorate_id,
+            )
+        )
+        if not row:
+            raise LookupError("Fila de atualização SEI não encontrada.")
+        return self._refresh_run_to_dict(row)
+
+    def create_sei_student_refresh_run(
+        self,
+        *,
+        cohort_id: int | None = None,
+        cohort_ids: list[int] | None = None,
+        student_ids: list[int] | None = None,
+        all_cohorts: bool = False,
+    ) -> dict[str, Any]:
+        """Persist a resumable, credential-free queue for individual SEI lookups."""
+
+        self._require_write()
+        targets = self.students_for_sei_dates(
+            cohort_id=cohort_id,
+            cohort_ids=cohort_ids,
+            student_ids=student_ids,
+            all_cohorts=all_cohorts,
+        )
+        normalized_student_ids = [int(item["student_id"]) for item in targets]
+        scope = {
+            "cohort_id": int(cohort_id) if cohort_id is not None else None,
+            "cohort_ids": sorted({int(value) for value in (cohort_ids or [])}),
+            "student_ids": sorted({int(value) for value in (student_ids or [])}),
+            "all_cohorts": bool(all_cohorts),
+        }
+        run = DmSeiStudentRefreshRun(
+            directorate_id=self.directorate_id,
+            status="PENDING",
+            scope_type=self._refresh_scope_type(
+                cohort_id=cohort_id,
+                cohort_ids=cohort_ids,
+                student_ids=student_ids,
+                all_cohorts=all_cohorts,
+            ),
+            scope_json=json.dumps(scope, ensure_ascii=False, sort_keys=True),
+            total_items=len(normalized_student_ids),
+            requested_by=self.scope.user.email,
+        )
+        try:
+            self.db.add(run)
+            self.db.flush()
+            self.db.add_all([
+                DmSeiStudentRefreshItem(
+                    run_id=run.id,
+                    student_id=student_id,
+                    status="PENDING",
+                    attempts=0,
+                )
+                for student_id in normalized_student_ids
+            ])
+            self.db.commit()
+            self.db.refresh(run)
+        except Exception:
+            self.db.rollback()
+            raise
+        return self._refresh_run_to_dict(run)
+
+    def _refresh_run_row(self, run_id: int) -> DmSeiStudentRefreshRun:
+        row = self.db.scalar(
+            select(DmSeiStudentRefreshRun).where(
+                DmSeiStudentRefreshRun.id == int(run_id),
+                DmSeiStudentRefreshRun.directorate_id == self.directorate_id,
+            )
+        )
+        if not row:
+            raise LookupError("Fila de atualização SEI não encontrada.")
+        return row
+
+    def claim_sei_student_refresh_batch(
+        self,
+        run_id: int,
+        *,
+        batch_size: int = 4,
+        stale_after_seconds: int = 300,
+    ) -> dict[str, Any]:
+        """Atomically claim a small pending batch and return current student data."""
+
+        self._require_write()
+        run = self._refresh_run_row(run_id)
+        if run.status in {"COMPLETED", "COMPLETED_WITH_ERRORS", "CANCELLED"}:
+            return {"run": self._refresh_run_to_dict(run), "items": []}
+
+        now = datetime.now(timezone.utc)
+        stale_before = now - timedelta(seconds=max(60, int(stale_after_seconds)))
+        # Recover items left RUNNING by a crashed/abandoned request.  Attempts are
+        # intentionally preserved for auditability.
+        self.db.execute(
+            update(DmSeiStudentRefreshItem)
+            .where(
+                DmSeiStudentRefreshItem.run_id == run.id,
+                DmSeiStudentRefreshItem.status == "RUNNING",
+                or_(
+                    DmSeiStudentRefreshItem.last_attempt_at.is_(None),
+                    DmSeiStudentRefreshItem.last_attempt_at < stale_before,
+                ),
+            )
+            .values(status="PENDING")
+        )
+
+        size = max(1, min(int(batch_size), 10))
+        statement = (
+            select(DmSeiStudentRefreshItem)
+            .where(
+                DmSeiStudentRefreshItem.run_id == run.id,
+                DmSeiStudentRefreshItem.status == "PENDING",
+            )
+            .order_by(DmSeiStudentRefreshItem.id.asc())
+            .limit(size)
+        )
+        if self.db.bind is not None and self.db.bind.dialect.name == "postgresql":
+            statement = statement.with_for_update(skip_locked=True)
+        items = self.db.scalars(statement).all()
+        if not items:
+            counts = self._refresh_run_counts(run.id)
+            if counts["remaining"] == 0:
+                run.status = "COMPLETED_WITH_ERRORS" if counts["failed"] else "COMPLETED"
+                run.completed_at = run.completed_at or now
+                self.db.commit()
+            return {"run": self._refresh_run_to_dict(run), "items": []}
+
+        for item in items:
+            item.status = "RUNNING"
+            item.attempts = int(item.attempts or 0) + 1
+            item.last_attempt_at = now
+            item.last_error_type = None
+            item.last_error = None
+        run.status = "IN_PROGRESS"
+        run.started_at = run.started_at or now
+        run.last_batch_at = now
+        self.db.commit()
+
+        student_ids = [int(item.student_id) for item in items]
+        students = self.db.scalars(
+            select(DmStudent)
+            .options(joinedload(DmStudent.cohort))
+            .where(
+                DmStudent.directorate_id == self.directorate_id,
+                DmStudent.id.in_(student_ids),
+            )
+        ).all()
+        by_id = {row.id: row for row in students}
+        batch_targets = []
+        for item in items:
+            row = by_id.get(int(item.student_id))
+            if not row:
+                continue
+            batch_targets.append({
+                "queue_item_id": item.id,
+                "student_id": row.id,
+                "student_code": row.student_code,
+                "student_name": row.student_name,
+                "cohort_opening_date": row.cohort.opening_date.isoformat() if row.cohort and row.cohort.opening_date else None,
+                "area_code": row.cohort.area_code if row.cohort else None,
+                "cohort_number": row.cohort.cohort_number if row.cohort else None,
+            })
+        return {"run": self._refresh_run_to_dict(run), "items": batch_targets}
+
+    def release_sei_student_refresh_batch(
+        self,
+        run_id: int,
+        queue_item_ids: list[int],
+        *,
+        decrement_attempt: bool = False,
+    ) -> dict[str, Any]:
+        """Return a claimed batch to PENDING after a request-level failure."""
+
+        self._require_write()
+        run = self._refresh_run_row(run_id)
+        ids = sorted({int(value) for value in queue_item_ids})
+        if ids:
+            rows = self.db.scalars(
+                select(DmSeiStudentRefreshItem).where(
+                    DmSeiStudentRefreshItem.run_id == run.id,
+                    DmSeiStudentRefreshItem.id.in_(ids),
+                    DmSeiStudentRefreshItem.status == "RUNNING",
+                )
+            ).all()
+            for item in rows:
+                item.status = "PENDING"
+                if decrement_attempt and int(item.attempts or 0) > 0:
+                    item.attempts -= 1
+        self.db.commit()
+        return self._refresh_run_to_dict(run)
+
+    def finish_sei_student_refresh_batch(
+        self,
+        run_id: int,
+        *,
+        queue_item_ids: list[int],
+        applied_result: dict[str, Any],
+        processed_student_ids: list[int] | None = None,
+    ) -> dict[str, Any]:
+        """Persist per-item outcomes and return deferred claimed items to PENDING."""
+
+        self._require_write()
+        run = self._refresh_run_row(run_id)
+        now = datetime.now(timezone.utc)
+        ids = sorted({int(value) for value in queue_item_ids})
+        rows = self.db.scalars(
+            select(DmSeiStudentRefreshItem).where(
+                DmSeiStudentRefreshItem.run_id == run.id,
+                DmSeiStudentRefreshItem.id.in_(ids),
+            )
+        ).all() if ids else []
+        processed_set = {int(value) for value in (processed_student_ids or [])}
+        outcomes = {
+            int(item["student_id"]): item
+            for item in list((applied_result or {}).get("items") or [])
+            if item.get("student_id") not in (None, "")
+        }
+        for item in rows:
+            student_id = int(item.student_id)
+            if processed_set and student_id not in processed_set:
+                item.status = "PENDING"
+                if int(item.attempts or 0) > 0:
+                    item.attempts -= 1
+                continue
+            outcome = outcomes.get(student_id)
+            if outcome is None:
+                item.status = "PENDING"
+                if int(item.attempts or 0) > 0:
+                    item.attempts -= 1
+                continue
+            if outcome.get("ok"):
+                item.status = "COMPLETED"
+                item.last_error_type = None
+                item.last_error = None
+                item.completed_at = now
+            else:
+                item.status = "FAILED"
+                item.last_error_type = str(outcome.get("error_type") or "lookup")[:40]
+                item.last_error = str(outcome.get("error") or "Falha ao consultar o aluno no SEI.")[:4000]
+                item.completed_at = now
+
+        self.db.flush()
+        counts = self._refresh_run_counts(run.id)
+        if counts["remaining"] == 0:
+            run.status = "COMPLETED_WITH_ERRORS" if counts["failed"] else "COMPLETED"
+            run.completed_at = now
+        else:
+            run.status = "IN_PROGRESS"
+        run.last_batch_at = now
+        self.db.commit()
+        self.db.refresh(run)
+        return self._refresh_run_to_dict(run)
 
     def student_ids_for_cohort_keys(self, cohort_keys: list[str]) -> list[int]:
         normalized_keys = {str(value or "").strip().upper() for value in cohort_keys if str(value or "").strip()}

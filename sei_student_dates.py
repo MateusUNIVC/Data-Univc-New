@@ -9,6 +9,7 @@ persiste HTML/XML com dados pessoais por padrão.
 
 import html
 import re
+import time
 import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -90,7 +91,13 @@ class StudentDatesTarget:
 
 
 class SEIStudentDatesBot:
-    def __init__(self, *, debug_dir: Path | None = None, verbose: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        debug_dir: Path | None = None,
+        verbose: bool = False,
+        request_timeout_seconds: int = 60,
+    ) -> None:
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -105,6 +112,7 @@ class SEIStudentDatesBot:
         self.viewstate: str | None = None
         self.debug_dir = debug_dir
         self.verbose = bool(verbose)
+        self.request_timeout_seconds = max(5, min(int(request_timeout_seconds), 60))
         if self.debug_dir is not None:
             self.debug_dir.mkdir(parents=True, exist_ok=True)
 
@@ -168,7 +176,7 @@ class SEIStudentDatesBot:
                 "Referer": referer,
             },
             data=payload,
-            timeout=60,
+            timeout=self.request_timeout_seconds,
             allow_redirects=True,
         )
         response.raise_for_status()
@@ -176,7 +184,7 @@ class SEIStudentDatesBot:
         return response
 
     def login(self, username: str, password: str) -> None:
-        response = self.session.get(LOGIN_URL, timeout=60)
+        response = self.session.get(LOGIN_URL, timeout=self.request_timeout_seconds)
         response.raise_for_status()
         self.update_viewstate(response)
         if not self.viewstate:
@@ -211,15 +219,26 @@ class SEIStudentDatesBot:
         )
         redirect = re.search(r'<redirect\s+url=["\']([^"\']+)["\']', response.text, flags=re.I)
         if redirect:
-            self.session.get(urljoin(BASE, html.unescape(redirect.group(1))), timeout=60).raise_for_status()
-        response = self.session.get(HOME_URL, timeout=60, allow_redirects=True)
+            self.session.get(
+                urljoin(BASE, html.unescape(redirect.group(1))),
+                timeout=self.request_timeout_seconds,
+            ).raise_for_status()
+        response = self.session.get(
+            HOME_URL,
+            timeout=self.request_timeout_seconds,
+            allow_redirects=True,
+        )
         response.raise_for_status()
         self.update_viewstate(response)
         if "index.xhtml" in response.url.lower():
             raise SEIStudentDatesError("Login não confirmado pelo SEI.")
 
     def abrir_pagina(self) -> None:
-        response = self.session.get(ALTER_URL, headers={"Referer": HOME_URL}, timeout=60)
+        response = self.session.get(
+            ALTER_URL,
+            headers={"Referer": HOME_URL},
+            timeout=self.request_timeout_seconds,
+        )
         response.raise_for_status()
         self.update_viewstate(response)
         self.save_debug("alteracoes_inicial.html", response)
@@ -227,7 +246,7 @@ class SEIStudentDatesBot:
             KNOWLEDGE_URL,
             params={"rota": "/alteracoesCadastraisMatricula.xhtml"},
             headers={"Referer": ALTER_URL},
-            timeout=60,
+            timeout=self.request_timeout_seconds,
         ).raise_for_status()
 
     def abrir_dialogo_aluno(self, nome: str) -> requests.Response:
@@ -530,6 +549,8 @@ def lookup_student_course_dates(
     targets: Iterable[dict[str, Any] | StudentDatesTarget],
     *,
     debug_dir: Path | None = None,
+    max_seconds: int | None = None,
+    request_timeout_seconds: int = 60,
 ) -> dict[str, Any]:
     prepared = [item if isinstance(item, StudentDatesTarget) else StudentDatesTarget.from_mapping(item) for item in targets]
     if not prepared:
@@ -537,10 +558,25 @@ def lookup_student_course_dates(
     if not str(username or "").strip() or not password:
         raise SEIStudentDatesError("Informe usuário e senha do SEI.")
 
-    bot = SEIStudentDatesBot(debug_dir=debug_dir, verbose=False)
+    bot = SEIStudentDatesBot(
+        debug_dir=debug_dir,
+        verbose=False,
+        request_timeout_seconds=request_timeout_seconds,
+    )
     bot.login(str(username).strip(), password)
     items: list[dict[str, Any]] = []
-    for target in prepared:
+    started = time.monotonic()
+    deferred_student_ids: list[int] = []
+    for index, target in enumerate(prepared):
+        # The budget is checked between students. We always allow at least one
+        # lookup so a slow SEI does not create a zero-progress retry loop.
+        if items and max_seconds is not None and (time.monotonic() - started) >= max(5, int(max_seconds)):
+            deferred_student_ids.extend(
+                int(item.student_id)
+                for item in prepared[index:]
+                if item.student_id is not None
+            )
+            break
         try:
             if not target.student_name or not target.student_code:
                 raise SEIStudentDatesError("Nome e matrícula são obrigatórios para consultar o aluno.")
@@ -581,5 +617,7 @@ def lookup_student_course_dates(
             "start_dates_found": start_found,
             "defenses_found": defenses_found,
         },
+        "deferred_student_ids": deferred_student_ids,
+        "elapsed_seconds": round(time.monotonic() - started, 3),
         "credentials_persisted": False,
     }

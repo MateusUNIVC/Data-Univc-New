@@ -1,8 +1,20 @@
 Data UNIVC v0.13.0 - PRODUCTION
 
 Base acadêmica: v0.11.6.7
-Schema esperado: 49
-Migration ledger: 049_academic_faculty_context_scopes_v0130.sql
+Schema esperado: 50
+Migration ledger: 050_dm_sei_student_refresh_queue_v0130.sql
+Patch operacional 2026-10-01 - Parte 17 DM fila persistente + lotes SEI:
+- migration 050 cria dm_sei_student_refresh_runs e dm_sei_student_refresh_items;
+- credenciais SEI permanecem somente em memoria e nunca entram na fila;
+- atualizacao individual passa a executar em pequenos lotes persistidos;
+- lotes parciais e requisicoes interrompidas preservam o trabalho pendente;
+- endpoint legado bloqueia selecoes maiores que o lote seguro;
+- frontend atual percorre os lotes sequencialmente e exibe progresso;
+- defaults: 4 alunos/lote, budget 30s, timeout HTTP SEI 15s;
+- regressao completa: 245 testes aprovados, 2 ignorados;
+- schema passa a 50 via 050_dm_sei_student_refresh_queue_v0130.sql.
+- detalhes em docs/PART17_DM_SEI_PERSISTENT_BATCH_QUEUE_2026-10-01.md.
+
 Hotfix operacional 2026-10-01 - DM · turmas fragmentadas no SEI:
 - parser consolida blocos do mesmo area_code + cohort_number quando o SEI divide uma turma em rotulos diferentes;
 - alunos distintos sao unidos e repeticoes identicas dentro da mesma turma sao deduplicadas;

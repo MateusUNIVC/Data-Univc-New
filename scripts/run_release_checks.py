@@ -198,6 +198,49 @@ def verify_dm_queue_foundation() -> None:
     if missing_frontend:
         raise SystemExit("DM queue foundation frontend markers missing: " + ", ".join(missing_frontend))
 
+
+def verify_dm_persistent_batch_queue() -> None:
+    router = (ROOT / "dm_router.py").read_text(encoding="utf-8")
+    repository = (ROOT / "dm_repository.py").read_text(encoding="utf-8")
+    models = (ROOT / "models.py").read_text(encoding="utf-8")
+    sei = (ROOT / "sei_student_dates.py").read_text(encoding="utf-8")
+    frontend = (ROOT / "static" / "js" / "dm.js").read_text(encoding="utf-8")
+    migration = (ROOT / "database" / SCHEMA_MIGRATION).read_text(encoding="utf-8")
+
+    required_router = [
+        'DM_SEI_REFRESH_BATCH_SIZE',
+        'DM_SEI_REFRESH_BATCH_BUDGET_SECONDS',
+        '@router.post("/api/dm/sei/refresh-runs")',
+        '@router.get("/api/dm/sei/refresh-runs/{run_id}")',
+        '@router.post("/api/dm/sei/refresh-runs/{run_id}/batch")',
+        'len(targets) > DM_SEI_REFRESH_BATCH_SIZE',
+    ]
+    missing = [token for token in required_router if token not in router]
+    if missing:
+        raise SystemExit("DM persistent queue router markers missing: " + ", ".join(missing))
+
+    required_repository = [
+        'create_sei_student_refresh_run', 'claim_sei_student_refresh_batch',
+        'finish_sei_student_refresh_batch', 'release_sei_student_refresh_batch',
+    ]
+    missing = [token for token in required_repository if token not in repository]
+    if missing:
+        raise SystemExit("DM persistent queue repository markers missing: " + ", ".join(missing))
+
+    for token in ('class DmSeiStudentRefreshRun', 'class DmSeiStudentRefreshItem'):
+        if token not in models:
+            raise SystemExit(f"DM persistent queue model missing: {token}")
+    for token in ('max_seconds', 'request_timeout_seconds', 'deferred_student_ids'):
+        if token not in sei:
+            raise SystemExit(f"DM bounded SEI lookup marker missing: {token}")
+    for token in ('/api/dm/sei/refresh-runs', 'while (run && !terminal.has(run.status)', 'Cada lote é salvo antes do próximo começar'):
+        if token not in frontend:
+            raise SystemExit(f"DM batch frontend marker missing: {token}")
+    if 'dm_sei_student_refresh_runs' not in migration or 'dm_sei_student_refresh_items' not in migration:
+        raise SystemExit("DM queue migration does not create both queue tables")
+    if 'password' in migration.lower() or 'senha' in migration.lower():
+        raise SystemExit("DM queue migration must never persist SEI credentials")
+
 def main() -> int:
     verify_critical_release_files()
     verify_academic_bootstrap_helpers()
@@ -205,6 +248,7 @@ def main() -> int:
     verify_reitoria_academic_overview()
     verify_dm_split_cohort_hotfix()
     verify_dm_queue_foundation()
+    verify_dm_persistent_batch_queue()
 
     py_files = [
         str(path.relative_to(ROOT))

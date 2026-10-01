@@ -1,3 +1,17 @@
+## Parte 17 - DM · fila persistente e processamento seguro em lotes (01/10/2026)
+
+- atualização individual de início/conclusão/titulação deixa de depender de uma única requisição longa;
+- nova fila persistente PostgreSQL registra execução + itens por aluno, sem armazenar credenciais SEI;
+- cada chamada processa poucos alunos e grava o resultado antes do lote seguinte;
+- itens não processados dentro do orçamento de tempo retornam para a fila;
+- falha individual não perde o progresso dos demais alunos;
+- endpoint legado bloqueia atualizações em massa para impedir retorno do 504 por clientes antigos;
+- frontend atual já percorre os lotes sequencialmente; pausa/retomada avançada ficará para a próxima etapa;
+- migration obrigatória `050_dm_sei_student_refresh_queue_v0130.sql`; schema esperado passa a **50**;
+- regressão completa: 245 testes aprovados e 2 ignorados.
+
+Detalhes: `docs/PART17_DM_SEI_PERSISTENT_BATCH_QUEUE_2026-10-01.md`.
+
 ## Parte 15 - convergência visual NPS e leitura institucional por curso (01/10/2026)
 
 - DTNH, DCS e Reitoria passam a usar o mesmo componente visual de distribuição NPS 0–10;
