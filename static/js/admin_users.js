@@ -335,13 +335,36 @@
   }
   function bindNav() {
     const links = [...document.querySelectorAll('[data-admin-nav]')];
-    const sync = () => {
-      const target = String(location.hash || '#visao').replace(/^#/, '') || 'visao';
-      links.forEach(item => item.classList.toggle('active', item.dataset.adminNav === target));
+    const pages = [...document.querySelectorAll('[data-reitoria-page]')];
+    const academicTargets = new Set(['nps', 'avaliacao-docente', 'notas']);
+    const pageMeta = {
+      nps: ['REITORIA · INDICADORES ACADÊMICOS', 'NPS', 'Acompanhe a percepção de alunos e docentes sobre a instituição e os cursos de DTNH e DCS.'],
+      'avaliacao-docente': ['REITORIA · INDICADORES ACADÊMICOS', 'Avaliação Docente', 'Favorabilidade dos professores avaliada pelos alunos, consolidada entre DTNH e DCS.'],
+      notas: ['REITORIA · INDICADORES ACADÊMICOS', 'Notas e Aprovação', 'Resultados acadêmicos de alunos e cursos de DTNH e DCS em uma única visão institucional.'],
+      visao: ['REITORIA · ADMINISTRAÇÃO', 'Controle Institucional', 'Gerencie usuários, acessos e as diretorias publicadas no Data UNIVC.'],
+      usuarios: ['REITORIA · ADMINISTRAÇÃO', 'Usuários e Acessos', 'Crie usuários, defina permissões e gerencie o acesso institucional.'],
+      auditoria: ['REITORIA · SEGURANÇA', 'Auditoria', 'Acompanhe autenticação, permissões, sessões e eventos administrativos recentes.'],
     };
-    links.forEach(link => link.addEventListener('click', () => {
-      links.forEach(item => item.classList.toggle('active', item === link));
-    }));
+    const normalizeTarget = () => {
+      const raw = String(location.hash || '#nps').replace(/^#/, '') || 'nps';
+      return pageMeta[raw] ? raw : 'nps';
+    };
+    const sync = () => {
+      const target = normalizeTarget();
+      links.forEach(item => item.classList.toggle('active', item.dataset.adminNav === target));
+      pages.forEach(page => page.classList.toggle('active', page.dataset.reitoriaPage === target));
+      const academic = academicTargets.has(target);
+      $('#reitoriaAcademicToolbar')?.classList.toggle('hidden', !academic);
+      document.body.classList.toggle('reitoria-admin-context', !academic);
+      $('#newUserButton')?.classList.toggle('hidden', target !== 'usuarios');
+      const meta = pageMeta[target];
+      if ($('#reitoriaPageEyebrow')) $('#reitoriaPageEyebrow').textContent = meta[0];
+      if ($('#reitoriaPageTitle')) $('#reitoriaPageTitle').textContent = meta[1];
+      if ($('#reitoriaPageDescription')) $('#reitoriaPageDescription').textContent = meta[2];
+      window.dispatchEvent(new CustomEvent('reitoria:pagechange', {detail:{target, academic}}));
+      if (!location.hash || !pageMeta[String(location.hash).replace(/^#/, '')]) history.replaceState(null, '', `#${target}`);
+    };
+    links.forEach(link => link.addEventListener('click', () => window.setTimeout(sync, 0)));
     window.addEventListener('hashchange', sync);
     sync();
   }

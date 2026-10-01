@@ -1261,3 +1261,9 @@ O pacote de produção não carrega mais um arquivo de release/patch/validação
 - mantém schema 49 sem migration nova;
 - regressão final: 208 testes aprovados e 2 ignorados.
 
+
+## 0.13.0 · Parte 13 · 2026-10-01
+
+- DM: consolida fragmentos seguros da mesma turma lógica no relatório SEI (`17-CTE` + `17-CTE Mestrado Univc`).
+- Reitoria: painel acadêmico reconstruído em telas NPS, Avaliação Docente e Notas/Aprovação; administração separada.
+- Sem migration nova; schema 49.

@@ -171,8 +171,9 @@ def test_reitoria_filters_can_reduce_to_one_directorate_and_course():
 def test_reitoria_academic_surface_is_read_only_and_present_in_navigation():
     html = (ROOT / "templates" / "reitoria.html").read_text(encoding="utf-8")
     js = (ROOT / "static" / "js" / "reitoria_academic.js").read_text(encoding="utf-8")
-    assert 'href="#academico"' in html
-    assert 'id="academico"' in html
+    assert 'href="#nps"' in html
+    assert 'href="#avaliacao-docente"' in html
+    assert 'href="#notas"' in html
     assert 'Todas · UNIVC' in html
     assert 'Somente leitura' in js
     assert '/api/reitoria/academic/overview' in js

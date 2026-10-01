@@ -3,6 +3,14 @@ Data UNIVC v0.13.0 - Production Validation
 Base academica: v0.11.6.7
 Schema: 49
 Migration obrigatoria acumulada: 049_academic_faculty_context_scopes_v0130.sql
+Hotfix operacional 2026-10-01 - DM · turmas fragmentadas no SEI:
+- parser consolida blocos do mesmo area_code + cohort_number quando o SEI divide uma turma em rotulos diferentes;
+- alunos distintos sao unidos e repeticoes identicas dentro da mesma turma sao deduplicadas;
+- conflitos reais de matricula/turma continuam bloqueados;
+- arquivo real 1790874693805.xlsx validado: CTE:17 = 51 alunos, 433 alunos no relatorio completo;
+- sem nova migration; schema permanece 49.
+- detalhes em docs/PART12_DM_SEI_SPLIT_COHORT_HOTFIX_2026-10-01.md.
+
 
 Parte 12 - Visão Acadêmica Geral da Reitoria (2026-10-01):
 - nova seção Indicadores Acadêmicos em /reitoria, somente leitura;
@@ -93,3 +101,17 @@ Checks finais Parte 9:
 - Release checks: OK
 
 Antes do deploy em producao, se a migration 049 ainda nao tiver sido aplicada, aplique-a no PostgreSQL antes de iniciar/recriar a aplicacao com REQUIRE_SCHEMA_VERSION=true.
+
+Parte 13 - DM Hotfix + Reitoria Academic Tabs (2026-10-01):
+- relatório real DM 1790874693805.xlsx: 13 turmas lógicas / 433 alunos;
+- CTE:17 consolidada: 51 alunos;
+- turma TESTE preservada como recorte separado e passível de exclusão;
+- Reitoria: telas isoladas NPS / Avaliação Docente / Notas e Aprovação;
+- Administração separada: Visão geral / Usuários e acessos / Auditoria;
+- backend institucional e require_fresh_reitoria preservados;
+- Python compile: OK;
+- JavaScript: 28/28 no node --check;
+- referências JavaScript dos templates: 28/28 presentes;
+- Pytest: 229 passed, 2 skipped;
+- Release checks: OK;
+- schema permanece 49; sem nova migration.

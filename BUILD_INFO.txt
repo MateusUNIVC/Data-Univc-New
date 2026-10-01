@@ -3,6 +3,14 @@ Data UNIVC v0.13.0 - PRODUCTION
 Base acadêmica: v0.11.6.7
 Schema esperado: 49
 Migration ledger: 049_academic_faculty_context_scopes_v0130.sql
+Hotfix operacional 2026-10-01 - DM · turmas fragmentadas no SEI:
+- parser consolida blocos do mesmo area_code + cohort_number quando o SEI divide uma turma em rotulos diferentes;
+- alunos distintos sao unidos e repeticoes identicas dentro da mesma turma sao deduplicadas;
+- conflitos reais de matricula/turma continuam bloqueados;
+- arquivo real 1790874693805.xlsx validado: CTE:17 = 51 alunos, 433 alunos no relatorio completo;
+- sem nova migration; schema permanece 49.
+- detalhes em docs/PART12_DM_SEI_SPLIT_COHORT_HOTFIX_2026-10-01.md.
+
 Perfil: production
 
 Patch operacional 2026-10-01 - Parte 12 visão acadêmica geral da Reitoria:
@@ -330,3 +338,18 @@ Principais mudancas Parte 9:
 - Excel Interativo oficial ganha base visivel NPS DISTRIBUICAO / TblNpsDistribuicao;
 - a media 0-10 e complementar e nao substitui a metodologia oficial do NPS;
 - regressao completa: 203 testes aprovados, 2 ignorados.
+
+Data UNIVC v0.13.0 - Parte 13 - DM Hotfix + Reitoria Academic Tabs
+Data: 2026-10-01
+Schema: 49 (sem nova migration)
+
+Principais mudanças Parte 13:
+- DM consolida blocos fisicos do SEI referentes à mesma turma lógica;
+- relatório real 1790874693805.xlsx validado: 13 turmas, 433 alunos, CTE:17 = 51 alunos;
+- conflitos reais de matrícula/turma continuam bloqueados;
+- Reitoria acadêmica reconstruída em telas NPS / Avaliação Docente / Notas e Aprovação;
+- Administração da Reitoria fica visualmente separada do painel acadêmico;
+- painel acadêmico abre por padrão em NPS;
+- disciplina é ocultada no NPS e mantida em Avaliação Docente / Notas;
+- backend ponderado da Parte 12 preservado;
+- regressão completa: 229 testes aprovados, 2 ignorados.

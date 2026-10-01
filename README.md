@@ -1494,3 +1494,13 @@ O Excel Interativo de DTNH/DCS deixa de ser beta. `/api/excel-interativo` gera `
 Os gráficos acadêmicos passam a respeitar a natureza da métrica: percentuais usam sempre 0–100, NPS usa -100–+100 e contagens começam em zero. Isso elimina eixos de aprovação acima de 100%, contagens negativas e distorções visuais de pequenas variações. Barras negativas de NPS também deixam de invadir o nome dos cursos, pois o valor passa a ocupar uma coluna separada.
 
 As três áreas de NPS (instituição/alunos, curso e instituição/docentes) passam a exibir a distribuição original das respostas de 0 a 10, com quantidade e percentual por nota, total de respondentes, média 0–10 complementar e NPS. O Excel Interativo oficial ganha a base visível `NPS DISTRIBUICAO`. Não há migration nova; o schema permanece 49. Consulte `docs/PART9_SEMANTIC_CHART_SCALES_NPS_DISTRIBUTION_2026-10-01.md`.
+
+## Hotfix DM — turmas fragmentadas pelo SEI (2026-10-01)
+
+A integração da Diretoria de Mestrado passa a consolidar automaticamente blocos físicos do relatório do SEI que apontem para a mesma área + número de turma. Isso cobre casos como `17-CTE` e `17-CTE Mestrado Univc`, que são a mesma turma lógica, sem remover as travas para matrículas em turmas diferentes ou dados conflitantes. Não há migration nova; o schema permanece 49.
+
+## Parte 13 — Hotfix DM + Reitoria acadêmica em abas (2026-10-01)
+
+A Diretoria de Mestrado passa a aceitar o formato real do SEI quando uma mesma turma é dividida em vários blocos físicos, consolidando com segurança os fragmentos da mesma área + número de turma. O arquivo real `1790874693805.xlsx` foi validado com 13 turmas lógicas e 433 alunos; `CTE:17` resulta em 51 alunos após a consolidação.
+
+Na Reitoria, os indicadores acadêmicos deixam de ficar empilhados na área administrativa. O painel passa a ter telas independentes para `NPS`, `Avaliação Docente` e `Notas e Aprovação`, com Administração separada em `Visão geral`, `Usuários e acessos` e `Auditoria`. O backend institucional ponderado da Parte 12 é preservado. Consulte `docs/PART13_DM_HOTFIX_REITORIA_TABS_2026-10-01.md`.

@@ -91,15 +91,16 @@ def verify_reitoria_academic_overview() -> None:
     backend = (ROOT / "reitoria_academic.py").read_text(encoding="utf-8")
     router = (ROOT / "reitoria_academic_router.py").read_text(encoding="utf-8")
     required_template = [
-        'href="#academico"', 'id="academico"', 'id="reitoriaAcademicDirectorate"',
-        'id="reitoriaKpiApproval"', 'id="reitoriaChartNpsCourses"',
+        'href="#nps"', 'href="#avaliacao-docente"', 'href="#notas"',
+        'data-reitoria-page="nps"', 'data-reitoria-page="avaliacao-docente"', 'data-reitoria-page="notas"',
+        'id="reitoriaAcademicDirectorate"', 'id="reitoriaKpiApproval"', 'id="reitoriaChartNpsCourses"',
     ]
     missing_template = [token for token in required_template if token not in template]
     if missing_template:
         raise SystemExit("Reitoria academic template tokens missing: " + ", ".join(missing_template))
     required_frontend = [
         "/api/reitoria/academic/filters", "/api/reitoria/academic/overview",
-        "DataUnivcAcademicCharts", "Todas · UNIVC",
+        "DataUnivcAcademicCharts", "Todas · UNIVC", "reitoria:pagechange", "renderActivePage(target)",
     ]
     missing_frontend = [token for token in required_frontend if token not in frontend]
     if missing_frontend:
@@ -114,11 +115,26 @@ def verify_reitoria_academic_overview() -> None:
     if "Depends(require_fresh_reitoria)" not in router:
         raise SystemExit("Reitoria academic endpoints are not protected by require_fresh_reitoria")
 
+
+
+def verify_dm_split_cohort_hotfix() -> None:
+    parser = (ROOT / "dm_sei_parser.py").read_text(encoding="utf-8")
+    required = [
+        "def _merge_split_cohort_blocks(",
+        "O SEI dividiu esta turma",
+        "dados conflitantes",
+        "cohorts, students, merge_warnings = _merge_split_cohort_blocks",
+    ]
+    missing = [token for token in required if token not in parser]
+    if missing:
+        raise SystemExit("DM split-cohort hotfix missing: " + ", ".join(missing))
+
 def main() -> int:
     verify_critical_release_files()
     verify_academic_bootstrap_helpers()
     verify_directorate_isolation_guards()
     verify_reitoria_academic_overview()
+    verify_dm_split_cohort_hotfix()
 
     py_files = [
         str(path.relative_to(ROOT))

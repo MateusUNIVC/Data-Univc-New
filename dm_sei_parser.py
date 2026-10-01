@@ -210,6 +210,139 @@ def _preferred_sheet(workbook) -> Any:
     return workbook[workbook.sheetnames[0]]
 
 
+def _merge_split_cohort_blocks(
+    cohorts: list[SEICohortBlock],
+    students: list[SEIStudentRow],
+) -> tuple[list[SEICohortBlock], list[SEIStudentRow], list[str]]:
+    """Consolidate SEI blocks that refer to the same logical cohort.
+
+    The legacy SEI report may emit the same area + cohort number more than once
+    under slightly different labels (for example ``17-CTE`` and
+    ``17-CTE Mestrado Univc``). Those blocks are fragments of one logical cohort,
+    not duplicate cohorts in Data UNIVC.
+
+    Safe consolidation rules:
+    * non-test fragments with the same key are merged;
+    * exact repeated student rows inside the same logical cohort are deduplicated;
+    * conflicting student data still blocks the import;
+    * a test/non-test collision is still blocked so the "ignore test cohorts"
+      policy cannot silently mix homologation data with a real cohort.
+    """
+
+    grouped: dict[str, list[SEICohortBlock]] = {}
+    for block in cohorts:
+        grouped.setdefault(block.key, []).append(block)
+
+    students_by_key: dict[str, list[SEIStudentRow]] = {}
+    for row in students:
+        students_by_key.setdefault(f"{row.area_code}:{row.cohort_number}", []).append(row)
+
+    merged_cohorts: list[SEICohortBlock] = []
+    merged_students: list[SEIStudentRow] = []
+    merge_warnings: list[str] = []
+
+    for key, blocks in grouped.items():
+        cohort_students = students_by_key.get(key, [])
+        if len(blocks) == 1:
+            merged_cohorts.append(blocks[0])
+            merged_students.extend(cohort_students)
+            continue
+
+        test_flags = {bool(block.is_test) for block in blocks}
+        if len(test_flags) > 1:
+            raise DMSEIParseError(
+                "O relatório usa o mesmo número de turma para um bloco real e um bloco de teste.",
+                details=[
+                    {
+                        "cohort_key": key,
+                        "labels": [block.raw_label for block in blocks],
+                        "error": "Não é seguro consolidar turma real com TESTE/DEMO/HOMOLOGAÇÃO.",
+                    }
+                ],
+            )
+
+        seen: dict[str, SEIStudentRow] = {}
+        repeated_identical = 0
+        conflicts: list[dict[str, Any]] = []
+        for row in cohort_students:
+            code_key = row.student_code.casefold()
+            previous = seen.get(code_key)
+            if previous is None:
+                seen[code_key] = row
+                continue
+            same_name = _norm(previous.student_name) == _norm(row.student_name)
+            same_status = (
+                previous.mapped_status == row.mapped_status
+                and bool(previous.review_required) == bool(row.review_required)
+            )
+            if same_name and same_status:
+                repeated_identical += 1
+                continue
+            conflicts.append(
+                {
+                    "cohort_key": key,
+                    "student_code": row.student_code,
+                    "first_row": previous.row_number,
+                    "duplicate_row": row.row_number,
+                    "first_name": previous.student_name,
+                    "duplicate_name": row.student_name,
+                    "first_status": previous.raw_status,
+                    "duplicate_status": row.raw_status,
+                    "error": "A mesma matrícula possui dados incompatíveis em blocos da mesma turma.",
+                }
+            )
+        if conflicts:
+            raise DMSEIParseError(
+                "O SEI repetiu a mesma turma com dados conflitantes para um ou mais alunos.",
+                details=conflicts,
+            )
+
+        # Keep the most descriptive SEI label for auditing while preserving the
+        # earliest physical position of the logical cohort in the workbook.
+        canonical = blocks[0]
+        labels: list[str] = []
+        for block in blocks:
+            label = str(block.raw_label or "").strip()
+            if label and label not in labels:
+                labels.append(label)
+        if labels:
+            canonical.raw_label = max(labels, key=lambda value: (len(value), value))
+        canonical.row_start = min(block.row_start for block in blocks)
+        canonical.student_count = len(seen)
+        canonical.is_test = blocks[0].is_test
+
+        # In split blocks with disjoint students (the normal SEI behaviour), the
+        # declared totals are additive. If rows were repeated, use the actual
+        # unique count so diagnostics remain truthful rather than double-counting.
+        declared = [block.declared_total for block in blocks]
+        if repeated_identical == 0 and all(value is not None for value in declared):
+            canonical.declared_total = sum(int(value or 0) for value in declared)
+        else:
+            canonical.declared_total = len(seen)
+
+        combined_warnings: list[str] = []
+        for block in blocks:
+            combined_warnings.extend(block.warnings)
+        canonical.warnings = combined_warnings
+        canonical.warnings.append(
+            "O SEI dividiu esta turma em "
+            f"{len(blocks)} blocos ({', '.join(labels) or key}); "
+            f"o Data UNIVC consolidou automaticamente {len(seen)} aluno(s)."
+        )
+        if repeated_identical:
+            canonical.warnings.append(
+                f"{repeated_identical} linha(s) de aluno repetida(s) de forma idêntica foram ignoradas durante a consolidação."
+            )
+
+        merged_cohorts.append(canonical)
+        merged_students.extend(seen.values())
+
+    # Preserve workbook order in previews and synchronization.
+    merged_cohorts.sort(key=lambda block: block.row_start)
+    merged_students.sort(key=lambda row: row.row_number)
+    return merged_cohorts, merged_students, merge_warnings
+
+
 def parse_dm_sei_workbook(path: str | Path) -> DMSEIReport:
     source = Path(path)
     if not source.exists():
@@ -362,13 +495,8 @@ def parse_dm_sei_workbook(path: str | Path) -> DMSEIReport:
     if not students:
         raise DMSEIParseError("Nenhum aluno foi encontrado nos blocos de turmas do relatório do SEI.")
 
-    cohort_keys = [row.key for row in cohorts]
-    duplicate_cohorts = sorted({key for key in cohort_keys if cohort_keys.count(key) > 1})
-    if duplicate_cohorts:
-        raise DMSEIParseError(
-            "O relatório contém blocos repetidos para a mesma área e turma.",
-            details=[{"cohort_key": key, "error": "Bloco duplicado."} for key in duplicate_cohorts],
-        )
+    cohorts, students, merge_warnings = _merge_split_cohort_blocks(cohorts, students)
+    warnings.extend(merge_warnings)
 
     seen_students: dict[str, SEIStudentRow] = {}
     duplicate_students: list[dict[str, Any]] = []

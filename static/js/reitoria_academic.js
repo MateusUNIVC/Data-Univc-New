@@ -48,6 +48,7 @@
     setKpi('#reitoriaKpiNpsInstitution',ni.valor==null?'—':number(ni.valor,1),`${integer(ni.respondentes)} respondentes`);
     setKpi('#reitoriaKpiNpsCourses',nc.valor==null?'—':number(nc.valor,1),`${integer(nc.respondentes)} respostas de cursos`);
     setKpi('#reitoriaKpiFaculty',fav.value==null?'—':`${number(fav.value,1)}%`,`${integer(fav.participations)} participações`);
+    setKpi('#reitoriaKpiFacultyParticipations',integer(fav.participations), 'respostas classificadas');
     setKpi('#reitoriaKpiApproval',ap.value==null?'—':`${number(ap.value,1)}%`,`${integer(ap.approved)} de ${integer(ap.finalized)} finalizados`);
     setKpi('#reitoriaKpiAverageGrade',avg.value==null?'—':number(avg.value,2),`${integer(avg.grade_count)} notas válidas`);
     setKpi('#reitoriaKpiStudents',integer(students.value),`${integer(students.result_records)} resultados disciplinares`);
@@ -92,6 +93,20 @@
 
   function render(){renderScope();renderKpis();renderNps();renderFaculty();renderResults();renderNotes();}
 
+  function renderActivePage(target){
+    if(!state.overview)return;
+    if(target==='nps')renderNps();
+    else if(target==='avaliacao-docente')renderFaculty();
+    else if(target==='notas')renderResults();
+  }
+
+  function syncAcademicPage(target){
+    const academic=['nps','avaliacao-docente','notas'].includes(target);
+    if(!academic)return;
+    $('#reitoriaAcademicDisciplineField')?.classList.toggle('hidden', target==='nps');
+    window.setTimeout(()=>renderActivePage(target),0);
+  }
+
   function setLoading(message='Carregando indicadores acadêmicos…'){$('#reitoriaAcademicStatus').textContent=message;$('#reitoriaAcademicStatus').classList.add('loading');}
   function setReady(){$('#reitoriaAcademicStatus').textContent='Dados consolidados diretamente das bases oficiais do Data UNIVC.';$('#reitoriaAcademicStatus').classList.remove('loading');}
   function setError(error){$('#reitoriaAcademicStatus').textContent=error.message||'Não foi possível carregar os indicadores.';$('#reitoriaAcademicStatus').classList.remove('loading');}
@@ -127,10 +142,13 @@
   }
 
   async function start(){
-    if(!$('#academico'))return;
+    if(!$('#reitoriaAcademicToolbar'))return;
     const identity=await window.DataUnivcIdentity.load();
     if(!identity?.globalAccess)return;
-    bind();await reload({filters:true});
+    bind();
+    window.addEventListener('reitoria:pagechange',event=>syncAcademicPage(event.detail?.target||'nps'));
+    syncAcademicPage(String(location.hash||'#nps').replace(/^#/,''));
+    await reload({filters:true});
   }
 
   start().catch(error=>{console.error(error);setError(error);});

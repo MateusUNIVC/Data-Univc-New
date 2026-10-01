@@ -12,20 +12,25 @@
 <body>
   <div class="reitoria-shell">
     <aside class="reitoria-sidebar" id="reitoriaSidebar" aria-label="Navegação da Reitoria">
-      <a class="reitoria-brand" href="/reitoria" aria-label="Data UNIVC — Reitoria">
+      <a class="reitoria-brand" href="/reitoria#nps" aria-label="Data UNIVC — Reitoria">
         <img src="/static/img/univc-logo.png" alt="UNIVC">
-        <span><strong>Data UNIVC</strong><small>Área da Reitoria</small></span>
+        <span><strong>Data UNIVC</strong><small>Reitoria · visão institucional</small></span>
       </a>
       <button id="reitoriaSidebarClose" class="reitoria-sidebar-close" type="button" aria-label="Fechar menu">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
 
       <nav class="reitoria-nav" aria-label="Navegação da Reitoria">
+        <span class="nav-caption">Painel acadêmico</span>
+        <a href="#nps" class="reitoria-nav-item active" data-admin-nav="nps">NPS</a>
+        <a href="#avaliacao-docente" class="reitoria-nav-item" data-admin-nav="avaliacao-docente">Avaliação Docente</a>
+        <a href="#notas" class="reitoria-nav-item" data-admin-nav="notas">Notas e Aprovação</a>
+
         <span class="nav-caption">Administração</span>
-        <a href="#visao" class="reitoria-nav-item active" data-admin-nav="visao">Visão geral</a>
-        <a href="#academico" class="reitoria-nav-item" data-admin-nav="academico">Indicadores Acadêmicos</a>
+        <a href="#visao" class="reitoria-nav-item" data-admin-nav="visao">Visão geral</a>
         <a href="#usuarios" class="reitoria-nav-item" data-admin-nav="usuarios">Usuários e acessos</a>
         <a href="#auditoria" class="reitoria-nav-item" data-admin-nav="auditoria">Auditoria</a>
+
         <span class="nav-caption">Diretorias</span>
         <div id="sidebarDirectorates" class="sidebar-directorates"></div>
       </nav>
@@ -45,113 +50,105 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
           <div>
-            <span class="eyebrow">DATA UNIVC · ADMINISTRAÇÃO INSTITUCIONAL</span>
-            <h1>Área da Reitoria</h1>
-            <p>Acompanhe os indicadores acadêmicos consolidados e gerencie identidades, permissões e acessos institucionais em um único lugar.</p>
+            <span id="reitoriaPageEyebrow" class="eyebrow">REITORIA · INDICADORES ACADÊMICOS</span>
+            <h1 id="reitoriaPageTitle">NPS</h1>
+            <p id="reitoriaPageDescription">Acompanhe a percepção de alunos e docentes sobre a instituição e os cursos de DTNH e DCS.</p>
           </div>
         </div>
-        <button id="newUserButton" class="button primary" type="button">+ Novo usuário</button>
+        <button id="newUserButton" class="button primary hidden" type="button">+ Novo usuário</button>
       </header>
 
-      <section id="visao" class="reitoria-section">
-        <div class="section-heading"><div><span class="eyebrow">VISÃO GERAL</span><h2>Controle institucional</h2><p>Resumo dos usuários ativos e das diretorias atualmente publicadas no Data UNIVC.</p></div></div>
+      <div id="reitoriaAcademicToolbar" class="reitoria-academic-toolbar">
+        <div class="reitoria-academic-tabs" role="tablist" aria-label="Indicadores acadêmicos da Reitoria">
+          <a href="#nps" data-admin-nav="nps" class="academic-tab active">NPS</a>
+          <a href="#avaliacao-docente" data-admin-nav="avaliacao-docente" class="academic-tab">Avaliação Docente</a>
+          <a href="#notas" data-admin-nav="notas" class="academic-tab">Notas e Aprovação</a>
+        </div>
+        <div class="academic-filter-panel" aria-label="Filtros da visão acadêmica">
+          <label><span>Semestre</span><select id="reitoriaAcademicSemester"></select></label>
+          <label><span>Diretoria</span><select id="reitoriaAcademicDirectorate"><option value="ALL">Todas · UNIVC</option></select></label>
+          <label><span>Curso</span><select id="reitoriaAcademicCourse"><option value="">Todos os cursos</option></select></label>
+          <label id="reitoriaAcademicDisciplineField"><span>Disciplina</span><select id="reitoriaAcademicDiscipline"><option value="">Todas as disciplinas</option></select></label>
+          <button id="reitoriaAcademicRefresh" class="button secondary academic-refresh" type="button">Atualizar</button>
+        </div>
+        <div class="academic-toolbar-foot">
+          <div><div id="reitoriaAcademicStatus" class="academic-status">Carregando indicadores acadêmicos…</div><div id="reitoriaAcademicScope" class="academic-scope-line"></div></div>
+          <details class="academic-methodology compact-methodology"><summary>Metodologia do consolidado</summary><ul id="reitoriaAcademicMethodology"></ul></details>
+        </div>
+      </div>
+
+      <section id="nps" class="reitoria-section reitoria-page reitoria-academic-page active" data-reitoria-page="nps">
+        <div class="academic-page-heading">
+          <div><span class="eyebrow">EXPERIÊNCIA ACADÊMICA</span><h2>NPS · Alunos e Docentes</h2><p>NPS institucional, NPS dos cursos e NPS dos docentes em uma leitura única de DTNH e DCS.</p></div>
+        </div>
+        <div class="academic-kpi-grid academic-kpi-grid-3">
+          <article id="reitoriaKpiNpsInstitution" class="academic-kpi-card"><span>NPS Instituição · Alunos</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiNpsCourses" class="academic-kpi-card"><span>NPS dos Cursos</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiFacultyNps" class="academic-kpi-card"><span>NPS Instituição · Docentes</span><strong>—</strong><small>—</small></article>
+        </div>
+        <div class="academic-grid-main">
+          <article class="academic-panel"><div class="academic-panel-head"><div><span class="eyebrow">01A</span><h3>NPS da Instituição · Alunos</h3><p>Evolução institucional consolidada.</p></div><span class="chart-unit">pontos</span></div><div id="reitoriaChartNpsInstitution" class="reitoria-chart"></div></article>
+          <article class="academic-panel"><div class="academic-panel-head"><div><span class="eyebrow">01C</span><h3>NPS da Instituição · Docentes</h3><p>Leitura institucional e anônima.</p></div><span class="chart-unit">pontos</span></div><div id="reitoriaChartNpsFaculty" class="reitoria-chart"></div></article>
+          <article class="academic-panel academic-panel-wide"><div class="academic-panel-head"><div><span class="eyebrow">01B</span><h3>NPS por curso</h3><p>Todos os cursos de DTNH e DCS no semestre selecionado.</p></div><span class="chart-unit">pontos</span></div><div id="reitoriaChartNpsCourses" class="reitoria-chart bar-chart"></div></article>
+          <article class="academic-panel"><div class="academic-panel-head"><div><h3>Distribuição 0–10 · Instituição</h3><p>Notas dos alunos que compõem o NPS institucional.</p></div></div><div id="reitoriaNpsInstitutionDistribution" class="reitoria-distribution"></div></article>
+          <article class="academic-panel"><div class="academic-panel-head"><div><h3>Distribuição 0–10 · Curso</h3><p>Notas que compõem o NPS dos cursos do recorte.</p></div></div><div id="reitoriaNpsCourseDistribution" class="reitoria-distribution"></div></article>
+          <article class="academic-panel academic-panel-wide"><div class="academic-panel-head"><div><h3>Evolução do NPS dos Cursos</h3><p>Agregado pelas respostas reais, sem média de NPS entre diretorias.</p></div><span class="chart-unit">pontos</span></div><div id="reitoriaChartNpsCoursesHistory" class="reitoria-chart"></div></article>
+          <article class="academic-panel academic-panel-wide"><div class="academic-panel-head"><div><h3>Distribuição 0–10 · Docentes</h3><p>Notas originais da recomendação institucional dos docentes.</p></div></div><div id="reitoriaNpsFacultyDistribution" class="reitoria-distribution"></div></article>
+        </div>
+      </section>
+
+      <section id="avaliacao-docente" class="reitoria-section reitoria-page reitoria-academic-page" data-reitoria-page="avaliacao-docente">
+        <div class="academic-page-heading">
+          <div><span class="eyebrow">AVALIAÇÃO DOCENTE</span><h2>Avaliação do Professor pelo Aluno</h2><p>Favorabilidade consolidada de DTNH e DCS, com leitura por curso e disciplina.</p></div>
+        </div>
+        <div class="academic-kpi-grid academic-kpi-grid-3">
+          <article id="reitoriaKpiFaculty" class="academic-kpi-card"><span>Favorabilidade</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiFacultyParticipations" class="academic-kpi-card"><span>Participações</span><strong>—</strong><small>respostas classificadas</small></article>
+          <article class="academic-kpi-card"><span>Escala</span><strong>0–100%</strong><small>mesma regra de DTNH e DCS</small></article>
+        </div>
+        <div class="academic-grid-main">
+          <article class="academic-panel"><div class="academic-panel-head"><div><h3>Evolução da favorabilidade</h3><p>Histórico por semestre no recorte selecionado.</p></div><span class="chart-unit">%</span></div><div id="reitoriaChartFacultyHistory" class="reitoria-chart"></div></article>
+          <article class="academic-panel"><div class="academic-panel-head"><div><h3>Favorabilidade por curso</h3><p>Comparação de DTNH e DCS na mesma escala.</p></div><span class="chart-unit">%</span></div><div id="reitoriaChartFacultyCourses" class="reitoria-chart bar-chart"></div></article>
+        </div>
+        <div class="academic-note"><strong>Turmas compartilhadas:</strong> o consolidado institucional deduplica o contexto antes de somar respostas, evitando dobrar a participação quando uma mesma turma atende mais de um curso.</div>
+      </section>
+
+      <section id="notas" class="reitoria-section reitoria-page reitoria-academic-page" data-reitoria-page="notas">
+        <div class="academic-page-heading">
+          <div><span class="eyebrow">RESULTADOS ACADÊMICOS</span><h2>Notas e Aprovação</h2><p>Acompanhe aprovação, média das notas e alunos de todos os cursos de DTNH e DCS.</p></div>
+        </div>
+        <div class="academic-kpi-grid academic-kpi-grid-3">
+          <article id="reitoriaKpiApproval" class="academic-kpi-card"><span>Taxa de Aprovação</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiAverageGrade" class="academic-kpi-card"><span>Média das Notas</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiStudents" class="academic-kpi-card"><span>Alunos Distintos</span><strong>—</strong><small>—</small></article>
+        </div>
+        <div class="academic-grid-main">
+          <article class="academic-panel"><div class="academic-panel-head"><div><h3>Evolução da taxa de aprovação</h3><p>Escala fixa de 0 a 100%.</p></div><span class="chart-unit">%</span></div><div id="reitoriaChartApprovalHistory" class="reitoria-chart"></div></article>
+          <article class="academic-panel"><div class="academic-panel-head"><div><h3>Evolução da média das notas</h3><p>Escala acadêmica de 0 a 10.</p></div><span class="chart-unit">nota</span></div><div id="reitoriaChartGradeHistory" class="reitoria-chart"></div></article>
+          <article class="academic-panel"><div class="academic-panel-head"><div><h3>Alunos distintos</h3><p>Quantidade de alunos no recorte; eixo sempre inicia em zero.</p></div><span class="chart-unit">alunos</span></div><div id="reitoriaChartStudentsHistory" class="reitoria-chart"></div></article>
+          <article class="academic-panel"><div class="academic-panel-head"><div><h3>Aprovação por curso</h3><p>Comparação institucional entre os cursos.</p></div><span class="chart-unit">%</span></div><div id="reitoriaChartApprovalCourses" class="reitoria-chart bar-chart"></div></article>
+        </div>
+      </section>
+
+      <section id="visao" class="reitoria-section reitoria-page" data-reitoria-page="visao">
+        <div class="section-heading"><div><span class="eyebrow">ADMINISTRAÇÃO</span><h2>Controle institucional</h2><p>Resumo dos usuários ativos e das diretorias atualmente publicadas no Data UNIVC.</p></div></div>
         <div class="summary-grid" aria-label="Resumo de acessos">
           <article class="summary-card"><span>Usuários</span><strong id="summaryUsers">—</strong><small>cadastrados</small></article>
           <article class="summary-card"><span>Ativos</span><strong id="summaryActive">—</strong><small>com acesso liberado</small></article>
           <article class="summary-card"><span>Com edição</span><strong id="summaryEdit">—</strong><small>em alguma diretoria</small></article>
           <article class="summary-card"><span>Sessões</span><strong id="summarySessions">—</strong><small>famílias ativas</small></article>
         </div>
-        <div class="directorate-panel">
-          <div class="panel-head"><div><h3>Diretorias disponíveis</h3><p>A Reitoria possui acesso de edição às áreas atualmente publicadas.</p></div></div>
-          <div id="directorateCards" class="directorate-grid"></div>
-        </div>
+        <div class="directorate-panel"><div class="panel-head"><div><h3>Diretorias disponíveis</h3><p>A Reitoria possui acesso de edição às áreas atualmente publicadas.</p></div></div><div id="directorateCards" class="directorate-grid"></div></div>
       </section>
 
-      <section id="academico" class="reitoria-section reitoria-academic-section">
-        <div class="section-heading academic-section-heading">
-          <div>
-            <span class="eyebrow">VISÃO ACADÊMICA INSTITUCIONAL</span>
-            <h2>Indicadores Acadêmicos</h2>
-            <p>DTNH e DCS consolidados em uma única leitura institucional. Os indicadores são recalculados pelas contagens-base, sem média simples entre diretorias.</p>
-          </div>
-          <button id="reitoriaAcademicRefresh" class="button secondary" type="button">Atualizar dados</button>
-        </div>
-
-        <div class="academic-filter-panel" aria-label="Filtros da visão acadêmica">
-          <label><span>Semestre</span><select id="reitoriaAcademicSemester"></select></label>
-          <label><span>Diretoria</span><select id="reitoriaAcademicDirectorate"><option value="ALL">Todas · UNIVC</option></select></label>
-          <label><span>Curso</span><select id="reitoriaAcademicCourse"><option value="">Todos os cursos</option></select></label>
-          <label><span>Disciplina</span><select id="reitoriaAcademicDiscipline"><option value="">Todas as disciplinas</option></select></label>
-        </div>
-        <div id="reitoriaAcademicStatus" class="academic-status">Carregando indicadores acadêmicos…</div>
-        <div id="reitoriaAcademicScope" class="academic-scope-line"></div>
-
-        <div class="academic-kpi-grid" aria-label="Resumo acadêmico institucional">
-          <article id="reitoriaKpiNpsInstitution" class="academic-kpi-card"><span>NPS Instituição · Alunos</span><strong>—</strong><small>—</small></article>
-          <article id="reitoriaKpiNpsCourses" class="academic-kpi-card"><span>NPS dos Cursos</span><strong>—</strong><small>—</small></article>
-          <article id="reitoriaKpiFaculty" class="academic-kpi-card"><span>Avaliação Docente pelo Aluno</span><strong>—</strong><small>—</small></article>
-          <article id="reitoriaKpiApproval" class="academic-kpi-card"><span>Taxa de Aprovação</span><strong>—</strong><small>—</small></article>
-          <article id="reitoriaKpiAverageGrade" class="academic-kpi-card"><span>Média das Notas</span><strong>—</strong><small>—</small></article>
-          <article id="reitoriaKpiStudents" class="academic-kpi-card"><span>Alunos Distintos</span><strong>—</strong><small>—</small></article>
-          <article id="reitoriaKpiFacultyNps" class="academic-kpi-card"><span>NPS Instituição · Docentes</span><strong>—</strong><small>—</small></article>
-        </div>
-
-        <div class="academic-block">
-          <div class="academic-block-head"><div><span class="eyebrow">NPS</span><h3>Experiência institucional e dos cursos</h3><p>Escala fixa de −100 a +100 e distribuição das notas originais de 0 a 10.</p></div></div>
-          <div class="academic-chart-grid">
-            <article class="academic-chart-card"><h4>NPS Institucional · Alunos</h4><p>Evolução consolidada das diretorias selecionadas.</p><div id="reitoriaChartNpsInstitution" class="reitoria-chart"></div></article>
-            <article class="academic-chart-card"><h4>NPS dos Cursos · evolução</h4><p>Agregado pelas respostas dos cursos, sem média de NPS.</p><div id="reitoriaChartNpsCoursesHistory" class="reitoria-chart"></div></article>
-            <article class="academic-chart-card span-2"><h4>NPS por curso</h4><p>Todos os cursos do recorte lado a lado; cada curso mantém a identificação da diretoria.</p><div id="reitoriaChartNpsCourses" class="reitoria-chart bar-chart"></div></article>
-            <article class="academic-chart-card"><h4>Distribuição 0–10 · Instituição</h4><p>Quando um curso é selecionado, esta distribuição usa o recorte do curso preservado na fonte institucional.</p><div id="reitoriaNpsInstitutionDistribution" class="reitoria-distribution"></div></article>
-            <article class="academic-chart-card"><h4>Distribuição 0–10 · Curso</h4><p>Distribuição da pergunta oficial de recomendação do curso.</p><div id="reitoriaNpsCourseDistribution" class="reitoria-distribution"></div></article>
-            <article class="academic-chart-card"><h4>NPS Institucional · Docentes</h4><p>População anônima e institucional; não possui filtro por curso.</p><div id="reitoriaChartNpsFaculty" class="reitoria-chart"></div></article>
-            <article class="academic-chart-card"><h4>Distribuição 0–10 · Docentes</h4><p>Notas originais que compõem o NPS institucional dos docentes.</p><div id="reitoriaNpsFacultyDistribution" class="reitoria-distribution"></div></article>
-          </div>
-        </div>
-
-        <div class="academic-block">
-          <div class="academic-block-head"><div><span class="eyebrow">AVALIAÇÃO DOCENTE</span><h3>Avaliação do professor pelo aluno</h3><p>Favorabilidade calculada pelas respostas classificadas das perguntas de docente.</p></div></div>
-          <div class="academic-chart-grid">
-            <article class="academic-chart-card"><h4>Evolução da favorabilidade</h4><p>Percentual fixo de 0 a 100%.</p><div id="reitoriaChartFacultyHistory" class="reitoria-chart"></div></article>
-            <article class="academic-chart-card"><h4>Favorabilidade por curso</h4><p>Turmas compartilhadas são deduplicadas no total institucional.</p><div id="reitoriaChartFacultyCourses" class="reitoria-chart bar-chart"></div></article>
-          </div>
-        </div>
-
-        <div class="academic-block">
-          <div class="academic-block-head"><div><span class="eyebrow">RESULTADOS ACADÊMICOS</span><h3>Aprovação, notas e alunos</h3><p>Consolidação de todos os resultados acadêmicos do recorte selecionado.</p></div></div>
-          <div class="academic-chart-grid">
-            <article class="academic-chart-card"><h4>Evolução da taxa de aprovação</h4><p>Escala fixa de 0 a 100%.</p><div id="reitoriaChartApprovalHistory" class="reitoria-chart"></div></article>
-            <article class="academic-chart-card"><h4>Evolução da média das notas</h4><p>Escala acadêmica de 0 a 10.</p><div id="reitoriaChartGradeHistory" class="reitoria-chart"></div></article>
-            <article class="academic-chart-card"><h4>Alunos distintos</h4><p>Contagem sempre inicia em zero.</p><div id="reitoriaChartStudentsHistory" class="reitoria-chart"></div></article>
-            <article class="academic-chart-card"><h4>Aprovação por curso</h4><p>Comparação institucional no semestre selecionado.</p><div id="reitoriaChartApprovalCourses" class="reitoria-chart bar-chart"></div></article>
-          </div>
-        </div>
-
-        <div class="academic-methodology">
-          <strong>Regras de consolidação</strong>
-          <ul id="reitoriaAcademicMethodology"></ul>
-        </div>
-      </section>
-
-      <section id="usuarios" class="reitoria-section admin-panel">
-        <div class="panel-head">
-          <div><span class="eyebrow">IDENTIDADE & ACESSO</span><h2>Usuários e acessos</h2><p>Crie a identidade, defina e-mail, senha e permissões e altere usuários já existentes.</p></div>
-          <label class="search-field"><span>Buscar</span><input id="userSearch" type="search" placeholder="Nome ou e-mail" autocomplete="off"></label>
-        </div>
+      <section id="usuarios" class="reitoria-section reitoria-page admin-panel" data-reitoria-page="usuarios">
+        <div class="panel-head"><div><span class="eyebrow">IDENTIDADE & ACESSO</span><h2>Usuários e acessos</h2><p>Crie a identidade, defina e-mail, senha e permissões e altere usuários já existentes.</p></div><label class="search-field"><span>Buscar</span><input id="userSearch" type="search" placeholder="Nome ou e-mail" autocomplete="off"></label></div>
         <div id="usersStatus" class="status-line">Carregando usuários…</div>
-        <div class="table-wrap">
-          <table class="users-table">
-            <thead><tr><th>Usuário</th><th>Tipo</th><th>Diretorias</th><th>Status</th><th>Último acesso</th><th>Sessões</th><th></th></tr></thead>
-            <tbody id="usersBody"></tbody>
-          </table>
-        </div>
+        <div class="table-wrap"><table class="users-table"><thead><tr><th>Usuário</th><th>Tipo</th><th>Diretorias</th><th>Status</th><th>Último acesso</th><th>Sessões</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div>
       </section>
 
-      <section id="auditoria" class="reitoria-section admin-panel audit-panel">
-        <div class="panel-head">
-          <div><span class="eyebrow">SEGURANÇA</span><h2>Auditoria</h2><p>Histórico recente de autenticação, alterações de perfil, permissões e sessões.</p></div>
-          <button id="refreshAuditButton" class="button secondary" type="button">Atualizar</button>
-        </div>
+      <section id="auditoria" class="reitoria-section reitoria-page admin-panel audit-panel" data-reitoria-page="auditoria">
+        <div class="panel-head"><div><span class="eyebrow">SEGURANÇA</span><h2>Auditoria</h2><p>Histórico recente de autenticação, alterações de perfil, permissões e sessões.</p></div><button id="refreshAuditButton" class="button secondary" type="button">Atualizar</button></div>
         <div id="auditList" class="audit-list"></div>
       </section>
     </main>
