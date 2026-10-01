@@ -5,8 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_production_release_metadata():
     assert release_info.APP_VERSION == "0.13.0"
-    assert release_info.SCHEMA_VERSION == 50
-    assert release_info.SCHEMA_MIGRATION == "050_dm_sei_student_refresh_queue_v0130.sql"
+    assert release_info.SCHEMA_VERSION == 51
+    assert release_info.SCHEMA_MIGRATION == "051_dm_sei_refresh_queue_controls_v0130.sql"
 
 def test_production_examples_are_hardened():
     env = (ROOT / ".env.example").read_text(encoding="utf-8")

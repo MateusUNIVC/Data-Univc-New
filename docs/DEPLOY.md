@@ -1,3 +1,26 @@
+# v0.13.0 · Parte 18 — migration 051 obrigatória
+
+A Parte 18 completa o DM-QUEUE-04 e exige:
+
+```text
+database/051_dm_sei_refresh_queue_controls_v0130.sql
+```
+
+A migration **não cria novas credenciais ou payloads**. Ela apenas amplia o estado da fila persistente criada na migration 050 para aceitar `PAUSED` e atualiza o ledger para **schema 51**.
+
+Ordem de produção recomendada:
+
+1. código da Parte 17/18 disponível na VPS;
+2. confirmar que a migration 050 já existe/aplicada;
+3. aplicar a migration 051;
+4. confirmar `data_univc_schema_version = 51`;
+5. rebuild/recreate do app;
+6. abrir `/dm` com atualização forçada do navegador na primeira validação.
+
+O DM usa um sufixo próprio de assets para quebrar cache automaticamente nesta correção.
+
+---
+
 # v0.13.0 · Parte 17 — migration 050 obrigatória
 
 A fila persistente de atualização individual da Diretoria de Mestrado exige a migration:

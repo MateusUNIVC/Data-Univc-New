@@ -20,6 +20,9 @@ const state = {
   graduationPreview: null,
   seiRefreshScope: null,
   seiRefreshRunId: null,
+  seiRefreshRuns: [],
+  seiRefreshPauseRequested: false,
+  seiRefreshProcessing: false,
   seiLastSelectedCohortIds: [],
   targetCatalog: null,
   targets: [],
@@ -136,7 +139,7 @@ function showSection(section) {
   };
   $('#dmPageTitle').textContent = titles[section] || 'Diretoria de Mestrado';
   if (section === 'alunos') loadStudents().catch(handleError);
-  if (section === 'sei') Promise.all([loadQuality(), loadSeiHistory()]).catch(handleError);
+  if (section === 'sei') Promise.all([loadQuality(), loadSeiHistory(), loadSeiRefreshRuns()]).catch(handleError);
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -735,6 +738,136 @@ function renderSeiHistory(error=null) {
   </tr>`).join('') : `<tr><td colspan="8">Nenhuma sincronização do SEI registrada.</td></tr>`;
 }
 
+const SEI_REFRESH_TERMINAL = new Set(['COMPLETED','COMPLETED_WITH_ERRORS','CANCELLED']);
+
+function seiQueueStatusLabel(status='') {
+  return ({
+    PENDING:'Aguardando', IN_PROGRESS:'Em andamento', PAUSED:'Pausada',
+    COMPLETED:'Concluída', COMPLETED_WITH_ERRORS:'Concluída com falhas', CANCELLED:'Cancelada',
+  })[String(status || '').toUpperCase()] || status || '—';
+}
+
+function seiQueueStatusClass(status='') {
+  return ({PENDING:'pending',IN_PROGRESS:'running',PAUSED:'paused',COMPLETED:'completed',COMPLETED_WITH_ERRORS:'errors',CANCELLED:'errors'})[String(status || '').toUpperCase()] || '';
+}
+
+function seiQueueScopeLabel(run={}) {
+  const scope = run.scope || {};
+  if (scope.all_cohorts) return 'Todas as turmas';
+  if (scope.cohort_id) {
+    const cohort = (state.cohorts || []).find(row => Number(row.id) === Number(scope.cohort_id));
+    return cohort ? `${cohort.area_code} · Turma ${cohort.cohort_number}` : `Turma #${scope.cohort_id}`;
+  }
+  if ((scope.cohort_ids || []).length) return `${scope.cohort_ids.length} turma(s)`;
+  if ((scope.student_ids || []).length) return `${scope.student_ids.length} aluno(s)`;
+  return run.scope_type === 'all_cohorts' ? 'Todas as turmas' : 'Seleção de alunos';
+}
+
+function renderSeiRefreshRuns(error=null) {
+  const body = $('#seiQueueTable');
+  const summary = $('#seiQueueSummary');
+  if (!body || !summary) return;
+  if (error) {
+    summary.innerHTML = '';
+    body.innerHTML = `<tr><td colspan="8"><div class="sei-queue-empty">Não foi possível carregar as filas: ${escapeHtml(error.message || 'erro desconhecido')}.</div></td></tr>`;
+    return;
+  }
+  const rows = state.seiRefreshRuns || [];
+  const active = rows.filter(run => !SEI_REFRESH_TERMINAL.has(String(run.status || '').toUpperCase()));
+  const failed = rows.reduce((sum, run) => sum + Number(run.failed || 0), 0);
+  const processed = rows.reduce((sum, run) => sum + Number(run.processed || 0), 0);
+  summary.innerHTML = rows.length ? `
+    <div class="sei-queue-stat"><span>Filas recentes</span><strong>${fmtNumber(rows.length)}</strong></div>
+    <div class="sei-queue-stat"><span>Ativas / pausadas</span><strong>${fmtNumber(active.length)}</strong></div>
+    <div class="sei-queue-stat"><span>Processados</span><strong>${fmtNumber(processed)}</strong></div>
+    <div class="sei-queue-stat"><span>Falhas para revisão</span><strong>${fmtNumber(failed)}</strong></div>` : '';
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="8"><div class="sei-queue-empty">Nenhuma fila de atualização individual criada ainda.</div></td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(run => {
+    const total = Number(run.total || 0);
+    const processedRun = Number(run.processed || 0);
+    const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((processedRun / total) * 100))) : 0;
+    const status = String(run.status || '').toUpperCase();
+    const canContinue = ['PENDING','IN_PROGRESS','PAUSED'].includes(status) && Number(run.remaining || 0) > 0;
+    const canPause = ['PENDING','IN_PROGRESS'].includes(status) && Number(run.remaining || 0) > 0;
+    const canRetry = Number(run.failed || 0) > 0 && ['COMPLETED_WITH_ERRORS','PAUSED'].includes(status);
+    const buttons = [
+      canContinue ? `<button class="button primary compact" data-sei-run-continue="${run.id}">${status === 'PAUSED' ? 'Continuar' : 'Abrir fila'}</button>` : '',
+      canPause ? `<button class="button secondary compact" data-sei-run-pause="${run.id}">Pausar</button>` : '',
+      canRetry ? `<button class="button secondary compact" data-sei-run-retry="${run.id}">Reprocessar falhas</button>` : '',
+      Number(run.failed || 0) > 0 ? `<button class="button secondary compact" data-sei-run-errors="${run.id}">Ver falhas</button>` : '',
+    ].filter(Boolean).join('');
+    return `<tr>
+      <td><strong>#${fmtNumber(run.id)}</strong></td>
+      <td>${fmtDateTime(run.created_at)}</td>
+      <td>${escapeHtml(seiQueueScopeLabel(run))}</td>
+      <td><div class="sei-queue-progress"><div class="sei-queue-progress-track"><span style="width:${pct}%"></span></div><small>${fmtNumber(processedRun)} / ${fmtNumber(total)} · ${pct}%</small></div></td>
+      <td>${fmtNumber(run.completed || 0)}</td>
+      <td>${fmtNumber(run.failed || 0)}</td>
+      <td><span class="sei-queue-status ${seiQueueStatusClass(status)}">${escapeHtml(seiQueueStatusLabel(status))}</span></td>
+      <td><div class="sei-queue-actions">${buttons || '<span class="muted">—</span>'}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadSeiRefreshRuns({silent=false}={}) {
+  try {
+    const payload = await api('/api/dm/sei/refresh-runs', {}, {limit:20});
+    state.seiRefreshRuns = payload.runs || [];
+    renderSeiRefreshRuns();
+  } catch (error) {
+    state.seiRefreshRuns = [];
+    renderSeiRefreshRuns(error);
+    if (!silent) throw error;
+  }
+}
+
+async function showSeiRefreshRunErrors(runId) {
+  const panel = $('#seiQueueDetails');
+  if (!panel) return;
+  panel.classList.remove('hidden');
+  panel.innerHTML = '<div class="sei-queue-empty">Carregando falhas…</div>';
+  try {
+    const payload = await api(`/api/dm/sei/refresh-runs/${runId}/items`, {}, {status:'FAILED',limit:500});
+    const items = payload.items || [];
+    panel.innerHTML = `<div class="sei-queue-details-head"><strong>Fila #${fmtNumber(runId)} · alunos para revisão</strong><button type="button" class="button secondary compact" data-sei-close-errors>Fechar</button></div>${items.length ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>Aluno</th><th>Turma</th><th>Tentativas</th><th>Último erro</th></tr></thead><tbody>${items.map(item => `<tr><td><strong>${escapeHtml(item.student_name || 'Aluno')}</strong><small class="table-subtitle">${escapeHtml(item.student_code || '')}</small></td><td>${escapeHtml(item.area_code || '—')} ${item.cohort_number ? `· Turma ${escapeHtml(item.cohort_number)}` : ''}</td><td>${fmtNumber(item.attempts || 0)}</td><td class="sei-queue-error">${escapeHtml(item.last_error || 'Sem detalhe informado.')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="sei-queue-empty">Nenhuma falha pendente nesta fila.</div>'}`;
+  } catch (error) {
+    panel.innerHTML = `<div class="sei-queue-empty">${escapeHtml(error.message || 'Não foi possível carregar as falhas.')}</div>`;
+  }
+}
+
+function openExistingSeiRefreshRun(run) {
+  if (!run) return;
+  state.seiRefreshRunId = Number(run.id);
+  state.seiRefreshScope = {...(run.scope || {})};
+  state.seiRefreshPauseRequested = false;
+  $('#seiRefreshScope').textContent = `Fila #${fmtNumber(run.id)} · ${seiQueueScopeLabel(run)} · ${fmtNumber(run.processed || 0)} de ${fmtNumber(run.total || 0)} processados`;
+  $('#seiRefreshPassword').value = '';
+  $('#seiRefreshError').textContent = '';
+  $('#seiRefreshError').classList.add('hidden');
+  $('#seiRefreshResult').textContent = '';
+  $('#seiRefreshResult').classList.add('hidden');
+  $('#pauseSeiRefresh')?.classList.add('hidden');
+  hideSeiOperationProgress('#seiRefreshProgress');
+  const button = $('#confirmSeiRefresh');
+  if (button) button.textContent = run.status === 'PAUSED' ? 'Continuar fila' : 'Continuar atualização';
+  openModal('seiRefreshModal');
+}
+
+async function pauseSeiRefreshRun(runId) {
+  const payload = await api(`/api/dm/sei/refresh-runs/${runId}/pause`, {method:'POST'});
+  await loadSeiRefreshRuns({silent:true});
+  return payload.run;
+}
+
+async function retryFailedSeiRefreshRun(runId) {
+  const payload = await api(`/api/dm/sei/refresh-runs/${runId}/retry-failed`, {method:'POST'});
+  await loadSeiRefreshRuns({silent:true});
+  openExistingSeiRefreshRun(payload.run);
+}
+
 function openSeiRefreshModal({cohortId=null, cohortIds=[], studentIds=[], allCohorts=false}={}) {
   const ids = [...new Set((studentIds || []).map(Number).filter(Number.isFinite))];
   const cohortIdList = [...new Set((cohortIds || []).map(Number).filter(Number.isFinite))];
@@ -750,6 +883,9 @@ function openSeiRefreshModal({cohortId=null, cohortIds=[], studentIds=[], allCoh
     all_cohorts: Boolean(allCohorts),
   };
   state.seiRefreshRunId = null;
+  state.seiRefreshPauseRequested = false;
+  state.seiRefreshProcessing = false;
+  $('#pauseSeiRefresh')?.classList.add('hidden');
   const cohort = singleCohortId ? state.cohorts.find(row => Number(row.id) === singleCohortId) : null;
   $('#seiRefreshScope').textContent = allCohorts
     ? `Todas as turmas · ${(state.cohorts || []).length} cadastrada(s)`
@@ -804,30 +940,44 @@ function hideSeiOperationProgress(selector) {
 async function confirmSeiRefresh() {
   const scope = state.seiRefreshScope;
   if (!scope) return;
-  const username = $('#seiRefreshUsername').value.trim();
-  const password = $('#seiRefreshPassword').value;
+  const username = $('#seiRefreshUsername')?.value.trim() || '';
+  const password = $('#seiRefreshPassword')?.value || '';
   const errorBox = $('#seiRefreshError');
   const resultBox = $('#seiRefreshResult');
-  errorBox.classList.add('hidden');
-  resultBox.classList.add('hidden');
+  errorBox?.classList.add('hidden');
+  resultBox?.classList.add('hidden');
   if (!username || !password) {
-    errorBox.textContent = 'Informe usuário e senha do SEI.';
-    errorBox.classList.remove('hidden');
+    if (errorBox) {
+      errorBox.textContent = 'Informe usuário e senha do SEI.';
+      errorBox.classList.remove('hidden');
+    }
     return;
   }
   const button = $('#confirmSeiRefresh');
-  button.disabled = true;
+  const pauseButton = $('#pauseSeiRefresh');
+  if (button) button.disabled = true;
+  if (pauseButton) {
+    pauseButton.classList.remove('hidden');
+    pauseButton.disabled = false;
+    pauseButton.textContent = 'Pausar após este lote';
+  }
+  state.seiRefreshPauseRequested = false;
+  state.seiRefreshProcessing = true;
   renderSeiOperationProgress('#seiRefreshProgress', {
     title: scope.all_cohorts ? 'Atualizando todas as turmas pelo SEI' : 'Atualizando alunos pelo SEI',
-    message: 'Preparando a fila segura de atualização. As credenciais ficam somente nesta sessão e não são armazenadas.',
-    stage: 'Criando fila de alunos',
+    message: 'Preparando a fila segura. Cada lote é salvo antes do próximo começar.',
+    stage: state.seiRefreshRunId ? `Retomando fila #${state.seiRefreshRunId}` : 'Criando fila de alunos',
   });
-  button.textContent = 'Processando em lotes…';
+  if (button) button.textContent = 'Processando em lotes…';
   try {
     let run = null;
     if (state.seiRefreshRunId) {
       const existing = await api(`/api/dm/sei/refresh-runs/${state.seiRefreshRunId}`);
       run = existing.run;
+      if (run.status === 'PAUSED') {
+        const resumed = await api(`/api/dm/sei/refresh-runs/${run.id}/resume`, {method:'POST'});
+        run = resumed.run;
+      }
     } else {
       const created = await api('/api/dm/sei/refresh-runs', {
         method:'POST',
@@ -841,17 +991,17 @@ async function confirmSeiRefresh() {
     let updated = 0;
     let defenses = 0;
     let batches = 0;
-    const terminal = new Set(['COMPLETED','COMPLETED_WITH_ERRORS','CANCELLED']);
-    while (run && !terminal.has(run.status) && Number(run.remaining || 0) > 0) {
+    while (run && !SEI_REFRESH_TERMINAL.has(run.status) && run.status !== 'PAUSED' && Number(run.remaining || 0) > 0) {
       const total = Number(run.total || 0);
       const processed = Number(run.processed || 0);
       const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
       renderSeiOperationProgress('#seiRefreshProgress', {
         title: 'Atualizando datas e titulação pelo SEI',
-        message: `${fmtNumber(processed)} de ${fmtNumber(total)} aluno(s) processado(s). Cada lote é salvo antes do próximo começar.`,
-        stage: `Lote ${batches + 1} · ${pct}% concluído`,
+        message: `${fmtNumber(processed)} de ${fmtNumber(total)} aluno(s) processado(s). Você pode pausar; a pausa acontece após o lote atual terminar.`,
+        stage: `Fila #${fmtNumber(run.id)} · lote ${batches + 1} · ${pct}% concluído`,
         status: `${fmtNumber(run.completed || 0)} concluído(s) · ${fmtNumber(run.failed || 0)} para revisão`,
       });
+      const beforeProcessed = Number(run.processed || 0);
       const result = await api(`/api/dm/sei/refresh-runs/${run.id}/batch`, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -861,16 +1011,42 @@ async function confirmSeiRefresh() {
       batches += 1;
       updated += Number(result.batch?.updated || 0);
       defenses += Number(result.batch?.defenses_confirmed || 0);
+      await loadSeiRefreshRuns({silent:true});
+
+      if (state.seiRefreshPauseRequested && !SEI_REFRESH_TERMINAL.has(run.status)) {
+        run = await pauseSeiRefreshRun(run.id);
+        break;
+      }
+      if (Number(run.processed || 0) <= beforeProcessed && Number(result.batch?.processed || 0) === 0 && Number(run.remaining || 0) > 0) {
+        throw new Error('O lote não avançou. A fila foi preservada para uma nova tentativa.');
+      }
+    }
+
+    if (run?.status === 'PAUSED') {
+      if (resultBox) {
+        resultBox.innerHTML = `<strong>Fila pausada com segurança</strong><div class="sei-preview-summary compact-summary">
+          <div class="sei-preview-card"><span>Processados</span><strong>${fmtNumber(run.processed || 0)}</strong></div>
+          <div class="sei-preview-card"><span>Pendentes</span><strong>${fmtNumber(run.pending || 0)}</strong></div>
+          <div class="sei-preview-card"><span>Concluídos</span><strong>${fmtNumber(run.completed || 0)}</strong></div>
+          <div class="sei-preview-card"><span>Revisar</span><strong>${fmtNumber(run.failed || 0)}</strong></div>
+        </div><small>Fila #${fmtNumber(run.id)} preservada. Você pode fechar esta janela e continuar depois em Integração com o SEI.</small>`;
+        resultBox.classList.remove('hidden');
+      }
+      alertMessage(`Fila #${fmtNumber(run.id)} pausada. O progresso foi preservado.`, 'warning');
+      await loadSeiRefreshRuns({silent:true});
+      return;
     }
 
     const message = `SEI atualizado: ${fmtNumber(run?.processed || 0)} processado(s), ${fmtNumber(updated)} atualizado(s), ${fmtNumber(defenses)} defesa(s) confirmada(s) e ${fmtNumber(run?.failed || 0)} para revisão.`;
-    resultBox.innerHTML = `<strong>Atualização concluída</strong><div class="sei-preview-summary compact-summary">
-      <div class="sei-preview-card"><span>Processados</span><strong>${fmtNumber(run?.processed || 0)}</strong></div>
-      <div class="sei-preview-card"><span>Atualizados</span><strong>${fmtNumber(updated)}</strong></div>
-      <div class="sei-preview-card"><span>Defesas confirmadas</span><strong>${fmtNumber(defenses)}</strong></div>
-      <div class="sei-preview-card"><span>Revisar</span><strong>${fmtNumber(run?.failed || 0)}</strong></div>
-    </div><small>Fila #${fmtNumber(run?.id)} · ${fmtNumber(batches)} lote(s). As credenciais do SEI não foram persistidas.</small>`;
-    resultBox.classList.remove('hidden');
+    if (resultBox) {
+      resultBox.innerHTML = `<strong>Atualização concluída</strong><div class="sei-preview-summary compact-summary">
+        <div class="sei-preview-card"><span>Processados</span><strong>${fmtNumber(run?.processed || 0)}</strong></div>
+        <div class="sei-preview-card"><span>Atualizados neste acesso</span><strong>${fmtNumber(updated)}</strong></div>
+        <div class="sei-preview-card"><span>Defesas confirmadas</span><strong>${fmtNumber(defenses)}</strong></div>
+        <div class="sei-preview-card"><span>Revisar</span><strong>${fmtNumber(run?.failed || 0)}</strong></div>
+      </div><small>Fila #${fmtNumber(run?.id)} · ${fmtNumber(batches)} lote(s) neste acesso. As credenciais do SEI não foram persistidas.</small>`;
+      resultBox.classList.remove('hidden');
+    }
     state.selectedStudentIds.clear();
     await refreshAll();
     closeModal('seiRefreshModal');
@@ -881,13 +1057,22 @@ async function confirmSeiRefresh() {
     else if (scope.all_cohorts || (scope.cohort_ids || []).length) navigateToStudents({all:true});
     else showSection('alunos');
   } catch (error) {
-    errorBox.textContent = `${error.message || 'Não foi possível consultar o SEI.'}${state.seiRefreshRunId ? ` A fila #${state.seiRefreshRunId} foi preservada e pode continuar nesta sessão ao tentar novamente.` : ''}`;
-    errorBox.classList.remove('hidden');
+    if (errorBox) {
+      errorBox.textContent = `${error.message || 'Não foi possível consultar o SEI.'}${state.seiRefreshRunId ? ` A fila #${state.seiRefreshRunId} foi preservada; feche a janela e continue pela área de filas.` : ''}`;
+      errorBox.classList.remove('hidden');
+    }
+    await loadSeiRefreshRuns({silent:true});
   } finally {
-    $('#seiRefreshPassword').value = '';
+    const passwordInput = $('#seiRefreshPassword');
+    if (passwordInput) passwordInput.value = '';
+    state.seiRefreshProcessing = false;
+    state.seiRefreshPauseRequested = false;
     hideSeiOperationProgress('#seiRefreshProgress');
-    button.disabled = false;
-    button.textContent = 'Consultar e atualizar';
+    if (pauseButton) pauseButton.classList.add('hidden');
+    if (button) {
+      button.disabled = false;
+      button.textContent = state.seiRefreshRunId ? 'Continuar fila' : 'Consultar e atualizar';
+    }
   }
 }
 
@@ -1170,13 +1355,15 @@ async function refreshAll() {
     await loadDashboard();
     state.students.offset=0;
     await loadStudents();
-    await Promise.all([loadQuality({silent:true}), loadSeiHistory({silent:true})]);
+    await Promise.all([loadQuality({silent:true}), loadSeiHistory({silent:true}), loadSeiRefreshRuns({silent:true})]);
   }
   finally {setLoading(false)}
 }
 function handleError(error) { console.error(error); alertMessage(error.message||'Ocorreu um erro.','error'); }
 
 function bindEvents() {
+  if (document.body.dataset.dmEventsBound === '1') return;
+  document.body.dataset.dmEventsBound = '1';
   $$('.nav-item[data-section]').forEach(item=>item.addEventListener('click',()=>showSection(item.dataset.section)));
   $$('[data-go]').forEach(item=>item.addEventListener('click',()=>showSection(item.dataset.go)));
   $('#dmDirectorateSelect')?.addEventListener('change',event=>location.assign(routeForDirectorate(event.target.value)));
@@ -1195,8 +1382,8 @@ function bindEvents() {
   $('#studentCohort')?.addEventListener('change',()=>syncStudentEntryFromCohort());
   $('#studentDefense')?.addEventListener('change',event=>{ if (event.target.value && $('#studentStatus')) $('#studentStatus').value='Titulado'; });
   $('#studentsFirst')?.addEventListener('click',()=>{state.students.offset=0;loadStudents().catch(handleError)});
-  $('#studentsPrev').addEventListener('click',()=>{const size=Number(state.students.limit||50);state.students.offset=Math.max(0,state.students.offset-size);loadStudents().catch(handleError)});
-  $('#studentsNext').addEventListener('click',()=>{const size=Number(state.students.limit||50);if(state.students.has_more){state.students.offset+=size;loadStudents().catch(handleError)}});
+  $('#studentsPrev')?.addEventListener('click',()=>{const size=Number(state.students.limit||50);state.students.offset=Math.max(0,state.students.offset-size);loadStudents().catch(handleError)});
+  $('#studentsNext')?.addEventListener('click',()=>{const size=Number(state.students.limit||50);if(state.students.has_more){state.students.offset+=size;loadStudents().catch(handleError)}});
   $('#studentsLast')?.addEventListener('click',()=>{const size=Number(state.students.limit||50);const total=Number(state.students.total||0);state.students.offset=Math.max(0,(Math.max(1,Math.ceil(total/size))-1)*size);loadStudents().catch(handleError)});
   $('#studentsSelectAll')?.addEventListener('change',event=>{
     (state.students.items||[]).forEach(row=>{
@@ -1217,19 +1404,25 @@ function bindEvents() {
   $('#confirmSeiRefresh')?.addEventListener('click',confirmSeiRefresh);
   ['#dmQuickAdd','#newCohort','#newCohortDM01'].forEach(selector=>$(selector)?.addEventListener('click',()=>openCohort()));
   ['#newStudent','#newStudentDM02'].forEach(selector=>$(selector)?.addEventListener('click',()=>openStudent()));
-  $('#cohortForm').addEventListener('submit',saveCohort); $('#studentForm').addEventListener('submit',saveStudent);
+  $('#cohortForm')?.addEventListener('submit',saveCohort); $('#studentForm')?.addEventListener('submit',saveStudent);
   $$('[data-close-modal]').forEach(item=>item.addEventListener('click',()=>{
     if (item.dataset.closeModal === 'seiModal') resetSeiMemory();
     if (item.dataset.closeModal === 'graduationModal') state.graduationPreview = null;
     if (item.dataset.closeModal === 'seiRefreshModal') {
+      if (state.seiRefreshProcessing) {
+        state.seiRefreshPauseRequested = true;
+        alertMessage('Pausa solicitada. O lote atual será concluído e salvo antes de fechar a fila.', 'warning');
+        return;
+      }
       const password = $('#seiRefreshPassword');
       if (password) password.value = '';
       state.seiRefreshScope = null;
+      state.seiRefreshRunId = null;
     }
     closeModal(item.dataset.closeModal);
   }));
   $$('[data-import-kind]').forEach(item=>item.addEventListener('click',()=>openImport(item.dataset.importKind)));
-  $('#confirmImport').addEventListener('click',confirmImport);
+  $('#confirmImport')?.addEventListener('click',confirmImport);
   $('#seiDirectButton')?.addEventListener('click',()=>openSeiModal('direct'));
   $('#seiUploadButton')?.addEventListener('click',()=>openSeiModal('upload'));
   $('#seiAnalyzeButton')?.addEventListener('click',analyzeSei);
@@ -1260,24 +1453,58 @@ function bindEvents() {
   $('#seiCommitButton')?.addEventListener('click',commitSei);
   $('#seiOpenStudentsButton')?.addEventListener('click',()=>{const ids=[...state.seiLastSelectedCohortIds];resetSeiMemory();closeModal('seiModal');if(ids.length===1)navigateToStudents({cohortId:ids[0]});else navigateToStudents({all:true})});
   $('#refreshSeiHistory')?.addEventListener('click',()=>Promise.all([loadQuality(),loadSeiHistory()]).catch(handleError));
-  $('#resetDemo').addEventListener('click',async()=>{if(!confirm('Recriar somente os dados demonstrativos do DM? Dados reais serão preservados.'))return;try{setLoading(true);const result=await api('/api/dm/demo/reset',{method:'POST'});alertMessage(result.mensagem,'success');await refreshAll()}catch(error){handleError(error)}finally{setLoading(false)}});
-  $('#cohortsTable').addEventListener('click',async event=>{const manage=event.target.closest('[data-manage-graduation]');const refresh=event.target.closest('[data-refresh-cohort]');const edit=event.target.closest('[data-edit-cohort]');const remove=event.target.closest('[data-delete-cohort]');if(manage){navigateToStudents({cohortId:Number(manage.dataset.manageGraduation),status:'Ativo'});return;}if(refresh){openSeiRefreshModal({cohortId:Number(refresh.dataset.refreshCohort)});return;}if(edit){openCohort(state.cohorts.find(row=>String(row.id)===edit.dataset.editCohort))}if(remove&&confirm('Excluir esta turma?')){try{await api(`/api/dm/cohorts/${remove.dataset.deleteCohort}`,{method:'DELETE'});await refreshAll()}catch(error){handleError(error)}}});
-  $('#studentsTable').addEventListener('change',event=>{const checkbox=event.target.closest('[data-select-student]');if(!checkbox)return;const id=Number(checkbox.dataset.selectStudent);if(checkbox.checked)state.selectedStudentIds.add(id);else state.selectedStudentIds.delete(id);updateStudentSelectionControls();});
-  $('#studentsTable').addEventListener('click',async event=>{const graduate=event.target.closest('[data-graduate-student]');const refresh=event.target.closest('[data-refresh-student]');const edit=event.target.closest('[data-edit-student]');const remove=event.target.closest('[data-delete-student]');if(graduate){openGraduationModal([Number(graduate.dataset.graduateStudent)]);return;}if(refresh){openSeiRefreshModal({studentIds:[Number(refresh.dataset.refreshStudent)]});return;}if(edit){openStudent(state.students.items.find(row=>String(row.id)===edit.dataset.editStudent))}if(remove&&confirm('Excluir este aluno?')){try{state.selectedStudentIds.delete(Number(remove.dataset.deleteStudent));await api(`/api/dm/students/${remove.dataset.deleteStudent}`,{method:'DELETE'});await refreshAll()}catch(error){handleError(error)}}});
+  $('#refreshSeiQueues')?.addEventListener('click',()=>loadSeiRefreshRuns().catch(handleError));
+  $('#pauseSeiRefresh')?.addEventListener('click',()=>{
+    if (!state.seiRefreshProcessing) return;
+    state.seiRefreshPauseRequested = true;
+    const button = $('#pauseSeiRefresh');
+    if (button) { button.disabled = true; button.textContent = 'Pausando após o lote atual…'; }
+  });
+  $('#seiQueueTable')?.addEventListener('click',async event=>{
+    const continueButton = event.target.closest('[data-sei-run-continue]');
+    const pauseButton = event.target.closest('[data-sei-run-pause]');
+    const retryButton = event.target.closest('[data-sei-run-retry]');
+    const errorsButton = event.target.closest('[data-sei-run-errors]');
+    try {
+      if (continueButton) {
+        const run = state.seiRefreshRuns.find(row=>Number(row.id)===Number(continueButton.dataset.seiRunContinue));
+        openExistingSeiRefreshRun(run); return;
+      }
+      if (pauseButton) {
+        await pauseSeiRefreshRun(Number(pauseButton.dataset.seiRunPause));
+        alertMessage('Fila pausada. O progresso foi preservado.', 'warning'); return;
+      }
+      if (retryButton) {
+        await retryFailedSeiRefreshRun(Number(retryButton.dataset.seiRunRetry)); return;
+      }
+      if (errorsButton) {
+        await showSeiRefreshRunErrors(Number(errorsButton.dataset.seiRunErrors)); return;
+      }
+    } catch(error) { handleError(error); }
+  });
+  $('#seiQueueDetails')?.addEventListener('click',event=>{
+    if (event.target.closest('[data-sei-close-errors]')) $('#seiQueueDetails')?.classList.add('hidden');
+  });
+  $('#resetDemo')?.addEventListener('click',async()=>{if(!confirm('Recriar somente os dados demonstrativos do DM? Dados reais serão preservados.'))return;try{setLoading(true);const result=await api('/api/dm/demo/reset',{method:'POST'});alertMessage(result.mensagem,'success');await refreshAll()}catch(error){handleError(error)}finally{setLoading(false)}});
+  $('#cohortsTable')?.addEventListener('click',async event=>{const manage=event.target.closest('[data-manage-graduation]');const refresh=event.target.closest('[data-refresh-cohort]');const edit=event.target.closest('[data-edit-cohort]');const remove=event.target.closest('[data-delete-cohort]');if(manage){navigateToStudents({cohortId:Number(manage.dataset.manageGraduation),status:'Ativo'});return;}if(refresh){openSeiRefreshModal({cohortId:Number(refresh.dataset.refreshCohort)});return;}if(edit){openCohort(state.cohorts.find(row=>String(row.id)===edit.dataset.editCohort))}if(remove&&confirm('Excluir esta turma?')){try{await api(`/api/dm/cohorts/${remove.dataset.deleteCohort}`,{method:'DELETE'});await refreshAll()}catch(error){handleError(error)}}});
+  $('#studentsTable')?.addEventListener('change',event=>{const checkbox=event.target.closest('[data-select-student]');if(!checkbox)return;const id=Number(checkbox.dataset.selectStudent);if(checkbox.checked)state.selectedStudentIds.add(id);else state.selectedStudentIds.delete(id);updateStudentSelectionControls();});
+  $('#studentsTable')?.addEventListener('click',async event=>{const graduate=event.target.closest('[data-graduate-student]');const refresh=event.target.closest('[data-refresh-student]');const edit=event.target.closest('[data-edit-student]');const remove=event.target.closest('[data-delete-student]');if(graduate){openGraduationModal([Number(graduate.dataset.graduateStudent)]);return;}if(refresh){openSeiRefreshModal({studentIds:[Number(refresh.dataset.refreshStudent)]});return;}if(edit){openStudent(state.students.items.find(row=>String(row.id)===edit.dataset.editStudent))}if(remove&&confirm('Excluir este aluno?')){try{state.selectedStudentIds.delete(Number(remove.dataset.deleteStudent));await api(`/api/dm/students/${remove.dataset.deleteStudent}`,{method:'DELETE'});await refreshAll()}catch(error){handleError(error)}}});
   $('#newDmTarget')?.addEventListener('click',()=>openTarget());
   $('#targetIndicator')?.addEventListener('change',()=>{const code=$('#targetIndicator').value;$('#targetMetric').innerHTML=targetMetricOptions(code);syncTargetDefaults(true);});
   $('#targetMetric')?.addEventListener('change',()=>syncTargetDefaults(true));
   $('#targetForm')?.addEventListener('submit',saveTarget);
   $('#dmTargetsTable')?.addEventListener('click',event=>{const edit=event.target.closest('[data-edit-target]');const remove=event.target.closest('[data-delete-target]');const create=event.target.closest('[data-create-target]');if(edit){openTarget(state.targets.find(row=>String(row.id)===edit.dataset.editTarget));return;}if(remove){deleteTarget(Number(remove.dataset.deleteTarget));return;}if(create){openTarget(null,create.dataset.createTarget,create.dataset.metric);}});
-  $('#dmLogout').addEventListener('click',async()=>{await window.DataUnivcAuth.logout();location.assign('/')});
+  $('#dmLogout')?.addEventListener('click',async()=>{await window.DataUnivcAuth.logout();location.assign('/')});
 }
 
 async function init() {
+  setLoading(true);
+  bindEvents();
   try {
-    setLoading(true);
-    $('#dashboardAsOf').value = new Date().toISOString().slice(0,10);
-    await loadIdentity();
-    bindEvents();
+    const asOf = $('#dashboardAsOf');
+    if (asOf) asOf.value = new Date().toISOString().slice(0,10);
+    const identityReady = await loadIdentity();
+    if (!identityReady) return;
     await refreshAll();
     const search = new URLSearchParams(location.search);
     const requestedSection = search.get('view') || String(location.hash || '').replace(/^#/, '');

@@ -160,6 +160,17 @@
         </div>
 
         <div id="seiQualityCards" class="metric-grid executive dm-card-grid sei-quality-grid"></div>
+
+        <article class="panel dm-records-panel sei-queue-panel">
+          <div class="panel-heading responsive-heading">
+            <div><span class="eyebrow">Atualização individual · fila segura</span><h3>Filas de datas e titulação</h3><p class="panel-copy">As filas ficam salvas no PostgreSQL. Fechar ou recarregar a página não apaga o progresso; credenciais do SEI nunca são persistidas.</p></div>
+            <button class="button secondary compact" id="refreshSeiQueues">Atualizar filas</button>
+          </div>
+          <div id="seiQueueSummary" class="sei-queue-summary"></div>
+          <div class="table-wrap"><table class="data-table sei-queue-table"><thead><tr><th>Fila</th><th>Criada em</th><th>Escopo</th><th>Progresso</th><th>Concluídos</th><th>Falhas</th><th>Status</th><th>Ações</th></tr></thead><tbody id="seiQueueTable"></tbody></table></div>
+          <div id="seiQueueDetails" class="sei-queue-details hidden"></div>
+        </article>
+
         <article class="panel dm-records-panel">
           <div class="panel-heading responsive-heading"><div><span class="eyebrow">Auditoria operacional</span><h3>Últimas sincronizações</h3></div><button class="button secondary compact" id="refreshSeiHistory">Atualizar</button></div>
           <div class="table-wrap"><table class="data-table"><thead><tr><th>Concluída em</th><th>Origem</th><th>Turmas</th><th>Alunos</th><th>Novos</th><th>Atualizados</th><th>Não localizados</th><th>Status</th></tr></thead><tbody id="seiHistoryTable"></tbody></table></div>
@@ -307,7 +318,7 @@
         <div id="seiRefreshError" class="form-errors hidden"></div>
         <div id="seiRefreshProgress" class="du-operation-progress hidden" aria-live="polite" aria-busy="true"></div>
         <div id="seiRefreshResult" class="import-result hidden"></div>
-        <div class="form-actions"><button class="button secondary" data-close-modal="seiRefreshModal">Cancelar</button><button class="button primary" id="confirmSeiRefresh">Consultar e atualizar</button></div>
+        <div class="form-actions"><button class="button secondary" data-close-modal="seiRefreshModal">Fechar</button><button class="button secondary hidden" id="pauseSeiRefresh" type="button">Pausar após este lote</button><button class="button primary" id="confirmSeiRefresh">Consultar e atualizar</button></div>
       </div>
     </div>
   </div>

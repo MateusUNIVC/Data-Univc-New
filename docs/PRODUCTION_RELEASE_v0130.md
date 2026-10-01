@@ -4,8 +4,8 @@
 
 - Aplicação: `0.13.0`
 - Base acadêmica: `0.11.6.7`
-- Schema esperado: `50`
-- Migration registrada: `050_dm_sei_student_refresh_queue_v0130.sql`
+- Schema esperado: `51`
+- Migration registrada: `051_dm_sei_refresh_queue_controls_v0130.sql`
 
 ## Variáveis obrigatórias
 
@@ -31,7 +31,7 @@ Defina no servidor, sem gravar segredos no repositório:
 ## Antes do deploy
 
 1. Fazer backup completo do PostgreSQL/Supabase.
-2. Confirmar que todas as migrations até schema 50 foram aplicadas, incluindo `050_dm_sei_student_refresh_queue_v0130.sql`.
+2. Confirmar que todas as migrations até schema 51 foram aplicadas, incluindo `050_dm_sei_student_refresh_queue_v0130.sql` e `051_dm_sei_refresh_queue_controls_v0130.sql`.
 3. Confirmar `AUTH_DISABLED=false`.
 4. Confirmar HTTPS/Nginx e `COOKIE_SECURE=true`.
 5. Confirmar segredos fortes fora do ZIP.

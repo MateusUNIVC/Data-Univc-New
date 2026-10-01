@@ -199,12 +199,12 @@ def test_queue_api_frontend_and_schema_contracts_are_present():
     assert "DM_SEI_REFRESH_BATCH_BUDGET_SECONDS" in router
     assert "len(targets) > DM_SEI_REFRESH_BATCH_SIZE" in router
     assert "/api/dm/sei/refresh-runs" in js
-    assert "while (run && !terminal.has(run.status)" in js
+    assert "while (run && !SEI_REFRESH_TERMINAL.has(run.status)" in js
     assert "Cada lote é salvo antes do próximo começar" in js
     assert "usuario:username, senha:password" in js
     assert "password" not in migration.lower()
     assert "senha" not in migration.lower()
     assert "dm_sei_student_refresh_runs" in migration
     assert "dm_sei_student_refresh_items" in migration
-    assert "SCHEMA_VERSION = 50" in release
-    assert 'SCHEMA_MIGRATION = "050_dm_sei_student_refresh_queue_v0130.sql"' in release
+    assert "SCHEMA_VERSION = 51" in release
+    assert 'SCHEMA_MIGRATION = "051_dm_sei_refresh_queue_controls_v0130.sql"' in release

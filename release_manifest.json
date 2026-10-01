@@ -1,8 +1,8 @@
 {
   "app_version": "0.13.0",
   "academic_base_version": "0.11.6.7",
-  "schema_expected": 50,
-  "schema_migration": "050_dm_sei_student_refresh_queue_v0130.sql",
+  "schema_expected": 51,
+  "schema_migration": "051_dm_sei_refresh_queue_controls_v0130.sql",
   "production_hardening": {
     "environment": "production",
     "auth_disabled": false,
@@ -19,9 +19,9 @@
   "local_demo_database_included": false,
   "local_windows_launchers_included": false,
   "docker_compose_app_only_included": true,
-  "artifact_profile": "production-vps-v0130-part17-dm-sei-persistent-batch-queue",
-  "created_at_utc": "2026-10-01T20:16:28Z",
-  "release_name": "Data UNIVC 0.13.0 - Production - Part 17 DM SEI Persistent Batch Queue",
+  "artifact_profile": "production-vps-v0130-part18-dm-queue-ux-button-hardening",
+  "created_at_utc": "2026-10-01T20:35:52Z",
+  "release_name": "Data UNIVC 0.13.0 - Production - Part 18 DM Queue UX + Button Hardening",
   "patch_scope": [
     "part1-non-actionable-warning-cleanup",
     "educacao-fisica-licenciatura-sei-current-label-compatibility",
@@ -84,7 +84,13 @@
     "part17-dm-bounded-sei-batch-processing",
     "part17-dm-legacy-mass-refresh-safety-limit",
     "part17-dm-browser-sequential-batch-runner",
-    "part17-dm-credentials-memory-only"
+    "part17-dm-credentials-memory-only",
+    "part18-dm-button-binding-hardening",
+    "part18-dm-asset-cache-busting",
+    "part18-dm-sei-refresh-run-history",
+    "part18-dm-sei-pause-resume",
+    "part18-dm-sei-retry-failed",
+    "part18-dm-sei-failure-details"
   ],
   "validation": {
     "pytest": "245 passed, 2 skipped",

@@ -1,3 +1,14 @@
+## 2026-10-01 · Parte 18 — DM-QUEUE-04 + hardening de interface
+
+- registro de eventos do DM desacoplado da carga de identidade;
+- bindings de botões defensivos e idempotentes;
+- cache-bust dedicado dos assets DM;
+- histórico operacional das filas SEI;
+- pausa/retomada persistente;
+- listagem e reprocessamento seletivo de falhas;
+- schema 51 via `051_dm_sei_refresh_queue_controls_v0130.sql`;
+- 248 testes aprovados, 2 ignorados.
+
 ## 2026-10-01 — Parte 15 · NPS Visual Convergence
 - Unificado o componente de distribuição 0–10 entre Reitoria, DTNH e DCS.
 - Adicionados tooltips ricos aos gráficos acadêmicos da Reitoria.

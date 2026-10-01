@@ -61,6 +61,7 @@ DM_SEI_REFRESH_BATCH_BUDGET_SECONDS = _env_int(
 DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS = _env_int(
     "DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS", 15, minimum=5, maximum=30
 )
+DM_ASSET_VERSION = f"{APP_VERSION}-dmq04"
 
 
 def _dm_refresh_scope(payload: dict[str, Any]) -> dict[str, Any]:
@@ -176,7 +177,7 @@ def dm_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="dm.html",
-        context={"app_version": APP_VERSION},
+        context={"app_version": DM_ASSET_VERSION},
         headers={"Cache-Control": "no-store"},
     )
 
@@ -779,14 +780,79 @@ async def dm_sei_create_refresh_run(
         _translate(exc)
 
 
+@router.get("/api/dm/sei/refresh-runs")
+def dm_sei_refresh_runs(
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_access("DM")),
+):
+    try:
+        return {"ok": True, "runs": _repo(db, scope).list_sei_student_refresh_runs(limit=limit)}
+    except Exception as exc:
+        _translate(exc)
+
+
 @router.get("/api/dm/sei/refresh-runs/{run_id}")
 def dm_sei_refresh_run_status(
+    run_id: int,
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_access("DM")),
+):
+    try:
+        return {"ok": True, "run": _repo(db, scope).get_sei_student_refresh_run(run_id)}
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.get("/api/dm/sei/refresh-runs/{run_id}/items")
+def dm_sei_refresh_run_items(
+    run_id: int,
+    status: str | None = Query(None),
+    limit: int = Query(200, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_access("DM")),
+):
+    try:
+        return {
+            "ok": True,
+            "items": _repo(db, scope).list_sei_student_refresh_items(run_id, status=status, limit=limit),
+        }
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.post("/api/dm/sei/refresh-runs/{run_id}/pause")
+def dm_sei_pause_refresh_run(
     run_id: int,
     db: Session = Depends(get_db),
     scope: DirectorateScope = Depends(require_directorate_edit("DM")),
 ):
     try:
-        return {"ok": True, "run": _repo(db, scope).get_sei_student_refresh_run(run_id)}
+        return {"ok": True, "run": _repo(db, scope).pause_sei_student_refresh_run(run_id)}
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.post("/api/dm/sei/refresh-runs/{run_id}/resume")
+def dm_sei_resume_refresh_run(
+    run_id: int,
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_edit("DM")),
+):
+    try:
+        return {"ok": True, "run": _repo(db, scope).resume_sei_student_refresh_run(run_id)}
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.post("/api/dm/sei/refresh-runs/{run_id}/retry-failed")
+def dm_sei_retry_failed_refresh_run(
+    run_id: int,
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_edit("DM")),
+):
+    try:
+        return {"ok": True, "run": _repo(db, scope).retry_failed_sei_student_refresh_run(run_id)}
     except Exception as exc:
         _translate(exc)
 

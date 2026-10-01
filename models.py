@@ -535,7 +535,7 @@ class DmSeiStudentRefreshRun(Base):
     __tablename__ = "dm_sei_student_refresh_runs"
     __table_args__ = (
         CheckConstraint(
-            "status in ('PENDING','IN_PROGRESS','COMPLETED','COMPLETED_WITH_ERRORS','CANCELLED')",
+            "status in ('PENDING','IN_PROGRESS','PAUSED','COMPLETED','COMPLETED_WITH_ERRORS','CANCELLED')",
             name="ck_dm_sei_student_refresh_run_status",
         ),
         Index("ix_dm_sei_student_refresh_run_dir_created", "directorate_id", "created_at"),

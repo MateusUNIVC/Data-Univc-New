@@ -1,3 +1,17 @@
+## Parte 18 - DM · fila operacional completa e hardening dos botões (01/10/2026)
+
+- corrige a fragilidade em que um erro durante `loadIdentity()` podia impedir o registro de todos os eventos da página DM;
+- `bindEvents()` agora é executado antes das cargas remotas, é idempotente e usa bindings defensivos;
+- assets do DM recebem um identificador específico (`0.13.0-dmq04`) para evitar mistura de HTML novo com JavaScript antigo em cache;
+- Integração com o SEI passa a exibir as filas persistentes recentes, progresso, status, concluídos e falhas;
+- permite **Pausar**, **Continuar**, **Ver falhas** e **Reprocessar falhas**;
+- fechar/recarregar a página não perde o progresso da fila;
+- nenhuma credencial do SEI é persistida;
+- migration obrigatória `051_dm_sei_refresh_queue_controls_v0130.sql`; schema esperado passa a **51**;
+- regressão completa: 248 testes aprovados e 2 ignorados; 28/28 JavaScripts válidos.
+
+Detalhes: `docs/PART18_DM_QUEUE_UX_BUTTON_HARDENING_2026-10-01.md`.
+
 ## Parte 17 - DM · fila persistente e processamento seguro em lotes (01/10/2026)
 
 - atualização individual de início/conclusão/titulação deixa de depender de uma única requisição longa;

@@ -205,7 +205,8 @@ def verify_dm_persistent_batch_queue() -> None:
     models = (ROOT / "models.py").read_text(encoding="utf-8")
     sei = (ROOT / "sei_student_dates.py").read_text(encoding="utf-8")
     frontend = (ROOT / "static" / "js" / "dm.js").read_text(encoding="utf-8")
-    migration = (ROOT / "database" / SCHEMA_MIGRATION).read_text(encoding="utf-8")
+    queue_migration = (ROOT / "database" / "050_dm_sei_student_refresh_queue_v0130.sql").read_text(encoding="utf-8")
+    controls_migration = (ROOT / "database" / SCHEMA_MIGRATION).read_text(encoding="utf-8")
 
     required_router = [
         'DM_SEI_REFRESH_BATCH_SIZE',
@@ -233,13 +234,60 @@ def verify_dm_persistent_batch_queue() -> None:
     for token in ('max_seconds', 'request_timeout_seconds', 'deferred_student_ids'):
         if token not in sei:
             raise SystemExit(f"DM bounded SEI lookup marker missing: {token}")
-    for token in ('/api/dm/sei/refresh-runs', 'while (run && !terminal.has(run.status)', 'Cada lote é salvo antes do próximo começar'):
+    for token in ('/api/dm/sei/refresh-runs', 'while (run && !SEI_REFRESH_TERMINAL.has(run.status)', 'Cada lote é salvo antes do próximo começar'):
         if token not in frontend:
             raise SystemExit(f"DM batch frontend marker missing: {token}")
-    if 'dm_sei_student_refresh_runs' not in migration or 'dm_sei_student_refresh_items' not in migration:
-        raise SystemExit("DM queue migration does not create both queue tables")
-    if 'password' in migration.lower() or 'senha' in migration.lower():
-        raise SystemExit("DM queue migration must never persist SEI credentials")
+    if 'dm_sei_student_refresh_runs' not in queue_migration or 'dm_sei_student_refresh_items' not in queue_migration:
+        raise SystemExit("DM queue migration 050 does not create both queue tables")
+    if 'PAUSED' not in controls_migration:
+        raise SystemExit("DM queue controls migration does not allow PAUSED status")
+    for migration in (queue_migration, controls_migration):
+        if 'password' in migration.lower() or 'senha' in migration.lower():
+            raise SystemExit("DM queue migrations must never persist SEI credentials")
+
+
+def verify_dm_queue_ux_and_button_hardening() -> None:
+    router = (ROOT / "dm_router.py").read_text(encoding="utf-8")
+    repository = (ROOT / "dm_repository.py").read_text(encoding="utf-8")
+    template = (ROOT / "templates" / "dm.html").read_text(encoding="utf-8")
+    frontend = (ROOT / "static" / "js" / "dm.js").read_text(encoding="utf-8")
+
+    required_router = [
+        'DM_ASSET_VERSION = f"{APP_VERSION}-dmq04"',
+        '@router.get("/api/dm/sei/refresh-runs")',
+        '@router.get("/api/dm/sei/refresh-runs/{run_id}/items")',
+        '@router.post("/api/dm/sei/refresh-runs/{run_id}/pause")',
+        '@router.post("/api/dm/sei/refresh-runs/{run_id}/resume")',
+        '@router.post("/api/dm/sei/refresh-runs/{run_id}/retry-failed")',
+    ]
+    missing = [token for token in required_router if token not in router]
+    if missing:
+        raise SystemExit("DM queue UX router markers missing: " + ", ".join(missing))
+
+    required_repository = [
+        'list_sei_student_refresh_runs', 'list_sei_student_refresh_items',
+        'pause_sei_student_refresh_run', 'resume_sei_student_refresh_run',
+        'retry_failed_sei_student_refresh_run', 'run.status = "PAUSED" if was_paused else "IN_PROGRESS"',
+    ]
+    missing = [token for token in required_repository if token not in repository]
+    if missing:
+        raise SystemExit("DM queue UX repository markers missing: " + ", ".join(missing))
+
+    required_template = ['id="seiQueueTable"', 'id="seiQueueDetails"', 'id="pauseSeiRefresh"']
+    missing = [token for token in required_template if token not in template]
+    if missing:
+        raise SystemExit("DM queue UX template markers missing: " + ", ".join(missing))
+
+    required_frontend = [
+        "bindEvents();\n  try", "document.body.dataset.dmEventsBound",
+        "$('#studentsPrev')?.addEventListener", "$('#cohortForm')?.addEventListener",
+        'data-sei-run-continue', 'data-sei-run-pause', 'data-sei-run-retry',
+        'showSeiRefreshRunErrors', 'seiRefreshPauseRequested',
+    ]
+    missing = [token for token in required_frontend if token not in frontend]
+    if missing:
+        raise SystemExit("DM button hardening/frontend markers missing: " + ", ".join(missing))
+
 
 def main() -> int:
     verify_critical_release_files()
@@ -249,6 +297,7 @@ def main() -> int:
     verify_dm_split_cohort_hotfix()
     verify_dm_queue_foundation()
     verify_dm_persistent_batch_queue()
+    verify_dm_queue_ux_and_button_hardening()
 
     py_files = [
         str(path.relative_to(ROOT))

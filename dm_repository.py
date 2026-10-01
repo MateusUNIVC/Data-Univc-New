@@ -1099,6 +1099,119 @@ class DMRepository:
             raise LookupError("Fila de atualização SEI não encontrada.")
         return self._refresh_run_to_dict(row)
 
+    def list_sei_student_refresh_runs(self, *, limit: int = 20) -> list[dict[str, Any]]:
+        """Return recent DM/SEI refresh runs for the current directorate."""
+
+        size = max(1, min(int(limit or 20), 100))
+        rows = self.db.scalars(
+            select(DmSeiStudentRefreshRun)
+            .where(DmSeiStudentRefreshRun.directorate_id == self.directorate_id)
+            .order_by(DmSeiStudentRefreshRun.id.desc())
+            .limit(size)
+        ).all()
+        return [self._refresh_run_to_dict(row) for row in rows]
+
+    def list_sei_student_refresh_items(
+        self,
+        run_id: int,
+        *,
+        status: str | None = None,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        """Return queue items with student/cohort context for progress and review."""
+
+        run = self._refresh_run_row(run_id)
+        size = max(1, min(int(limit or 200), 1000))
+        statement = (
+            select(DmSeiStudentRefreshItem)
+            .where(DmSeiStudentRefreshItem.run_id == run.id)
+            .order_by(DmSeiStudentRefreshItem.id.asc())
+            .limit(size)
+        )
+        normalized = str(status or "").strip().upper()
+        if normalized:
+            if normalized not in {"PENDING", "RUNNING", "COMPLETED", "FAILED"}:
+                raise DMValidationError("Status de item da fila inválido.")
+            statement = statement.where(DmSeiStudentRefreshItem.status == normalized)
+        items = self.db.scalars(statement).all()
+        student_ids = [int(item.student_id) for item in items]
+        students = self.db.scalars(
+            select(DmStudent)
+            .options(joinedload(DmStudent.cohort))
+            .where(
+                DmStudent.directorate_id == self.directorate_id,
+                DmStudent.id.in_(student_ids),
+            )
+        ).all() if student_ids else []
+        by_id = {int(row.id): row for row in students}
+        payload: list[dict[str, Any]] = []
+        for item in items:
+            student = by_id.get(int(item.student_id))
+            payload.append({
+                "id": item.id,
+                "run_id": item.run_id,
+                "student_id": item.student_id,
+                "student_code": student.student_code if student else None,
+                "student_name": student.student_name if student else "Aluno removido",
+                "area_code": student.cohort.area_code if student and student.cohort else None,
+                "cohort_number": student.cohort.cohort_number if student and student.cohort else None,
+                "status": item.status,
+                "attempts": int(item.attempts or 0),
+                "last_error_type": item.last_error_type,
+                "last_error": item.last_error,
+                "last_attempt_at": item.last_attempt_at.isoformat() if item.last_attempt_at else None,
+                "completed_at": item.completed_at.isoformat() if item.completed_at else None,
+            })
+        return payload
+
+    def pause_sei_student_refresh_run(self, run_id: int) -> dict[str, Any]:
+        self._require_write()
+        run = self._refresh_run_row(run_id)
+        if run.status in {"COMPLETED", "COMPLETED_WITH_ERRORS", "CANCELLED"}:
+            return self._refresh_run_to_dict(run)
+        # Do not reclaim RUNNING items here: another tab/request may still be
+        # finishing the bounded batch. Marking the run PAUSED prevents new claims;
+        # finish_sei_student_refresh_batch preserves PAUSED after that batch lands.
+        run.status = "PAUSED"
+        self.db.commit()
+        self.db.refresh(run)
+        return self._refresh_run_to_dict(run)
+
+    def resume_sei_student_refresh_run(self, run_id: int) -> dict[str, Any]:
+        self._require_write()
+        run = self._refresh_run_row(run_id)
+        counts = self._refresh_run_counts(run.id)
+        if counts["remaining"] == 0:
+            run.status = "COMPLETED_WITH_ERRORS" if counts["failed"] else "COMPLETED"
+            run.completed_at = run.completed_at or datetime.now(timezone.utc)
+        else:
+            run.status = "IN_PROGRESS" if counts["processed"] else "PENDING"
+            run.completed_at = None
+        self.db.commit()
+        self.db.refresh(run)
+        return self._refresh_run_to_dict(run)
+
+    def retry_failed_sei_student_refresh_run(self, run_id: int) -> dict[str, Any]:
+        self._require_write()
+        run = self._refresh_run_row(run_id)
+        failed = self.db.scalars(
+            select(DmSeiStudentRefreshItem).where(
+                DmSeiStudentRefreshItem.run_id == run.id,
+                DmSeiStudentRefreshItem.status == "FAILED",
+            )
+        ).all()
+        for item in failed:
+            item.status = "PENDING"
+            item.last_error_type = None
+            item.last_error = None
+            item.completed_at = None
+        if failed:
+            run.status = "IN_PROGRESS" if run.started_at else "PENDING"
+            run.completed_at = None
+        self.db.commit()
+        self.db.refresh(run)
+        return self._refresh_run_to_dict(run)
+
     def create_sei_student_refresh_run(
         self,
         *,
@@ -1177,7 +1290,7 @@ class DMRepository:
 
         self._require_write()
         run = self._refresh_run_row(run_id)
-        if run.status in {"COMPLETED", "COMPLETED_WITH_ERRORS", "CANCELLED"}:
+        if run.status in {"PAUSED", "COMPLETED", "COMPLETED_WITH_ERRORS", "CANCELLED"}:
             return {"run": self._refresh_run_to_dict(run), "items": []}
 
         now = datetime.now(timezone.utc)
@@ -1332,13 +1445,14 @@ class DMRepository:
                 item.last_error = str(outcome.get("error") or "Falha ao consultar o aluno no SEI.")[:4000]
                 item.completed_at = now
 
+        was_paused = run.status == "PAUSED"
         self.db.flush()
         counts = self._refresh_run_counts(run.id)
         if counts["remaining"] == 0:
             run.status = "COMPLETED_WITH_ERRORS" if counts["failed"] else "COMPLETED"
             run.completed_at = now
         else:
-            run.status = "IN_PROGRESS"
+            run.status = "PAUSED" if was_paused else "IN_PROGRESS"
         run.last_batch_at = now
         self.db.commit()
         self.db.refresh(run)
