@@ -745,37 +745,26 @@ async def dm_sei_commit(
             update_existing_opening_dates=bool(payload.get("atualizar_datas_existentes", False)),
         )
 
-        # Optional second phase: after the selected roster is safely committed, use
-        # the same temporary SEI credentials to confirm each student's real entry and
-        # defense date. A failure here never rolls back the roster synchronization.
-        if bool(payload.get("consultar_datas_alunos", False)):
-            username = str(payload.get("usuario") or "").strip()
-            password = str(payload.get("senha") or "")
-            if not username or not password:
-                result["student_dates"] = {
-                    "ok": False,
-                    "summary": {"requested": 0, "found": 0, "updated": 0, "failed": 0},
-                    "error": "A sincronização das turmas foi concluída, mas faltaram as credenciais temporárias para consultar as datas individuais.",
-                    "credentials_persisted": False,
-                }
-            else:
-                try:
-                    student_ids = repo.student_ids_for_cohort_keys(selected_cohort_keys)
-                    targets = repo.students_for_sei_dates(student_ids=student_ids) if student_ids else []
-                    lookup = await run_in_threadpool(
-                        lookup_student_course_dates, username, password, targets
-                    )
-                    result["student_dates"] = repo.apply_sei_course_dates(
-                        lookup, source_type="sei_import_defesas"
-                    )
-                except Exception as dates_exc:
-                    LOGGER.warning("Turmas sincronizadas, mas a consulta individual de datas no SEI falhou: %s", dates_exc)
-                    result["student_dates"] = {
-                        "ok": False,
-                        "summary": {"requested": 0, "found": 0, "updated": 0, "failed": 0},
-                        "error": str(dates_exc),
-                        "credentials_persisted": False,
-                    }
+        # Student-by-student SEI enrichment is intentionally deferred.  It can take
+        # several minutes for large cohorts and must not keep the roster-sync HTTP
+        # request open until Nginx/Cloudflare times out.  The next queue stages will
+        # process this scope in resumable batches.
+        requested_inline_dates = bool(payload.get("consultar_datas_alunos", False))
+        selected_ids = [
+            int(value) for value in (result.get("selected_cohort_ids") or [])
+            if str(value or "").strip()
+        ]
+        result["student_dates"] = {
+            "ok": None,
+            "deferred": True,
+            "requested_inline": requested_inline_dates,
+            "selected_cohort_ids": selected_ids,
+            "credentials_persisted": False,
+            "message": (
+                "As turmas e os alunos foram sincronizados. A consulta individual de início, "
+                "conclusão e titulação agora é executada separadamente para evitar timeout 504."
+            ),
+        }
         return result
     except Exception as exc:
         _translate(exc)

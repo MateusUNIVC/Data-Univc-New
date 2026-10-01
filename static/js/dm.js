@@ -893,7 +893,6 @@ function openSeiModal(mode='direct') {
   $('#seiReportFile').value = '';
   $('#seiExcludeTest').checked = true;
   $('#seiRemoveDemo').checked = true;
-  $('#seiCheckStudentDates').checked = mode === 'direct';
   $('#seiCheckDatesWrap').classList.toggle('hidden', mode !== 'direct');
   $('#seiTechnicalYear').value = new Date().getFullYear();
   $('#seiPreviewSummary').innerHTML = '';
@@ -1067,15 +1066,12 @@ async function commitSei() {
   clearSeiErrors();
   const button = $('#seiCommitButton');
   const selectedKeys = selectedSeiCohortKeys();
-  const consultDates = state.seiMode === 'direct' && $('#seiCheckStudentDates').checked;
   button.disabled = true;
-  button.textContent = consultDates ? 'Sincronizando e consultando alunos…' : 'Sincronizando…';
+  button.textContent = 'Sincronizando…';
   renderSeiOperationProgress('#seiCommitProgress', {
     title: 'Sincronizando dados do SEI',
-    message: consultDates
-      ? 'Gravando as turmas selecionadas e consultando as datas individuais dos alunos.'
-      : 'Gravando no Data UNIVC as turmas e os alunos selecionados.',
-    stage: consultDates ? 'Atualizando turmas e consultando alunos' : 'Atualizando turmas e alunos',
+    message: 'Gravando no Data UNIVC as turmas e os alunos selecionados. As datas individuais serão atualizadas depois, em uma etapa separada.',
+    stage: 'Atualizando turmas e alunos',
   });
   try {
     const openingDateSelection = collectOpeningDates();
@@ -1090,20 +1086,14 @@ async function commitSei() {
         excluir_turmas_teste: $('#seiExcludeTest').checked,
         remover_demonstracao: $('#seiRemoveDemo').checked,
         source_type: state.seiSourceType,
-        consultar_datas_alunos: consultDates,
-        usuario: consultDates ? $('#seiUsername').value.trim() : undefined,
-        senha: consultDates ? $('#seiPassword').value : undefined,
+        consultar_datas_alunos: false,
       }),
     });
     const sync = result.sync || {};
     state.seiLastSelectedCohortIds = (result.selected_cohort_ids || sync.selected_cohort_ids || []).map(Number).filter(Number.isFinite);
     const warnings = result.warnings || [];
-    const dates = result.student_dates;
-    const dateSummary = dates?.summary || {};
-    const datePanel = dates ? (dates.ok
-      ? `<div class="${Number(dateSummary.failed || 0) ? 'sei-warning-list' : 'sei-info-list'}"><strong>${Number(dateSummary.failed || 0) ? 'Consulta concluída com itens para revisão' : 'Consulta individual concluída'}</strong><span>${fmtNumber(dateSummary.requested)} aluno(s) consultado(s); ${fmtNumber(dateSummary.updated)} atualizado(s); ${fmtNumber(dateSummary.defenses_confirmed)} com defesa confirmada; ${fmtNumber(dateSummary.failed)} para revisão.</span></div>`
-      : `<div class="sei-warning-list"><strong>Turmas importadas, mas a consulta individual não terminou</strong><span>${escapeHtml(dates.error || 'Use Atualizar SEI na própria turma para tentar novamente.')}</span></div>`)
-      : '';
+    const dates = result.student_dates || {};
+    const datePanel = `<div class="sei-info-list"><strong>Atualização individual separada</strong><span>${escapeHtml(dates.message || 'As turmas foram sincronizadas. Agora você pode atualizar início, conclusão e titulação em uma operação separada.')}</span></div>`;
     $('#seiResultContent').innerHTML = `
       <div class="sei-result-hero"><span class="sei-result-check">✓</span><div><strong>Sincronização concluída</strong><p>${escapeHtml(result.message || 'A base do DM foi atualizada.')}</p></div></div>
       <div class="sei-preview-summary">
@@ -1113,8 +1103,10 @@ async function commitSei() {
         <div class="sei-preview-card"><span>Atualizados</span><strong>${fmtNumber(sync.students_updated)}</strong></div>
       </div>
       ${datePanel}
+      <div class="form-actions sei-result-actions"><button type="button" class="button primary" id="seiRefreshSyncedCohorts">Atualizar datas e titulação pelo SEI</button></div>
       ${warnings.length ? `<div class="sei-info-list"><strong>Observações da sincronização</strong><ul>${warnings.slice(0,20).map(item=>`<li>${escapeHtml(item)}</li>`).join('')}</ul>${warnings.length>20?`<small>Mais ${warnings.length-20} observação(ões) ficaram registradas no histórico.</small>`:''}</div>` : '<div class="sei-success-note">Nenhum aviso adicional foi gerado.</div>'}
     `;
+    $('#seiRefreshSyncedCohorts')?.addEventListener('click',()=>openSeiRefreshModal({cohortIds:state.seiLastSelectedCohortIds}));
     setSeiStep('result');
     await refreshAll();
   } catch (error) {

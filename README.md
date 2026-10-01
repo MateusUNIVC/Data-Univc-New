@@ -1516,3 +1516,7 @@ A integração da Diretoria de Mestrado passa a consolidar automaticamente bloco
 A Diretoria de Mestrado passa a aceitar o formato real do SEI quando uma mesma turma é dividida em vários blocos físicos, consolidando com segurança os fragmentos da mesma área + número de turma. O arquivo real `1790874693805.xlsx` foi validado com 13 turmas lógicas e 433 alunos; `CTE:17` resulta em 51 alunos após a consolidação.
 
 Na Reitoria, os indicadores acadêmicos deixam de ficar empilhados na área administrativa. O painel passa a ter telas independentes para `NPS`, `Avaliação Docente` e `Notas e Aprovação`, com Administração separada em `Visão geral`, `Usuários e acessos` e `Auditoria`. O backend institucional ponderado da Parte 12 é preservado. Consulte `docs/PART13_DM_HOTFIX_REITORIA_TABS_2026-10-01.md`.
+
+## Parte 16 — Reitoria combobox + fundação da fila SEI da DM (2026-10-01)
+
+A Reitoria acadêmica passa a usar comboboxes pesquisáveis nos filtros de Curso e Disciplina, reutilizando o mesmo componente compartilhado de DTNH/DCS. Na Diretoria de Mestrado, a sincronização de turmas/alunos deixa de consultar individualmente início/conclusão/titulação no mesmo request: a etapa longa foi separada para preparar o processamento persistente em lotes e evitar 504 durante o commit das turmas. Schema permanece 49.

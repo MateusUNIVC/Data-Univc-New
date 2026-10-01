@@ -109,6 +109,8 @@ def verify_reitoria_academic_overview() -> None:
         'data-academic-section="results"', 'id="reitoriaAcademicDirectorate"',
         'id="reitoriaKpiApproval"', 'id="reitoriaChartNpsCourses"',
         'id="reitoriaChartNpsInstitutionCourses"', 'href="/reitoria"',
+        'data-combobox-placeholder="Buscar curso..."',
+        'data-combobox-placeholder="Buscar disciplina..."',
     ]
     missing_template = [token for token in required_template if token not in template]
     if missing_template:
@@ -120,6 +122,8 @@ def verify_reitoria_academic_overview() -> None:
         "/api/reitoria/academic/filters", "/api/reitoria/academic/overview",
         "DataUnivcAcademicCharts", "Todas · UNIVC", "function navigate(section)",
         "/reitoria/academico?secao=",
+        "searchableSelect?.attach($('#reitoriaAcademicCourse'))",
+        "searchableSelect?.attach($('#reitoriaAcademicDiscipline'))",
     ]
     missing_frontend = [token for token in required_frontend if token not in frontend]
     if missing_frontend:
@@ -162,12 +166,45 @@ def verify_dm_split_cohort_hotfix() -> None:
     if missing:
         raise SystemExit("DM split-cohort hotfix missing: " + ", ".join(missing))
 
+
+def verify_dm_queue_foundation() -> None:
+    router = (ROOT / "dm_router.py").read_text(encoding="utf-8")
+    template = (ROOT / "templates" / "dm.html").read_text(encoding="utf-8")
+    frontend = (ROOT / "static" / "js" / "dm.js").read_text(encoding="utf-8")
+
+    commit_start = router.index('async def dm_sei_commit(')
+    commit_end = router.index('@router.post("/api/dm/demo/reset")', commit_start)
+    commit_body = router[commit_start:commit_end]
+    if "lookup_student_course_dates" in commit_body:
+        raise SystemExit("DM roster commit reverted to inline student-by-student SEI lookup")
+    required_commit = [
+        '"deferred": True',
+        "evitar timeout 504",
+        '"credentials_persisted": False',
+    ]
+    missing_commit = [token for token in required_commit if token not in commit_body]
+    if missing_commit:
+        raise SystemExit("DM queue foundation markers missing: " + ", ".join(missing_commit))
+    if 'id="seiCheckStudentDates"' in template:
+        raise SystemExit("DM preview still exposes inline date enrichment checkbox")
+    if 'id="seiStudentDatesDeferredNotice"' not in template:
+        raise SystemExit("DM deferred student-date notice missing")
+    required_frontend = [
+        "consultar_datas_alunos: false",
+        'id="seiRefreshSyncedCohorts"',
+        "openSeiRefreshModal({cohortIds:state.seiLastSelectedCohortIds})",
+    ]
+    missing_frontend = [token for token in required_frontend if token not in frontend]
+    if missing_frontend:
+        raise SystemExit("DM queue foundation frontend markers missing: " + ", ".join(missing_frontend))
+
 def main() -> int:
     verify_critical_release_files()
     verify_academic_bootstrap_helpers()
     verify_directorate_isolation_guards()
     verify_reitoria_academic_overview()
     verify_dm_split_cohort_hotfix()
+    verify_dm_queue_foundation()
 
     py_files = [
         str(path.relative_to(ROOT))

@@ -11,6 +11,16 @@ Hotfix operacional 2026-10-01 - DM · turmas fragmentadas no SEI:
 - sem nova migration; schema permanece 49.
 - detalhes em docs/PART12_DM_SEI_SPLIT_COHORT_HOTFIX_2026-10-01.md.
 
+Patch operacional 2026-10-01 - Parte 16 Reitoria combobox + DM-QUEUE-01:
+- filtros Curso e Disciplina da Reitoria usam DataUNIVC.searchableSelect;
+- sincronizacao DM/SEI termina apos gravar turmas e alunos;
+- consulta individual de inicio/conclusao/titulacao nao roda mais dentro de /api/dm/sei/commit;
+- etapa individual fica separada como fundacao para fila persistente e processamento em lotes;
+- regressao final: 241 testes aprovados, 2 ignorados;
+- JavaScript: 28/28 no node --check e 28/28 referencias presentes;
+- sem nova migration; schema permanece 49.
+- detalhes em docs/PART16_REITORIA_COMBOBOX_DM_QUEUE_FOUNDATION_2026-10-01.md.
+
 Perfil: production
 
 Patch operacional 2026-10-01 - Parte 15 convergência visual NPS:

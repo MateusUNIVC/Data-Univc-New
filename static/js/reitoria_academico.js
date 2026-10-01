@@ -58,9 +58,11 @@
     const courses = f.courses || [];
     if (state.courseId && !courses.some(item => String(item.id) === String(state.courseId))) state.courseId = '';
     $('#reitoriaAcademicCourse').innerHTML = option('','Todos os cursos',!state.courseId) + courses.map(item => option(item.id,`${item.name} · ${item.directorate}`,String(item.id)===String(state.courseId))).join('');
+    window.DataUNIVC?.searchableSelect?.attach($('#reitoriaAcademicCourse'));
     const disciplines = f.disciplines || [];
     if (state.disciplineId && !disciplines.some(item => String(item.id) === String(state.disciplineId))) state.disciplineId = '';
     $('#reitoriaAcademicDiscipline').innerHTML = option('','Todas as disciplinas',!state.disciplineId) + disciplines.map(item => option(item.id,`${item.name} · ${item.course_name}`,String(item.id)===String(state.disciplineId))).join('');
+    window.DataUNIVC?.searchableSelect?.attach($('#reitoriaAcademicDiscipline'));
   }
 
   function setKpi(id,value,sub) {
@@ -111,7 +113,11 @@
     $('#academicSectionDescription').textContent = meta[2];
     const disciplineVisible = section === 'faculty' || section === 'results';
     $('#reitoriaAcademicDisciplineField').classList.toggle('hidden',!disciplineVisible);
-    if (!disciplineVisible && state.disciplineId) { state.disciplineId=''; $('#reitoriaAcademicDiscipline').value=''; }
+    if (!disciplineVisible && state.disciplineId) {
+      state.disciplineId='';
+      $('#reitoriaAcademicDiscipline').value='';
+      window.DataUNIVC?.searchableSelect?.sync($('#reitoriaAcademicDiscipline'));
+    }
     history.replaceState(null,'',`/reitoria/academico?secao=${encodeURIComponent(section)}`);
     closeMobileSidebar();
     window.setTimeout(renderActive,0);

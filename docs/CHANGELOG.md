@@ -1282,3 +1282,12 @@ O pacote de produção não carrega mais um arquivo de release/patch/validação
 - DM: consolida fragmentos seguros da mesma turma lógica no relatório SEI (`17-CTE` + `17-CTE Mestrado Univc`).
 - Reitoria: painel acadêmico reconstruído em telas NPS, Avaliação Docente e Notas/Aprovação; administração separada.
 - Sem migration nova; schema 49.
+
+## 2026-10-01 — Parte 16 — Reitoria combobox + DM-QUEUE-01
+
+- Reitoria: filtros Curso e Disciplina passam a usar o combobox pesquisável compartilhado de DTNH/DCS;
+- DM: sincronização de turmas/alunos deixa de executar consulta individual de datas/titulação dentro do mesmo request;
+- consulta individual permanece como segunda etapa explícita e separada;
+- preparação arquitetural para fila persistente e lotes do SEI;
+- sem migration nova; schema 49;
+- regressão: 241 testes aprovados e 2 ignorados.
