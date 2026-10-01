@@ -253,7 +253,7 @@ def verify_dm_queue_ux_and_button_hardening() -> None:
     frontend = (ROOT / "static" / "js" / "dm.js").read_text(encoding="utf-8")
 
     required_router = [
-        'DM_ASSET_VERSION = f"{APP_VERSION}-dmq04"',
+        'DM_ASSET_VERSION = f"{APP_VERSION}-dmq04b"',
         '@router.get("/api/dm/sei/refresh-runs")',
         '@router.get("/api/dm/sei/refresh-runs/{run_id}/items")',
         '@router.post("/api/dm/sei/refresh-runs/{run_id}/pause")',
@@ -287,6 +287,20 @@ def verify_dm_queue_ux_and_button_hardening() -> None:
     missing = [token for token in required_frontend if token not in frontend]
     if missing:
         raise SystemExit("DM button hardening/frontend markers missing: " + ", ".join(missing))
+
+    # Protect the DM UI against template/JavaScript drift. An unguarded direct
+    # dereference of a removed DOM id can make a click handler abort before its
+    # modal/action is executed.
+    template_ids = set(re.findall(r"id=[\"']([^\"']+)[\"']", template))
+    direct_id_refs = re.findall(
+        r"\$\([\"']#([A-Za-z0-9_-]+)[\"']\)\.([A-Za-z_$][\w$]*)",
+        frontend,
+    )
+    missing_dom_ids = sorted({element_id for element_id, _ in direct_id_refs if element_id not in template_ids})
+    if missing_dom_ids:
+        raise SystemExit("DM frontend directly dereferences missing template ids: " + ", ".join(missing_dom_ids))
+    if "seiCheckDatesWrap" in frontend:
+        raise SystemExit("DM frontend still references the removed seiCheckDatesWrap control")
 
 
 def main() -> int:

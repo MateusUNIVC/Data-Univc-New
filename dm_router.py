@@ -61,7 +61,7 @@ DM_SEI_REFRESH_BATCH_BUDGET_SECONDS = _env_int(
 DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS = _env_int(
     "DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS", 15, minimum=5, maximum=30
 )
-DM_ASSET_VERSION = f"{APP_VERSION}-dmq04"
+DM_ASSET_VERSION = f"{APP_VERSION}-dmq04b"
 
 
 def _dm_refresh_scope(payload: dict[str, Any]) -> dict[str, Any]:

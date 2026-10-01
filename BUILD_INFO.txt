@@ -1,16 +1,15 @@
-Data UNIVC 0.13.0 - Production - Part 18 DM Queue UX + Button Hardening
+Data UNIVC 0.13.0 - Production - Part 19 DM SEI Button Runtime Hotfix
 Generated: 2026-10-01
 Schema expected: 51
 Migration ledger: 051_dm_sei_refresh_queue_controls_v0130.sql
 
-Patch operacional 2026-10-01 - Parte 18 DM-QUEUE-04 + hardening dos botões:
-- corrige a inicialização do dm.js para registrar eventos antes de depender da API de identidade;
-- todos os bindings críticos do DM são tolerantes a elementos ausentes;
-- DM usa asset version dedicado para evitar cache de dm.js/css entre patches v0.13.0;
-- filas SEI recentes ficam visíveis na tela Integração com o SEI;
-- fila pode ser pausada e retomada sem perder progresso;
-- falhas individuais podem ser listadas e reprocessadas sem repetir alunos concluídos;
-- credenciais SEI continuam estritamente em memória/requisição e nunca são persistidas;
-- migration 051 adiciona somente o estado PAUSED ao contrato da fila;
-- regressão completa: 248 testes aprovados e 2 ignorados;
+Hotfix operacional 2026-10-01 - Parte 19:
+- corrige erro de runtime em openSeiModal() causado por referência residual ao elemento removido #seiCheckDatesWrap;
+- restaura os botões “Buscar direto no SEI” e “Analisar XLSX do SEI”;
+- preserva importação XLSX, fila persistente, pausa/retomada e reprocessamento de falhas;
+- adiciona auditoria automática de IDs do dm.js contra o template dm.html para impedir novas referências diretas a elementos removidos;
+- eleva o asset version do DM para 0.13.0-dmq04b para invalidar cache do JavaScript anterior;
+- validação de runtime em Chromium headless confirmou abertura dos modais SEI direto, SEI XLSX e importação;
+- sem migration nova; schema permanece 51;
+- regressão completa: 250 testes aprovados e 2 ignorados;
 - release checks: 28/28 JavaScripts válidos e referências de template íntegras.

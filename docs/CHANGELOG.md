@@ -1302,3 +1302,15 @@ O pacote de produção não carrega mais um arquivo de release/patch/validação
 - preparação arquitetural para fila persistente e lotes do SEI;
 - sem migration nova; schema 49;
 - regressão: 241 testes aprovados e 2 ignorados.
+
+## Parte 19 - DM · hotfix de runtime dos botões SEI (01/10/2026)
+
+- corrige a referência residual a `#seiCheckDatesWrap`, removido quando a consulta individual foi desacoplada da sincronização de turmas;
+- restaura os botões **Buscar direto no SEI** e **Analisar XLSX do SEI**;
+- valida os cliques em Chromium headless, além da validação sintática JavaScript;
+- adiciona preflight que compara referências diretas de IDs no `dm.js` com os IDs existentes no `dm.html`;
+- atualiza o asset version do DM para `0.13.0-dmq04b` para invalidar cache;
+- sem migration nova; schema permanece **51**;
+- regressão completa: 250 testes aprovados e 2 ignorados.
+
+Detalhes: `docs/PART19_DM_SEI_BUTTON_RUNTIME_HOTFIX_2026-10-01.md`.

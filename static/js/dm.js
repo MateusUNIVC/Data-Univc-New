@@ -1114,7 +1114,6 @@ function openSeiModal(mode='direct') {
   $('#seiReportFile').value = '';
   $('#seiExcludeTest').checked = true;
   $('#seiRemoveDemo').checked = true;
-  $('#seiCheckDatesWrap').classList.toggle('hidden', mode !== 'direct');
   $('#seiTechnicalYear').value = new Date().getFullYear();
   $('#seiPreviewSummary').innerHTML = '';
   $('#seiCohortPreviewTable').innerHTML = '';
