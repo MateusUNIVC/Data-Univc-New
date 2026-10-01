@@ -5,6 +5,29 @@ Schema esperado: 49
 Migration ledger: 049_academic_faculty_context_scopes_v0130.sql
 Perfil: production
 
+Patch operacional 2026-10-01 - Parte 12 visão acadêmica geral da Reitoria:
+- nova área acadêmica somente leitura em /reitoria;
+- padrão Todas/UNIVC com filtros de semestre, diretoria, curso e disciplina;
+- NPS, favorabilidade docente, aprovação, notas e alunos distintos consolidados;
+- agregação por contagens-base, sem média de médias;
+- distribuição NPS 0-10 institucional e por curso quando a fonte oficial permite;
+- endpoints /api/reitoria/academic/* protegidos por require_fresh_reitoria;
+- regressão final: 219 testes aprovados, 2 ignorados;
+- JavaScript: 28/28 no node --check e 28/28 referências presentes;
+- sem nova migration; schema permanece 49.
+- detalhes em docs/PART12_REITORIA_ACADEMIC_OVERVIEW_2026-10-01.md.
+
+Patch operacional 2026-10-01 - Parte 11 isolamento DTNH/DCS:
+- cache NPS 0-10 separado por diretoria e limpo a cada troca;
+- directorateEpoch invalida respostas assíncronas da diretoria anterior;
+- dashboard, NPS e Resultados só aplicam respostas do contexto atual;
+- Avaliacao Docente valida loadSerial antes de reconciliar/renderizar facets;
+- superfícies acadêmicas são limpas imediatamente durante DTNH <-> DCS;
+- preflight valida os guards de isolamento;
+- regressao final: 214 testes aprovados, 2 ignorados;
+- sem nova migration; schema permanece 49.
+- detalhes em docs/PART11_DIRECTORATE_ISOLATION_2026-10-01.md.
+
 Patch operacional 2026-10-01 - Parte 10 auditoria final integrada:
 - dominios de metas academicas alinhados aos graficos (NPS -100/+100; percentuais 0-100);
 - composicao NPS do Excel fixada em 0-100%;

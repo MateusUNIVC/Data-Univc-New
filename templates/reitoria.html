@@ -23,6 +23,7 @@
       <nav class="reitoria-nav" aria-label="Navegação da Reitoria">
         <span class="nav-caption">Administração</span>
         <a href="#visao" class="reitoria-nav-item active" data-admin-nav="visao">Visão geral</a>
+        <a href="#academico" class="reitoria-nav-item" data-admin-nav="academico">Indicadores Acadêmicos</a>
         <a href="#usuarios" class="reitoria-nav-item" data-admin-nav="usuarios">Usuários e acessos</a>
         <a href="#auditoria" class="reitoria-nav-item" data-admin-nav="auditoria">Auditoria</a>
         <span class="nav-caption">Diretorias</span>
@@ -46,7 +47,7 @@
           <div>
             <span class="eyebrow">DATA UNIVC · ADMINISTRAÇÃO INSTITUCIONAL</span>
             <h1>Área da Reitoria</h1>
-            <p>Gerencie identidades, permissões e acessos institucionais em um único lugar.</p>
+            <p>Acompanhe os indicadores acadêmicos consolidados e gerencie identidades, permissões e acessos institucionais em um único lugar.</p>
           </div>
         </div>
         <button id="newUserButton" class="button primary" type="button">+ Novo usuário</button>
@@ -63,6 +64,72 @@
         <div class="directorate-panel">
           <div class="panel-head"><div><h3>Diretorias disponíveis</h3><p>A Reitoria possui acesso de edição às áreas atualmente publicadas.</p></div></div>
           <div id="directorateCards" class="directorate-grid"></div>
+        </div>
+      </section>
+
+      <section id="academico" class="reitoria-section reitoria-academic-section">
+        <div class="section-heading academic-section-heading">
+          <div>
+            <span class="eyebrow">VISÃO ACADÊMICA INSTITUCIONAL</span>
+            <h2>Indicadores Acadêmicos</h2>
+            <p>DTNH e DCS consolidados em uma única leitura institucional. Os indicadores são recalculados pelas contagens-base, sem média simples entre diretorias.</p>
+          </div>
+          <button id="reitoriaAcademicRefresh" class="button secondary" type="button">Atualizar dados</button>
+        </div>
+
+        <div class="academic-filter-panel" aria-label="Filtros da visão acadêmica">
+          <label><span>Semestre</span><select id="reitoriaAcademicSemester"></select></label>
+          <label><span>Diretoria</span><select id="reitoriaAcademicDirectorate"><option value="ALL">Todas · UNIVC</option></select></label>
+          <label><span>Curso</span><select id="reitoriaAcademicCourse"><option value="">Todos os cursos</option></select></label>
+          <label><span>Disciplina</span><select id="reitoriaAcademicDiscipline"><option value="">Todas as disciplinas</option></select></label>
+        </div>
+        <div id="reitoriaAcademicStatus" class="academic-status">Carregando indicadores acadêmicos…</div>
+        <div id="reitoriaAcademicScope" class="academic-scope-line"></div>
+
+        <div class="academic-kpi-grid" aria-label="Resumo acadêmico institucional">
+          <article id="reitoriaKpiNpsInstitution" class="academic-kpi-card"><span>NPS Instituição · Alunos</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiNpsCourses" class="academic-kpi-card"><span>NPS dos Cursos</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiFaculty" class="academic-kpi-card"><span>Avaliação Docente pelo Aluno</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiApproval" class="academic-kpi-card"><span>Taxa de Aprovação</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiAverageGrade" class="academic-kpi-card"><span>Média das Notas</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiStudents" class="academic-kpi-card"><span>Alunos Distintos</span><strong>—</strong><small>—</small></article>
+          <article id="reitoriaKpiFacultyNps" class="academic-kpi-card"><span>NPS Instituição · Docentes</span><strong>—</strong><small>—</small></article>
+        </div>
+
+        <div class="academic-block">
+          <div class="academic-block-head"><div><span class="eyebrow">NPS</span><h3>Experiência institucional e dos cursos</h3><p>Escala fixa de −100 a +100 e distribuição das notas originais de 0 a 10.</p></div></div>
+          <div class="academic-chart-grid">
+            <article class="academic-chart-card"><h4>NPS Institucional · Alunos</h4><p>Evolução consolidada das diretorias selecionadas.</p><div id="reitoriaChartNpsInstitution" class="reitoria-chart"></div></article>
+            <article class="academic-chart-card"><h4>NPS dos Cursos · evolução</h4><p>Agregado pelas respostas dos cursos, sem média de NPS.</p><div id="reitoriaChartNpsCoursesHistory" class="reitoria-chart"></div></article>
+            <article class="academic-chart-card span-2"><h4>NPS por curso</h4><p>Todos os cursos do recorte lado a lado; cada curso mantém a identificação da diretoria.</p><div id="reitoriaChartNpsCourses" class="reitoria-chart bar-chart"></div></article>
+            <article class="academic-chart-card"><h4>Distribuição 0–10 · Instituição</h4><p>Quando um curso é selecionado, esta distribuição usa o recorte do curso preservado na fonte institucional.</p><div id="reitoriaNpsInstitutionDistribution" class="reitoria-distribution"></div></article>
+            <article class="academic-chart-card"><h4>Distribuição 0–10 · Curso</h4><p>Distribuição da pergunta oficial de recomendação do curso.</p><div id="reitoriaNpsCourseDistribution" class="reitoria-distribution"></div></article>
+            <article class="academic-chart-card"><h4>NPS Institucional · Docentes</h4><p>População anônima e institucional; não possui filtro por curso.</p><div id="reitoriaChartNpsFaculty" class="reitoria-chart"></div></article>
+            <article class="academic-chart-card"><h4>Distribuição 0–10 · Docentes</h4><p>Notas originais que compõem o NPS institucional dos docentes.</p><div id="reitoriaNpsFacultyDistribution" class="reitoria-distribution"></div></article>
+          </div>
+        </div>
+
+        <div class="academic-block">
+          <div class="academic-block-head"><div><span class="eyebrow">AVALIAÇÃO DOCENTE</span><h3>Avaliação do professor pelo aluno</h3><p>Favorabilidade calculada pelas respostas classificadas das perguntas de docente.</p></div></div>
+          <div class="academic-chart-grid">
+            <article class="academic-chart-card"><h4>Evolução da favorabilidade</h4><p>Percentual fixo de 0 a 100%.</p><div id="reitoriaChartFacultyHistory" class="reitoria-chart"></div></article>
+            <article class="academic-chart-card"><h4>Favorabilidade por curso</h4><p>Turmas compartilhadas são deduplicadas no total institucional.</p><div id="reitoriaChartFacultyCourses" class="reitoria-chart bar-chart"></div></article>
+          </div>
+        </div>
+
+        <div class="academic-block">
+          <div class="academic-block-head"><div><span class="eyebrow">RESULTADOS ACADÊMICOS</span><h3>Aprovação, notas e alunos</h3><p>Consolidação de todos os resultados acadêmicos do recorte selecionado.</p></div></div>
+          <div class="academic-chart-grid">
+            <article class="academic-chart-card"><h4>Evolução da taxa de aprovação</h4><p>Escala fixa de 0 a 100%.</p><div id="reitoriaChartApprovalHistory" class="reitoria-chart"></div></article>
+            <article class="academic-chart-card"><h4>Evolução da média das notas</h4><p>Escala acadêmica de 0 a 10.</p><div id="reitoriaChartGradeHistory" class="reitoria-chart"></div></article>
+            <article class="academic-chart-card"><h4>Alunos distintos</h4><p>Contagem sempre inicia em zero.</p><div id="reitoriaChartStudentsHistory" class="reitoria-chart"></div></article>
+            <article class="academic-chart-card"><h4>Aprovação por curso</h4><p>Comparação institucional no semestre selecionado.</p><div id="reitoriaChartApprovalCourses" class="reitoria-chart bar-chart"></div></article>
+          </div>
+        </div>
+
+        <div class="academic-methodology">
+          <strong>Regras de consolidação</strong>
+          <ul id="reitoriaAcademicMethodology"></ul>
         </div>
       </section>
 
@@ -147,6 +214,8 @@
   <script src="/static/js/data-univc-auth.js?v={{ app_version }}"></script>
   <script src="/static/js/data-univc-ui.js?v={{ app_version }}"></script>
   <script src="/static/js/data-univc-identity.js?v={{ app_version }}"></script>
+  <script src="/static/js/data-univc-academic-charts.js?v={{ app_version }}"></script>
+  <script src="/static/js/reitoria_academic.js?v={{ app_version }}"></script>
   <script src="/static/js/admin_users.js?v={{ app_version }}"></script>
 </body>
 </html>

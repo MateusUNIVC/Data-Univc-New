@@ -11,6 +11,7 @@ const state = {
   npsFacultySearch: '',
   npsFacultyFilters: { periodo: '', window: '6' },
   npsDistributionCache: {},
+  directorateEpoch: 0,
   activeDirectorate: null,
   directorates: [],
   actions: [],
@@ -469,6 +470,48 @@ function initializeDirectorateState() {
   }
 }
 
+function captureDirectorateContext() {
+  return { directorate: state.activeDirectorate, epoch: state.directorateEpoch };
+}
+
+function isDirectorateContextCurrent(context) {
+  return Boolean(context)
+    && context.directorate === state.activeDirectorate
+    && context.epoch === state.directorateEpoch;
+}
+
+function clearDirectorateAcademicSurfaces(nextCode = state.activeDirectorate) {
+  const loading = `<div class="chart-empty compact"><small>Carregando ${escapeHtml(nextCode || 'diretoria')}…</small></div>`;
+  [
+    '#chartNpsInstitution', '#chartNpsInstitutionOverall', '#chartNpsInstitutionCourses',
+    '#chartNpsCourseEvolution', '#chartNpsCourseComparison',
+    '#chartNpsFaculty', '#chartNpsFacultyComposition',
+    '#chartResultsApprovalTrend', '#chartResultsApprovedTrend',
+    '#npsInstitutionDistribution', '#npsCourseDistribution', '#npsFacultyDistribution',
+  ].forEach(selector => {
+    const element = $(selector);
+    if (!element) return;
+    element.innerHTML = loading;
+    delete element.dataset.distributionKey;
+  });
+  ['#npsInstitutionSummary', '#npsCourseSummary', '#npsFacultySummary', '#resultsSummaryCards'].forEach(selector => {
+    const element = $(selector);
+    if (element) element.innerHTML = '';
+  });
+  ['#table-nps-institution', '#table-nps', '#table-nps-faculty', '#table-resultados'].forEach(selector => {
+    const element = $(selector);
+    if (element) element.innerHTML = `<div class="empty-table"><strong>Carregando ${escapeHtml(nextCode || 'diretoria')}</strong>Atualizando o recorte acadêmico.</div>`;
+  });
+  ['#npsInstitutionContext', '#npsCourseContext', '#npsFacultyContext', '#resultsTrendContext', '#facultyFilterContext'].forEach(selector => {
+    const element = $(selector);
+    if (element) element.textContent = nextCode ? `Carregando ${nextCode}…` : '';
+  });
+  ['#count-nps-institution', '#count-nps', '#count-nps-faculty', '#count-resultados'].forEach(selector => {
+    const element = $(selector);
+    if (element) element.textContent = '0 registros';
+  });
+}
+
 function resetDirectorateCaches() {
   state.bootstrap = null;
   state.dashboard = null;
@@ -481,6 +524,7 @@ function resetDirectorateCaches() {
   state.npsFaculty = [];
   state.npsFacultySearch = '';
   state.npsFacultyFilters = { periodo: '', window: '6' };
+  state.npsDistributionCache = {};
   state.actions = [];
   state.goals = [];
   state.schedules = [];
@@ -580,12 +624,16 @@ async function switchDirectorate(code) {
   if (!target || code === state.activeDirectorate) return;
   beginLoading({ blocking: true, title: `Abrindo ${code}`, message: 'Carregando o painel e as permissões da diretoria selecionada.' });
   try {
+    state.directorateEpoch += 1;
     state.activeDirectorate = code;
     localStorage.setItem(directorateStorageKey(), code);
     resetDirectorateCaches();
+    clearDirectorateAcademicSurfaces(code);
     state.activeDirectorate = code;
     state.currentSection = 'dashboard';
+    const switchContext = captureDirectorateContext();
     await bootstrapApp();
+    if (!isDirectorateContextCurrent(switchContext)) return;
     navigate('dashboard');
     toast(target.canEdit ? `Diretoria ${code}` : `${code} · somente leitura`, target.canEdit ? 'Você pode consultar e alterar os dados desta diretoria.' : 'Seu grant para esta diretoria permite apenas consulta.');
   } finally {
@@ -701,7 +749,10 @@ async function bootstrapApp() {
       window.location.assign('/dadm?diretoria=DADM');
       return;
     }
-    state.bootstrap=await api('/api/bootstrap');
+    const context = captureDirectorateContext();
+    const bootstrap = await api('/api/bootstrap');
+    if (!isDirectorateContextCurrent(context)) return;
+    state.bootstrap = bootstrap;
     $('#directorLabel').textContent=state.activeDirectorate || state.bootstrap.config.diretoria_exibicao;
     fillCourseSelectors(); fillResultFilters(); fillConfig(); renderDirectorateSelector(); applyDirectorateUi();
     if(!state.eventsBound){bindEvents();state.eventsBound=true;}
@@ -911,7 +962,10 @@ async function loadDashboard() {
   if(cmp) params.set('comparacao',cmp);
   if(windowValue !== 'all') params.set('janela',windowValue);
   try {
-    state.dashboard=await api(`/api/dashboard${params.toString()?`?${params}`:''}`);
+    const context = captureDirectorateContext();
+    const dashboard = await api(`/api/dashboard${params.toString()?`?${params}`:''}`);
+    if (!isDirectorateContextCurrent(context)) return;
+    state.dashboard = dashboard;
     populatePeriodSelectors();
     renderDashboard();
   } catch(error){toast('Erro ao carregar o painel',error.message,'error');}
@@ -1204,7 +1258,7 @@ function renderNpsScoreDistribution(container, payload, opts = {}) {
 }
 
 function npsDistributionCacheKey(audience, semester, course = '') {
-  return `${audience}|${semester || ''}|${course || ''}`;
+  return `${state.activeDirectorate || 'GLOBAL'}|${audience}|${semester || ''}|${course || ''}`;
 }
 
 async function loadNpsScoreDistribution(audience, semester, course, selector) {
@@ -1222,9 +1276,11 @@ async function loadNpsScoreDistribution(audience, semester, course, selector) {
   }
   container.innerHTML = '<div class="chart-empty compact"><small>Carregando distribuição 0–10…</small></div>';
   try {
+    const context = captureDirectorateContext();
     const params = new URLSearchParams({ audience, semester });
     if (course) params.set('course', course);
     const payload = await api(`/api/surveys/nps/distribution?${params.toString()}`, { blocking:false });
+    if (!isDirectorateContextCurrent(context)) return;
     state.npsDistributionCache[key] = payload;
     if (container.dataset.distributionKey === key) renderNpsScoreDistribution(container, payload);
   } catch (error) {
@@ -1605,7 +1661,9 @@ function resultFilterQuery({ includeSearch = false, includeOutcome = false } = {
 async function loadResultSummary(force = false) {
   if (state.resultSummary.length && !force) return state.resultSummary;
   const params = resultFilterQuery();
+  const context = captureDirectorateContext();
   const response = await api(`/api/resultados/resumo${params.toString() ? `?${params}` : ''}`);
+  if (!isDirectorateContextCurrent(context)) return state.resultSummary;
   state.resultSummary = response.items || [];
   return state.resultSummary;
 }
@@ -1613,7 +1671,10 @@ async function loadResultSummary(force = false) {
 async function loadResultStudentSummary(force = false) {
   if (Object.keys(state.resultStudentSummary || {}).length && !force) return state.resultStudentSummary;
   const params = resultFilterQuery();
-  state.resultStudentSummary = await api(`/api/resultados/alunos-resumo${params.toString() ? `?${params}` : ''}`);
+  const context = captureDirectorateContext();
+  const summary = await api(`/api/resultados/alunos-resumo${params.toString() ? `?${params}` : ''}`);
+  if (!isDirectorateContextCurrent(context)) return state.resultStudentSummary;
+  state.resultStudentSummary = summary;
   return state.resultStudentSummary;
 }
 
@@ -1635,7 +1696,9 @@ async function loadResultTrend(force=false) {
   const params=resultTrendQuery();
   const key=params.toString();
   if(!force && state.resultTrendKey===key && state.resultTrend.length) return state.resultTrend;
+  const context = captureDirectorateContext();
   const response=await api(`/api/resultados/tendencia${key?`?${key}`:''}`);
+  if (!isDirectorateContextCurrent(context)) return state.resultTrend;
   state.resultTrend=response.items||[]; state.resultTrendKey=key;
   return state.resultTrend;
 }
@@ -1762,7 +1825,9 @@ async function loadResultDetails() {
   const params = resultFilterQuery({ includeSearch: true, includeOutcome: true });
   params.set('page', cfg.page);
   params.set('page_size', cfg.size);
+  const context = captureDirectorateContext();
   const response = await api(`/api/dados/resultados?${params}`);
+  if (!isDirectorateContextCurrent(context)) return;
   state.data.resultados = response.items || [];
   state.resultServer = {
     total: Number(response.total || 0),
@@ -1885,7 +1950,9 @@ async function loadInstitutionNps(force = false) {
   if (force) state.npsDistributionCache = {};
   if(state.npsInstitution.length && !force){fillNpsInstitutionFilters();renderInstitutionNps();return;}
   try{
+    const context = captureDirectorateContext();
     const response=await api('/api/surveys/nps/institution/history',{blocking:false});
+    if (!isDirectorateContextCurrent(context)) return;
     state.npsInstitution=response.items||[];
     state.npsInstitutionByCourse=response.by_course||[];
     fillNpsInstitutionFilters();
@@ -1973,7 +2040,9 @@ async function loadFacultyNps(force = false) {
   if (force) state.npsDistributionCache = {};
   if (state.npsFaculty.length && !force) { fillNpsFacultyFilters(); renderFacultyNps(); return; }
   try {
+    const context = captureDirectorateContext();
     const response = await api('/api/surveys/nps/faculty/history', { blocking:false });
+    if (!isDirectorateContextCurrent(context)) return;
     state.npsFaculty = response.items || [];
     fillNpsFacultyFilters();
     renderFacultyNps();
@@ -2050,6 +2119,7 @@ async function loadDataset(dataset, force = false) {
     return;
   }
   if (dataset === 'resultados') {
+    const context = captureDirectorateContext();
     try {
       if(!state.resultPeriodInitialized){
         const periods=[...(state.dashboard?.periodos?.semestrais||[])].sort((a,b)=>periodStartKey(a)-periodStartKey(b));
@@ -2058,16 +2128,22 @@ async function loadDataset(dataset, force = false) {
         fillResultFilters();
       }
       await Promise.all([loadResultSummary(force), loadResultStudentSummary(force), loadResultTrend(force)]);
+      if (!isDirectorateContextCurrent(context)) return;
       renderResultTrend();
       renderResultActiveFilter();
       if (state.resultView === 'resumo') renderResultSummaryTable();
-      else await loadResultDetails();
+      else {
+        await loadResultDetails();
+        if (!isDirectorateContextCurrent(context)) return;
+      }
     } catch (error) { toast('Erro ao carregar resultados', error.message, 'error'); }
     return;
   }
   if (state.data[dataset].length && !force) { renderDatasetTable(dataset); return; }
   try {
+    const context = captureDirectorateContext();
     const response = await api(`/api/dados/${dataset}`);
+    if (!isDirectorateContextCurrent(context)) return;
     state.data[dataset] = response.items;
     if(dataset==='nps') fillNpsCourseFilters();
     renderDatasetTable(dataset);

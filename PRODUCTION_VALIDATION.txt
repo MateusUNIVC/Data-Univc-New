@@ -4,6 +4,34 @@ Base academica: v0.11.6.7
 Schema: 49
 Migration obrigatoria acumulada: 049_academic_faculty_context_scopes_v0130.sql
 
+Parte 12 - Visão Acadêmica Geral da Reitoria (2026-10-01):
+- nova seção Indicadores Acadêmicos em /reitoria, somente leitura;
+- Todas/UNIVC é o recorte padrão, com filtros opcionais DTNH/DCS, curso, disciplina e semestre;
+- NPS, Avaliação Docente e Resultados são consolidados pelas contagens-base;
+- NPS dos docentes permanece institucional/anônimo;
+- percentuais 0-100, NPS -100/+100, notas 0-10 e contagens com mínimo zero;
+- endpoints protegidos por require_fresh_reitoria;
+- sem migration nova; schema permanece 49.
+
+Checks finais Parte 12:
+- Python compile: OK
+- JavaScript: 28/28 no node --check
+- Referencias JavaScript dos templates: 28/28 presentes
+- Pytest: 219 passed, 2 skipped
+- Release checks: OK
+
+Parte 11 - Isolamento DTNH/DCS (2026-10-01):
+- cache NPS 0-10 inclui a diretoria e é zerado na troca;
+- respostas assíncronas antigas são descartadas por directorateEpoch;
+- dashboard, NPS, Resultados e Avaliação Docente preservam isolamento de contexto;
+- troca de diretoria limpa imediatamente os dados acadêmicos visíveis;
+- preflight verifica os guards de isolamento;
+- sem migration nova; schema permanece 49.
+
+Checks finais Parte 11:
+- Pytest: 214 passed, 2 skipped
+- Testes direcionados Parte 11: 6 passed
+
 Parte 10 - Auditoria final integrada (2026-10-01):
 - metas NPS limitadas a -100/+100;
 - metas de favorabilidade/aprovacao limitadas a 0-100%;

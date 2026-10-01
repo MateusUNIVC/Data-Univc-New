@@ -334,9 +334,16 @@
     location.assign('/');
   }
   function bindNav() {
-    document.querySelectorAll('[data-admin-nav]').forEach(link => link.addEventListener('click', () => {
-      document.querySelectorAll('[data-admin-nav]').forEach(item => item.classList.toggle('active', item === link));
+    const links = [...document.querySelectorAll('[data-admin-nav]')];
+    const sync = () => {
+      const target = String(location.hash || '#visao').replace(/^#/, '') || 'visao';
+      links.forEach(item => item.classList.toggle('active', item.dataset.adminNav === target));
+    };
+    links.forEach(link => link.addEventListener('click', () => {
+      links.forEach(item => item.classList.toggle('active', item === link));
     }));
+    window.addEventListener('hashchange', sync);
+    sync();
   }
   function bindMobileSidebar() {
     const sidebar = $('#reitoriaSidebar');

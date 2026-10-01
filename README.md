@@ -1,3 +1,29 @@
+## Parte 12 - visão acadêmica geral da Reitoria (01/10/2026)
+
+- nova seção `Indicadores Acadêmicos` em `/reitoria`, somente leitura;
+- recorte padrão `Todas · UNIVC`, com filtros por semestre, diretoria, curso e disciplina;
+- NPS institucional/alunos, NPS dos cursos, NPS institucional/docentes, favorabilidade docente, aprovação, média das notas e alunos distintos;
+- consolidação institucional recalculada pelas contagens-base, sem média de médias;
+- distribuições NPS 0–10 reutilizam os agregados oficiais;
+- turmas compartilhadas permanecem deduplicadas no total institucional;
+- endpoints `/api/reitoria/academic/*` protegidos por `require_fresh_reitoria`;
+- sem migration nova; schema permanece 49;
+- regressão completa: 219 testes aprovados e 2 ignorados; 28/28 JavaScripts válidos.
+
+Detalhes: `docs/PART12_REITORIA_ACADEMIC_OVERVIEW_2026-10-01.md`.
+
+## Parte 11 - isolamento definitivo entre DTNH e DCS (01/10/2026)
+
+- cache da distribuição NPS 0–10 passa a ser separado por diretoria e é zerado na troca;
+- `directorateEpoch` invalida respostas assíncronas iniciadas na diretoria anterior;
+- NPS, Resultados, dashboard e Avaliação Docente deixam de aceitar/renderizar respostas atrasadas de outro recorte;
+- a troca de diretoria limpa imediatamente gráficos/tabelas acadêmicos e exibe o estado de carregamento da nova diretoria;
+- preflight de release passa a validar os guards de isolamento;
+- sem migration nova; schema permanece 49;
+- regressão completa: 214 testes aprovados e 2 ignorados.
+
+Detalhes: `docs/PART11_DIRECTORATE_ISOLATION_2026-10-01.md`.
+
 ## Parte 10 - auditoria final integrada e hardening de domínio (01/10/2026)
 
 - metas de NPS são limitadas a -100/+100 e metas percentuais acadêmicas a 0-100%;

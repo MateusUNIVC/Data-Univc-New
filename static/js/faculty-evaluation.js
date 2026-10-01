@@ -32,6 +32,21 @@
     return window.DataUNIVC?.searchableSelect?.attach(select);
   }
 
+  function clearRenderedState(nextCode = state.activeDirectorate) {
+    ['facultyOverviewCards','facultyComposition','facultySemesterTrend','facultyQuestionHighlights','facultyTeachersList','facultyDisciplinesList','facultyQuestionsList','facultyImportHistory'].forEach(id => {
+      const element = byId(id);
+      if (element) element.innerHTML = '';
+    });
+    ['facultySemesterFilter','facultyCourseFilter','facultyDisciplineFilter','facultyTeacherFilter'].forEach(id => {
+      const element = byId(id);
+      if (element) element.innerHTML = '<option value="">Carregando…</option>';
+    });
+    const context = byId('facultyFilterContext');
+    if (context) context.textContent = nextCode ? `Carregando ${nextCode}…` : '';
+    showError(null);
+    showLoading(false);
+  }
+
   function reset() {
     moduleState.directorate = null;
     moduleState.loaded = false;
@@ -51,6 +66,7 @@
     moduleState.disciplineSearch = '';
     moduleState.periodInitialized = false;
     moduleState.loadSerial += 1;
+    clearRenderedState(state.activeDirectorate);
   }
 
   function filterParams(filters = moduleState.filters) {
@@ -117,10 +133,12 @@
     return changed;
   }
 
-  async function loadFacets() {
+  async function loadFacets(serial = moduleState.loadSerial) {
     let facets = await api(withQuery('/analytics/filters', filterParams()), { blocking: false });
+    if (serial !== moduleState.loadSerial) return false;
     if (reconcileFilters(facets)) {
       facets = await api(withQuery('/analytics/filters', filterParams()), { blocking: false });
+      if (serial !== moduleState.loadSerial) return false;
       reconcileFilters(facets);
     }
     if (!moduleState.periodInitialized) {
@@ -129,11 +147,14 @@
       if (!moduleState.filters.semester && latestSemester) {
         moduleState.filters.semester = String(latestSemester);
         facets = await api(withQuery('/analytics/filters', filterParams()), { blocking: false });
+        if (serial !== moduleState.loadSerial) return false;
         reconcileFilters(facets);
       }
     }
+    if (serial !== moduleState.loadSerial) return false;
     moduleState.facets = facets;
     renderFilters();
+    return true;
   }
 
   function renderFilters() {
@@ -384,7 +405,10 @@
     showLoading(true);
     showError(null);
     try {
-      if (moduleState.view !== 'imports') await loadFacets();
+      if (moduleState.view !== 'imports') {
+        const facetsLoaded = await loadFacets(serial);
+        if (!facetsLoaded) return;
+      }
       if (serial !== moduleState.loadSerial) return;
       const params = filterParams();
       if (moduleState.view === 'overview') {

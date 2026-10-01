@@ -32,6 +32,7 @@ from upload_utils import save_validated_excel_upload
 from release_info import APP_VERSION, SCHEMA_VERSION
 from schema_version import get_schema_status, schema_version_required
 from admin_router import router as admin_router
+from reitoria_academic_router import router as reitoria_academic_router
 from management_router import router as management_router
 from dadm_router import router as dadm_router
 from dadm_tallos_router import router as dadm_tallos_router
@@ -137,6 +138,7 @@ def _parse_window_query(value: str | None, *, preserve_all: bool = False) -> int
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 templates = Jinja2Templates(directory=ROOT / "templates")
 app.include_router(admin_router)
+app.include_router(reitoria_academic_router)
 app.include_router(management_router)
 app.include_router(dadm_router)
 app.include_router(dadm_tallos_router)

@@ -1,3 +1,15 @@
+# 2026-10-01 — Parte 11 · isolamento DTNH/DCS
+
+- corrige reaproveitamento da distribuição NPS 0–10 entre diretorias;
+- chave do cache passa a incluir DTNH/DCS e o cache é limpo na troca;
+- adiciona `directorateEpoch` para descartar respostas assíncronas da diretoria anterior;
+- protege dashboard, NPS e Resultados Acadêmicos contra race conditions de troca;
+- Avaliação Docente passa a validar `loadSerial` antes de reconciliar/renderizar filtros;
+- superfícies acadêmicas são limpas imediatamente durante a troca;
+- release preflight valida os novos guards;
+- regressão completa: 214 testes aprovados e 2 ignorados;
+- schema permanece 49; nenhuma migration nova.
+
 # 2026-09-29 — Parte 8 Hotfix · restauração de fillConfig
 
 - corrige `ReferenceError: fillConfig is not defined` introduzido na limpeza de legado da Parte 8;

@@ -33,6 +33,10 @@ def verify_critical_release_files() -> None:
         ROOT / "static" / "js" / "app.js",
         ROOT / "static" / "js" / "faculty-evaluation.js",
         ROOT / "static" / "js" / "data-univc-ui.js",
+        ROOT / "static" / "js" / "data-univc-academic-charts.js",
+        ROOT / "static" / "js" / "reitoria_academic.js",
+        ROOT / "reitoria_academic.py",
+        ROOT / "reitoria_academic_router.py",
         ROOT / "database" / SCHEMA_MIGRATION,
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
@@ -54,9 +58,67 @@ def verify_academic_bootstrap_helpers() -> None:
         raise SystemExit("Academic bootstrap helpers missing: " + ", ".join(missing))
 
 
+
+def verify_directorate_isolation_guards() -> None:
+    app_js = (ROOT / "static" / "js" / "app.js").read_text(encoding="utf-8")
+    faculty_js = (ROOT / "static" / "js" / "faculty-evaluation.js").read_text(encoding="utf-8")
+    required_app_tokens = [
+        "directorateEpoch",
+        "function captureDirectorateContext()",
+        "function isDirectorateContextCurrent(context)",
+        "function clearDirectorateAcademicSurfaces",
+        "state.npsDistributionCache = {};",
+        "`${state.activeDirectorate || 'GLOBAL'}|${audience}",
+        "state.directorateEpoch += 1;",
+    ]
+    missing_app = [token for token in required_app_tokens if token not in app_js]
+    if missing_app:
+        raise SystemExit("Directorate isolation guards missing from app.js: " + ", ".join(missing_app))
+    required_faculty_tokens = [
+        "async function loadFacets(serial = moduleState.loadSerial)",
+        "const facetsLoaded = await loadFacets(serial);",
+        "clearRenderedState(state.activeDirectorate);",
+    ]
+    missing_faculty = [token for token in required_faculty_tokens if token not in faculty_js]
+    if missing_faculty:
+        raise SystemExit("Directorate isolation guards missing from faculty-evaluation.js: " + ", ".join(missing_faculty))
+
+
+
+def verify_reitoria_academic_overview() -> None:
+    template = (ROOT / "templates" / "reitoria.html").read_text(encoding="utf-8")
+    frontend = (ROOT / "static" / "js" / "reitoria_academic.js").read_text(encoding="utf-8")
+    backend = (ROOT / "reitoria_academic.py").read_text(encoding="utf-8")
+    router = (ROOT / "reitoria_academic_router.py").read_text(encoding="utf-8")
+    required_template = [
+        'href="#academico"', 'id="academico"', 'id="reitoriaAcademicDirectorate"',
+        'id="reitoriaKpiApproval"', 'id="reitoriaChartNpsCourses"',
+    ]
+    missing_template = [token for token in required_template if token not in template]
+    if missing_template:
+        raise SystemExit("Reitoria academic template tokens missing: " + ", ".join(missing_template))
+    required_frontend = [
+        "/api/reitoria/academic/filters", "/api/reitoria/academic/overview",
+        "DataUnivcAcademicCharts", "Todas · UNIVC",
+    ]
+    missing_frontend = [token for token in required_frontend if token not in frontend]
+    if missing_frontend:
+        raise SystemExit("Reitoria academic frontend tokens missing: " + ", ".join(missing_frontend))
+    required_backend = [
+        "class ReitoriaAcademicService", "_projection_nps_history", "_faculty_summary",
+        "_result_payload", "approved_count", "finalized_count",
+    ]
+    missing_backend = [token for token in required_backend if token not in backend]
+    if missing_backend:
+        raise SystemExit("Reitoria academic backend tokens missing: " + ", ".join(missing_backend))
+    if "Depends(require_fresh_reitoria)" not in router:
+        raise SystemExit("Reitoria academic endpoints are not protected by require_fresh_reitoria")
+
 def main() -> int:
     verify_critical_release_files()
     verify_academic_bootstrap_helpers()
+    verify_directorate_isolation_guards()
+    verify_reitoria_academic_overview()
 
     py_files = [
         str(path.relative_to(ROOT))

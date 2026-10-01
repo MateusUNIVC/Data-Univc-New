@@ -16,9 +16,9 @@
   "local_demo_database_included": false,
   "local_windows_launchers_included": false,
   "docker_compose_app_only_included": true,
-  "artifact_profile": "production-vps-v0130-part10-final-integrated-audit",
-  "created_at_utc": "2026-10-01T15:41:59.539789+00:00",
-  "release_name": "Data UNIVC 0.13.0 - Production - Part 10 Final Integrated Audit",
+  "artifact_profile": "production-vps-v0130-part12-reitoria-academic-overview",
+  "created_at_utc": "2026-10-01T17:07:29Z",
+  "release_name": "Data UNIVC 0.13.0 - Production - Part 12 Reitoria Academic Overview",
   "patch_scope": [
     "part1-non-actionable-warning-cleanup",
     "educacao-fisica-licenciatura-sei-current-label-compatibility",
@@ -55,17 +55,28 @@
     "part10-excel-nps-composition-scale-0-100",
     "part10-critical-release-file-preflight",
     "part10-bootstrap-helper-preflight",
-    "part10-final-integrated-audit"
+    "part10-final-integrated-audit",
+    "part11-directorate-scoped-nps-distribution-cache",
+    "part11-directorate-epoch-stale-response-guard",
+    "part11-academic-surface-clear-on-switch",
+    "part11-faculty-facet-serial-guard",
+    "part11-directorate-isolation-release-preflight",
+    "part12-reitoria-academic-overview",
+    "part12-base-count-institutional-aggregation",
+    "part12-global-academic-filters",
+    "part12-reitoria-nps-zero-to-ten",
+    "part12-read-only-academic-governance",
+    "part12-reitoria-academic-release-preflight"
   ],
   "validation": {
-    "full_test_suite": "208 passed, 2 skipped",
+    "full_test_suite": "219 passed, 2 skipped",
     "data_univc_ui_js_node_check": "ok",
     "app_js_node_check": "ok",
     "faculty_evaluation_js_node_check": "ok",
     "python_compile": "ok",
     "release_checks": "ok",
-    "all_static_js_node_check": "26/26 ok",
-    "template_js_references": "26/26 present",
+    "all_static_js_node_check": "28/28 ok",
+    "template_js_references": "28/28 present",
     "faculty_legacy_frontend_tokens": "absent",
     "bootstrap_active_helpers": "preflight enforced; fillConfig defined",
     "interactive_excel_panel_charts": 5,
@@ -82,9 +93,20 @@
     "faculty_nps_benchmark": "50 reports: 152 SELECT + 256 INSERT before; 5 SELECT + 9 INSERT after",
     "critical_release_files": "dpe_cost_v2.py + academic JS + migration 049 present",
     "academic_goal_domains": "NPS -100..100; approval/favorability 0..100",
-    "interactive_excel_nps_composition_scale": "0..100"
+    "interactive_excel_nps_composition_scale": "0..100",
+    "directorate_isolation_tests": "6/6 passed",
+    "nps_distribution_cache_scope": "directorate|audience|semester|course",
+    "directorate_epoch_guard": "dashboard + NPS + results + bootstrap protected",
+    "faculty_facet_serial_guard": "stale facets discarded before reconcile/render",
+    "directorate_isolation_preflight": "enforced",
+    "reitoria_academic_weighted_aggregation": "NPS/aprovacao/notas/favorabilidade recalculated from base counts",
+    "reitoria_academic_auth": "require_fresh_reitoria enforced",
+    "reitoria_academic_read_only": "no write endpoints",
+    "reitoria_academic_filters": "semester + ALL/DTNH/DCS + course + discipline",
+    "reitoria_academic_semantic_scales": "NPS -100..100; percent 0..100; grade 0..10; count min 0",
+    "reitoria_academic_tests": "5/5 targeted tests passed as part of full suite"
   },
-  "file_count": 379,
+  "file_count": 387,
   "files": [
     {
       "path": ".dockerignore",
@@ -103,8 +125,8 @@
     },
     {
       "path": "BUILD_INFO.txt",
-      "bytes": 18532,
-      "sha256": "e14ab17af8db917bcc27b11589e9a24bd9bb8e92a712e8c79325f5c890c35149"
+      "bytes": 19902,
+      "sha256": "077aebcdf9d923bb6b5c85984126f539abc8eb359aebd5e8b452d3b29d646983"
     },
     {
       "path": "Dockerfile",
@@ -123,13 +145,13 @@
     },
     {
       "path": "PRODUCTION_VALIDATION.txt",
-      "bytes": 3163,
-      "sha256": "d7645e74d931f2d2921089df920a000aedd027a417cf16a523ac729b9b7eb1bd"
+      "bytes": 4409,
+      "sha256": "d68b400becd028015dbbb9f28369ce406311e6ef1b3f1e20c3b7a3ee971420d0"
     },
     {
       "path": "README.md",
-      "bytes": 106870,
-      "sha256": "901412da41b77b3aee78f6df868cfedb6af1c0974c727e792135f0aca2472b7b"
+      "bytes": 108467,
+      "sha256": "13d27f7fa39eb79588a320a8bdcc406b3af0ddcfeef017538080456de74c8e5f"
     },
     {
       "path": "academic_analytics.py",
@@ -173,8 +195,8 @@
     },
     {
       "path": "app.py",
-      "bytes": 49246,
-      "sha256": "e8dbdcea4d5a63ccbd866e6c703e7e737324e460a3af7c0c1c8d0f1969c961b8"
+      "bytes": 49363,
+      "sha256": "124992b6c02acd3ee29c58916ccc7514d2bac6fdd4e0c7f80563f7c43627b064"
     },
     {
       "path": "assets/modelos/Modelo_Avaliacao_Docente.xlsx",
@@ -738,8 +760,8 @@
     },
     {
       "path": "docs/CHANGELOG.md",
-      "bytes": 77865,
-      "sha256": "60f7c7edf040b67b76afd1006323398e7d910edbb92b8557938faabe4b7e1faf"
+      "bytes": 78547,
+      "sha256": "399556a1c9fe5c30a76c0a2e2b54b962121b3a55631945994ff0d470e158a3bc"
     },
     {
       "path": "docs/DADM_FULL_ATTENDANCE_EXPLORER_v09611.md",
@@ -1092,6 +1114,16 @@
       "sha256": "0a744ff87655891d0369b3375e29a33447bd501ce4802533c9df4475e0fb1a0c"
     },
     {
+      "path": "docs/PART11_DIRECTORATE_ISOLATION_2026-10-01.md",
+      "bytes": 2812,
+      "sha256": "bba39fb380900940d183bca1a54c360d1eeea4bc38b95feb9cce05a7b277ccb9"
+    },
+    {
+      "path": "docs/PART12_REITORIA_ACADEMIC_OVERVIEW_2026-10-01.md",
+      "bytes": 3468,
+      "sha256": "dc75eca4458a5ba1d7d5a3eda38537bc0c2249de5640a2c38428f666cb20a880"
+    },
+    {
       "path": "docs/PART1_UX_CLEANUP_EF_LIC_2026-09-29.md",
       "bytes": 3743,
       "sha256": "84ab539d2b97df9a5bdc69f3a484568f4c28b2a977c452826cf0e9af7ab7121b"
@@ -1312,6 +1344,16 @@
       "sha256": "c0839ab6ce67844af29e75b549d8330f0406b4bdf8d62a1f02cb5bd3751e8bb3"
     },
     {
+      "path": "reitoria_academic.py",
+      "bytes": 37499,
+      "sha256": "8f8975080bb02813e9ae37dfa1b737487fdc3ba1d8be5db2b3535cf6646dcf58"
+    },
+    {
+      "path": "reitoria_academic_router.py",
+      "bytes": 1586,
+      "sha256": "b8e938588c23142c8f73bb08a094e057b07ee96c9436ea66e0bad811995152cc"
+    },
+    {
       "path": "release_info.py",
       "bytes": 194,
       "sha256": "cd19c560f4d210fd10bccb02f15828b4d549fabd6a79116ccb8e5f6b6a3e21f9"
@@ -1358,8 +1400,8 @@
     },
     {
       "path": "scripts/run_release_checks.py",
-      "bytes": 4614,
-      "sha256": "e97709586257b1085cb87fb816017d48a693cd92b4bddebc1b3a215a3d6ed835"
+      "bytes": 7867,
+      "sha256": "198f2f2df3c03cff2fffe86e29f32ced8c742c9dde437f2c2f4c95c5ee15ca00"
     },
     {
       "path": "scripts/seed_dpe_demo.py",
@@ -1483,8 +1525,8 @@
     },
     {
       "path": "static/css/reitoria.css",
-      "bytes": 13910,
-      "sha256": "52d60a9c81095d89282a35b15a30eed502173e55a111d3ab1284885758f60bbc"
+      "bytes": 19168,
+      "sha256": "e0624e6ab6112e3aaff551cdc689740289e2a65cc08a286fe3df6a1a19ab9806"
     },
     {
       "path": "static/css/ui-v2.css",
@@ -1498,13 +1540,13 @@
     },
     {
       "path": "static/js/admin_users.js",
-      "bytes": 22638,
-      "sha256": "5b6e746ebcaee09428eb32f2baaed6ee03b5e351e174483dc166abc6b7ec2cfa"
+      "bytes": 22902,
+      "sha256": "74e21acee0508fdf0c0bef8dbc4d6cad13c4436dbff4510c6efb0294794b8bf0"
     },
     {
       "path": "static/js/app.js",
-      "bytes": 216891,
-      "sha256": "1140f903db9b0d82f107ddb3ff0b17eb5607bb8554a362e12fdfc53394eee439"
+      "bytes": 220579,
+      "sha256": "f6976531e030775ce1fcc2fda53cb55bc54eef7cc803c6f050d45f6068421030"
     },
     {
       "path": "static/js/dadm.js",
@@ -1535,6 +1577,11 @@
       "path": "static/js/dadm_v2_state.js",
       "bytes": 4186,
       "sha256": "daa819b06c8e818ea185c475091cf93e662b447c1e3e6a5d433861025f544567"
+    },
+    {
+      "path": "static/js/data-univc-academic-charts.js",
+      "bytes": 8483,
+      "sha256": "df5d8a2f616a4e9c9253eff23d95f56bb973fb0510536616830a59a8bed520cb"
     },
     {
       "path": "static/js/data-univc-auth.js",
@@ -1613,13 +1660,18 @@
     },
     {
       "path": "static/js/faculty-evaluation.js",
-      "bytes": 51812,
-      "sha256": "67f23eed512b92da5746b78e7e89c44f029c1c6476fbf78e366605da678e9435"
+      "bytes": 53007,
+      "sha256": "80085078553ce129b7cb8774aefdf1656f01b9b6c9832f5e40e7a47fbe8c641b"
     },
     {
       "path": "static/js/management.js",
       "bytes": 36550,
       "sha256": "ac6518e22f1215ff3f23084d82523e773d8b03e3c492b0d997e733e47b3c850c"
+    },
+    {
+      "path": "static/js/reitoria_academic.js",
+      "bytes": 8888,
+      "sha256": "ee4e7f6f2314e637bd5d3f9b059bd3494266e30224517697f9a73dc33b0236e8"
     },
     {
       "path": "static/js/ui-v2.js",
@@ -1753,8 +1805,8 @@
     },
     {
       "path": "templates/reitoria.html",
-      "bytes": 9605,
-      "sha256": "62d2f3365491e2ef3c548ebd953a064ee48881554f18627e7318abca71c03c69"
+      "bytes": 16722,
+      "sha256": "5b37d29db3d37d7a91f78dd7382ed69200b7f79d771adba5e9c414e7a9effcab"
     },
     {
       "path": "tests/test_academic_interactive_excel_part7.py",
@@ -1945,6 +1997,16 @@
       "path": "tests/test_part10_final_audit.py",
       "bytes": 4528,
       "sha256": "ffb05a4b24b9030f060f3657da6b1b8225d16a31da2830d9c4039e0f1619e711"
+    },
+    {
+      "path": "tests/test_part11_directorate_isolation.py",
+      "bytes": 4574,
+      "sha256": "0c43de40910ee1b49634cfb5e201bf9fe1264741b9f5ebc7aa4a5654ec17c9bb"
+    },
+    {
+      "path": "tests/test_part12_reitoria_academic_overview.py",
+      "bytes": 8905,
+      "sha256": "8820b3e696a2e921e779dbfa76efa95b445b8a06174ceb731343f109cdcd6cac"
     },
     {
       "path": "tests/test_part4_nps_long_course_labels.py",
