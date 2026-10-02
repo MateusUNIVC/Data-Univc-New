@@ -1335,3 +1335,17 @@ O pacote de produção não carrega mais um arquivo de release/patch/validação
 - regressão completa: 250 testes aprovados e 2 ignorados.
 
 Detalhes: `docs/PART19_DM_SEI_BUTTON_RUNTIME_HOTFIX_2026-10-01.md`.
+
+## Excel Official 03B — DM cutover
+
+- Unifica a exportação da DM em `/api/dm/excel`.
+- Remove a opção visual duplicada “Excel Interativo”.
+- Adiciona `DM_EXCEL_OFFICIAL_ENABLED=false` como gate de produção/rollback.
+- Adiciona auditoria Reitoria-only `/api/admin/excel-official/dm/parity`.
+- Adiciona header `X-Data-UNIVC-Excel-Engine` e smoke pós-cutover.
+- Sem migration; schema 53.
+
+## Excel Official DPE 05C
+- Unifica `/api/dpe/excel` como rota canônica com `DPE_EXCEL_OFFICIAL_ENABLED=false` por padrão.
+- Adiciona rollback para `dpe_modern`, header `X-Data-UNIVC-Excel-Engine` e nome `Excel_Oficial_DPE.xlsx` no engine novo.
+- Adiciona gate de produção exclusivo da Reitoria e smoke pós-cutover da DPE.

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy import delete
@@ -21,8 +21,8 @@ from dm_analytics import build_dm_dashboard
 from dm_catalog import DM_AREAS, DMValidationError
 from dm_demo import cohort_import_payloads, student_import_payloads
 from dm_excel_builder import build_dm_import_template
-from dm_excel_v2_builder import build_dm_v2_workbook
-from dm_excel_v3_builder import build_dm_interactive_workbook_bytes
+from dm_excel_parity import audit_dm_parity
+from dm_excel_service import dm_excel_official_enabled, export_dm_excel, selected_dm_excel_engine
 from dm_excel_parser import DMExcelImportError, parse_dm_cohorts_workbook, parse_dm_students_workbook
 from dm_repository import DMRepository
 from management_catalog import ManagementCatalogError, catalog_payload
@@ -32,7 +32,7 @@ from dm_sei_parser import DMSEIParseError, normalize_dm_sei_payload, parse_dm_se
 from models import DmCohort, DmStudent
 from sei_stricto import download_stricto_integral_report
 from sei_student_dates import SEIStudentDatesError, lookup_student_course_dates
-from security import DirectorateScope, require_directorate_access, require_directorate_edit
+from security import DirectorateScope, UserContext, require_directorate_access, require_directorate_edit, require_fresh_reitoria, resolve_directorate_scope
 from upload_utils import save_validated_excel_upload
 
 ROOT = Path(__file__).resolve().parent
@@ -61,7 +61,7 @@ DM_SEI_REFRESH_BATCH_BUDGET_SECONDS = _env_int(
 DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS = _env_int(
     "DM_SEI_REFRESH_REQUEST_TIMEOUT_SECONDS", 15, minimum=5, maximum=30
 )
-DM_ASSET_VERSION = f"{APP_VERSION}-dmq04b"
+DM_ASSET_VERSION = f"{APP_VERSION}-dmexcel03b"
 
 
 def _dm_refresh_scope(payload: dict[str, Any]) -> dict[str, Any]:
@@ -177,7 +177,7 @@ def dm_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="dm.html",
-        context={"app_version": DM_ASSET_VERSION},
+        context={"app_version": DM_ASSET_VERSION, "dm_excel_official": dm_excel_official_enabled()},
         headers={"Cache-Control": "no-store"},
     )
 
@@ -457,39 +457,8 @@ def dm_excel(
     try:
         repo = _repo(db, scope)
         management = ManagementRepository(db, _require_dm(scope))
-        output = build_dm_v2_workbook(
-            repo.all_cohorts(),
-            repo.all_students(),
-            targets=_visible_dm_targets(management),
-            sync_runs=repo.list_sei_sync_runs(limit=50),
-            area_code=area,
-            cohort_id=turma_id,
-            as_of=data_corte,
-        )
-        return StreamingResponse(
-            output,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={
-                "Content-Disposition": 'attachment; filename="Relatorio_DM.xlsx"',
-                "Cache-Control": "no-store",
-            },
-        )
-    except Exception as exc:
-        _translate(exc)
-
-
-@router.get("/api/dm/excel-interativo")
-def dm_interactive_excel(
-    area: str | None = Query(None),
-    turma_id: int | None = Query(None),
-    data_corte: date | None = Query(None),
-    db: Session = Depends(get_db),
-    scope: DirectorateScope = Depends(require_directorate_access("DM")),
-):
-    try:
-        repo = _repo(db, scope)
-        management = ManagementRepository(db, _require_dm(scope))
-        output = build_dm_interactive_workbook_bytes(
+        engine = selected_dm_excel_engine()
+        output = export_dm_excel(
             repo.all_cohorts(),
             repo.all_students(),
             targets=_visible_dm_targets(management),
@@ -498,14 +467,71 @@ def dm_interactive_excel(
             area_code=area,
             cohort_id=turma_id,
             as_of=data_corte,
+            generated_by=scope.user.email,
+        )
+        filename = "Excel_Oficial_DM.xlsx" if engine == "excel_official" else "Relatorio_DM.xlsx"
+        LOGGER.info(
+            "Excel DM gerado",
+            extra={"directorate": "DM", "excel_engine": engine, "generated_by": scope.user.email},
         )
         return StreamingResponse(
             output,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": 'attachment; filename="Painel_DM_Interativo_beta.xlsx"',
+                "Content-Disposition": f'attachment; filename="{filename}"',
                 "Cache-Control": "no-store",
+                "X-Data-UNIVC-Excel-Engine": engine,
             },
+        )
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.get("/api/dm/excel-interativo")
+def dm_interactive_excel_alias(
+    area: str | None = Query(None),
+    turma_id: int | None = Query(None),
+    data_corte: date | None = Query(None),
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_access("DM")),
+):
+    """Compatibility alias: DM exposes only one workbook engine to users."""
+    return dm_excel(area=area, turma_id=turma_id, data_corte=data_corte, db=db, scope=scope)
+
+
+@router.get("/api/admin/excel-official/dm/parity")
+def dm_excel_production_parity(
+    data_corte: date | None = Query(None),
+    db: Session = Depends(get_db),
+    ctx: UserContext = Depends(require_fresh_reitoria),
+):
+    scope = resolve_directorate_scope(db, ctx, "DM")
+    try:
+        repo = _repo(db, scope)
+        management = ManagementRepository(db, scope)
+        report = audit_dm_parity(
+            repo.all_cohorts(),
+            repo.all_students(),
+            targets=_visible_dm_targets(management),
+            actions=_visible_dm_actions(management),
+            sync_runs=repo.list_sei_sync_runs(limit=100),
+            as_of=data_corte,
+            source_kind="production",
+            generated_by=ctx.email,
+            build_workbooks=True,
+        )
+        LOGGER.info(
+            "Auditoria de paridade DM concluída",
+            extra={
+                "directorate": "DM",
+                "cases": len(report.cases),
+                "failures": len(report.failures),
+                "cutover_status": report.cutover_status,
+            },
+        )
+        return JSONResponse(
+            content=report.to_dict(),
+            headers={"Cache-Control": "no-store", "X-Data-UNIVC-Parity-Status": report.cutover_status},
         )
     except Exception as exc:
         _translate(exc)

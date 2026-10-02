@@ -17,7 +17,7 @@ def test_dm_sei_entry_buttons_reference_live_modal_contract():
     assert "$('#seiUploadButton')?.addEventListener('click',()=>openSeiModal('upload'))" in js
     assert "openModal('seiModal');" in js
     assert "seiCheckDatesWrap" not in js
-    assert 'DM_ASSET_VERSION = f"{APP_VERSION}-dmq04b"' in router
+    assert 'DM_ASSET_VERSION = f"{APP_VERSION}-dmexcel03b"' in router
 
 
 def test_dm_unguarded_direct_id_references_exist_in_template():

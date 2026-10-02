@@ -310,7 +310,7 @@ def verify_dm_queue_ux_and_button_hardening() -> None:
     frontend = (ROOT / "static" / "js" / "dm.js").read_text(encoding="utf-8")
 
     required_router = [
-        'DM_ASSET_VERSION = f"{APP_VERSION}-dmq04b"',
+        'DM_ASSET_VERSION = f"{APP_VERSION}-dmexcel03b"',
         '@router.get("/api/dm/sei/refresh-runs")',
         '@router.get("/api/dm/sei/refresh-runs/{run_id}/items")',
         '@router.post("/api/dm/sei/refresh-runs/{run_id}/pause")',
@@ -371,6 +371,7 @@ def verify_academic_excel_controlled_cutover() -> None:
     prepare = (ROOT / "scripts" / "prepare_academic_excel_cutover.py").read_text(encoding="utf-8")
     finalization = (ROOT / "academic_excel_finalization.py").read_text(encoding="utf-8")
     frontend = (ROOT / "static" / "js" / "app.js").read_text(encoding="utf-8")
+    academic_html = (ROOT / "templates" / "index.html").read_text(encoding="utf-8")
 
     required_cutover = [
         'ENABLE_CONFIRMATION = "ENABLE_EXCEL_OFFICIAL"',
@@ -406,12 +407,102 @@ def verify_academic_excel_controlled_cutover() -> None:
     for token in ('status="COMPLETE" if not issues else "BLOCKED"', 'def build_academic_finalization_report(', 'DTNH', 'DCS'):
         if token not in finalization:
             raise SystemExit(f"Academic Excel finalization marker missing: {token}")
-    for token in ('academic_official_active', 'Baixar Excel Oficial', 'Excel_Oficial_'):
+    for token in ("const academicExcelName = 'Excel Oficial';", 'Baixar Excel Oficial', 'Excel_Oficial_'):
         if token not in frontend:
             raise SystemExit(f"Academic Excel frontend finalization marker missing: {token}")
+    if 'href="/api/excel-interativo"' in academic_html or 'Snapshot / Base consolidada' in academic_html:
+        raise SystemExit('Academic UI must expose only the canonical Excel Oficial export')
     if '/api/admin/excel-official/academic/parity' not in app or 'Depends(require_fresh_reitoria)' not in app:
         raise SystemExit("Academic Excel production parity endpoint is missing or not Reitoria-protected")
 
+
+
+def verify_dm_excel_official_cutover() -> None:
+    service = (ROOT / "dm_excel_service.py").read_text(encoding="utf-8")
+    parity = (ROOT / "dm_excel_parity.py").read_text(encoding="utf-8")
+    router = (ROOT / "dm_router.py").read_text(encoding="utf-8")
+    template = (ROOT / "templates" / "dm.html").read_text(encoding="utf-8")
+    frontend = (ROOT / "static" / "js" / "dm.js").read_text(encoding="utf-8")
+    env_prod = (ROOT / ".env.production.example").read_text(encoding="utf-8")
+
+    if 'os.getenv("DM_EXCEL_OFFICIAL_ENABLED", "false")' not in service:
+        raise SystemExit("DM Excel Official cutover flag must default to false")
+    if 'DM_EXCEL_OFFICIAL_ENABLED=false' not in env_prod:
+        raise SystemExit("DM Excel production example must keep the cutover flag false by default")
+    for token in ('def selected_dm_excel_engine()', 'def export_dm_excel(', 'excel_official', 'dm_v2'):
+        if token not in service:
+            raise SystemExit(f"DM Excel service marker missing: {token}")
+    for token in ('def audit_dm_parity(', 'cutover_status', 'source_kind == "production"'):
+        if token not in parity:
+            raise SystemExit(f"DM Excel parity marker missing: {token}")
+    for token in ('@router.get("/api/dm/excel")', 'X-Data-UNIVC-Excel-Engine', '@router.get("/api/admin/excel-official/dm/parity")', 'Depends(require_fresh_reitoria)'):
+        if token not in router:
+            raise SystemExit(f"DM Excel route/cutover marker missing: {token}")
+    if 'Excel Interativo' in template or 'data-dm-interactive-excel-export' in template or 'data-dm-interactive-excel-export' in frontend:
+        raise SystemExit("DM UI must expose only the canonical Excel export")
+
+
+
+def verify_dadm_excel_official_cutover() -> None:
+    service = (ROOT / "dadm_excel_service.py").read_text(encoding="utf-8")
+    parity = (ROOT / "dadm_excel_parity.py").read_text(encoding="utf-8")
+    router = (ROOT / "dadm_v2_router.py").read_text(encoding="utf-8")
+    legacy_router = (ROOT / "dadm_router.py").read_text(encoding="utf-8")
+    template = (ROOT / "templates" / "dadm_v2.html").read_text(encoding="utf-8")
+    frontend = (ROOT / "static" / "js" / "dadm_v2.js").read_text(encoding="utf-8")
+    env_prod = (ROOT / ".env.production.example").read_text(encoding="utf-8")
+    smoke = (ROOT / "scripts" / "smoke_dadm_excel_cutover.py").read_text(encoding="utf-8")
+
+    if 'os.getenv("DADM_EXCEL_OFFICIAL_ENABLED", "false")' not in service:
+        raise SystemExit("DADM Excel Official cutover flag must default to false")
+    if 'DADM_EXCEL_OFFICIAL_ENABLED=false' not in env_prod:
+        raise SystemExit("DADM Excel production example must keep the cutover flag false by default")
+    for token in ('def selected_dadm_excel_engine()', 'def export_dadm_excel(', 'excel_official', 'dadm_v2'):
+        if token not in service:
+            raise SystemExit(f"DADM Excel service marker missing: {token}")
+    for token in ('def audit_dadm_parity(', 'cutover_status', 'source_kind == "production"'):
+        if token not in parity:
+            raise SystemExit(f"DADM Excel parity marker missing: {token}")
+    for token in ('@router.get("/api/dadm/excel")', 'X-Data-UNIVC-Excel-Engine', '@router.get("/api/admin/excel-official/dadm/parity")', 'Depends(require_fresh_reitoria)'):
+        if token not in router:
+            raise SystemExit(f"DADM Excel route/cutover marker missing: {token}")
+    if '@router.get("/api/dadm/excel")' in legacy_router:
+        raise SystemExit("Legacy DADM router must not own the canonical /api/dadm/excel route")
+    if '/api/dadm/v2/report.xlsx' in frontend or "NS.buildUrl('/api/dadm/excel'" not in frontend:
+        raise SystemExit("DADM V2 UI must use only the canonical /api/dadm/excel export")
+    if "Excel Oficial" not in template or "dadm_excel_official" not in template:
+        raise SystemExit("DADM UI must expose the Excel Oficial state")
+    for token in ('X-Data-UNIVC-Excel-Engine', 'DataUNIVC.DirectorateCode', 'DATA_UNIVC_DADM_COOKIE'):
+        if token not in smoke:
+            raise SystemExit(f"DADM smoke-check marker missing: {token}")
+
+
+def verify_dpe_excel_official_cutover() -> None:
+    service = (ROOT / "dpe_excel_service.py").read_text(encoding="utf-8")
+    cutover = (ROOT / "dpe_excel_cutover.py").read_text(encoding="utf-8")
+    router = (ROOT / "dpe_router.py").read_text(encoding="utf-8")
+    template = (ROOT / "templates" / "dpe.html").read_text(encoding="utf-8")
+    env_prod = (ROOT / ".env.production.example").read_text(encoding="utf-8")
+    smoke = (ROOT / "scripts" / "smoke_dpe_excel_cutover.py").read_text(encoding="utf-8")
+
+    if 'os.getenv("DPE_EXCEL_OFFICIAL_ENABLED", "false")' not in service:
+        raise SystemExit("DPE Excel Official cutover flag must default to false")
+    if 'DPE_EXCEL_OFFICIAL_ENABLED=false' not in env_prod:
+        raise SystemExit("DPE Excel production example must keep the cutover flag false by default")
+    for token in ('def selected_dpe_excel_engine()', 'def export_dpe_excel(', 'excel_official', 'dpe_modern'):
+        if token not in service:
+            raise SystemExit(f"DPE Excel service marker missing: {token}")
+    for token in ('def audit_dpe_cutover_readiness(', 'cutover_status', 'source_kind == "production"'):
+        if token not in cutover:
+            raise SystemExit(f"DPE Excel cutover marker missing: {token}")
+    for token in ('@router.get("/api/dpe/excel")', 'X-Data-UNIVC-Excel-Engine', '@router.get("/api/admin/excel-official/dpe/parity")', 'Depends(require_fresh_reitoria)'):
+        if token not in router:
+            raise SystemExit(f"DPE Excel route/cutover marker missing: {token}")
+    if "Excel Oficial" not in template or "dpe_excel_official" not in template:
+        raise SystemExit("DPE UI must expose the Excel Oficial state")
+    for token in ('X-Data-UNIVC-Excel-Engine', 'DataUNIVC.DirectorateCode', 'DATA_UNIVC_DPE_COOKIE'):
+        if token not in smoke:
+            raise SystemExit(f"DPE smoke-check marker missing: {token}")
 
 def main() -> int:
     verify_critical_release_files()
@@ -425,6 +516,9 @@ def main() -> int:
     verify_dm_persistent_batch_queue()
     verify_dm_queue_ux_and_button_hardening()
     verify_academic_excel_controlled_cutover()
+    verify_dm_excel_official_cutover()
+    verify_dadm_excel_official_cutover()
+    verify_dpe_excel_official_cutover()
 
     py_files = [
         str(path.relative_to(ROOT))

@@ -79,7 +79,7 @@
           </div>
           <button type="button" class="v2-data-state" id="v2DataState" data-view-jump="integration"><span class="v2-dot"></span><span id="v2DataStateText">Verificando dados…</span></button>
           <button type="button" class="v2-btn v2-btn-secondary v2-report-button" id="v2ReportButton" aria-haspopup="dialog" aria-controls="v2ReportModal" disabled>
-            <span data-du-icon="download"></span><span class="v2-report-button-label">Gerar relatório</span>
+            <span data-du-icon="download"></span><span class="v2-report-button-label">{{ 'Excel Oficial' if dadm_excel_official else 'Gerar relatório' }}</span>
           </button>
         </div>
       </header>
@@ -226,11 +226,11 @@
 
   <div class="v2-modal-backdrop hidden" id="v2ReportModal" role="dialog" aria-modal="true" aria-labelledby="v2ReportModalTitle" aria-describedby="v2ReportModalDescription">
     <div class="v2-report-dialog">
-      <div class="v2-modal-head"><div><span class="v2-kicker">Relatório TALLOS V2</span><h2 id="v2ReportModalTitle">Gerar relatório Excel</h2></div><button type="button" class="v2-modal-close" id="v2CloseReportModal" aria-label="Fechar">×</button></div>
+      <div class="v2-modal-head"><div><span class="v2-kicker">{{ 'Excel Oficial' if dadm_excel_official else 'Relatório TALLOS V2' }}</span><h2 id="v2ReportModalTitle">{{ 'Baixar Excel Oficial' if dadm_excel_official else 'Gerar relatório Excel' }}</h2></div><button type="button" class="v2-modal-close" id="v2CloseReportModal" aria-label="Fechar">×</button></div>
       <p class="v2-report-intro" id="v2ReportModalDescription">O arquivo usará exatamente o contexto de análise selecionado na DADM.</p>
       <div class="v2-report-summary" id="v2ReportSummary"></div>
-      <div class="v2-report-note"><span data-du-icon="file"></span><div><strong>Relatório agregado</strong><span>O Excel inclui totais, evolução, departamentos e operadores. Nenhum atendimento individual ou dado pessoal de cliente será exportado.</span></div></div>
-      <div class="v2-modal-actions"><button type="button" class="v2-btn v2-btn-secondary" id="v2CancelReport">Cancelar</button><button type="button" class="v2-btn v2-btn-primary v2-generate-report" id="v2GenerateReport"><span data-du-icon="download"></span><span id="v2GenerateReportLabel">Gerar Excel</span></button></div>
+      <div class="v2-report-note"><span data-du-icon="file"></span><div><strong>{{ 'Excel Oficial DADM' if dadm_excel_official else 'Relatório agregado' }}</strong><span>O Excel inclui totais, evolução, departamentos e operadores, sem exportar atendimento individual ou dado pessoal de cliente.</span></div></div>
+      <div class="v2-modal-actions"><button type="button" class="v2-btn v2-btn-secondary" id="v2CancelReport">Cancelar</button><button type="button" class="v2-btn v2-btn-primary v2-generate-report" id="v2GenerateReport"><span data-du-icon="download"></span><span id="v2GenerateReportLabel" data-idle-label="{{ 'Baixar Excel Oficial' if dadm_excel_official else 'Gerar Excel' }}">{{ 'Baixar Excel Oficial' if dadm_excel_official else 'Gerar Excel' }}</span></button></div>
     </div>
   </div>
 

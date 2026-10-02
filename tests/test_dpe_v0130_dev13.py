@@ -58,7 +58,9 @@ def test_full_excel_route_uses_modern_builder_and_old_indicator_export_is_retire
     html = (ROOT / "templates" / "dpe.html").read_text(encoding="utf-8")
     js = (ROOT / "static" / "js" / "dpe_v2.js").read_text(encoding="utf-8")
     assert "DPEExcelExportRepository" in router
-    assert "build_dpe_operational_workbook" in router
+    assert "export_dpe_excel" in router
+    assert "selected_dpe_excel_engine" in router
+    assert "X-Data-UNIVC-Excel-Engine" in router
     assert '@router.get("/api/dpe/excel/{indicator_code}")' not in router
     assert 'id="dpeExportExcel"' in html
     assert "period_id=" in js and "dpeExportExcel" in js

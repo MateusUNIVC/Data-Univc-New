@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from release_info import APP_VERSION
 from dpe_excel_export import DPEExcelExportRepository
-from dpe_excel_modern import build_dpe_operational_workbook
+from dpe_excel_cutover import audit_dpe_cutover_readiness
+from dpe_excel_service import dpe_excel_official_enabled, export_dpe_excel, selected_dpe_excel_engine
 from dpe_cost_foundation import DPECostFoundationRepository
 from dpe_cost_catalog import DPECostCatalogRepository, DPECostCatalogValidationError
 from dpe_cost_expenses import DPECostExpenseRepository, DPECostExpenseValidationError
@@ -31,7 +32,7 @@ from dpe_cost_productivity import DPECostProductivityRepository, DPECostProducti
 from management_catalog import ManagementCatalogError
 from management_service import ManagementValidationError
 from models import Course, Directorate
-from security import AUTH_DISABLED, DirectorateScope, ensure_directorate_visible, require_directorate_access, require_directorate_edit
+from security import AUTH_DISABLED, DirectorateScope, UserContext, ensure_directorate_visible, require_directorate_access, require_directorate_edit, require_fresh_reitoria, resolve_directorate_scope
 from academic_catalog import DTNH_COURSES, DCS_COURSES
 from dpe_domain import domain_payload
 from dpe_management import DPEManagementRepository
@@ -73,6 +74,7 @@ def dpe_page(request: Request):
         name="dpe.html",
         context={
             "app_version": APP_VERSION,
+            "dpe_excel_official": dpe_excel_official_enabled(),
             "local_demo": (
                 os.getenv("ENVIRONMENT", "").strip().lower() in {"local", "dev", "development"}
                 and AUTH_DISABLED
@@ -1516,15 +1518,58 @@ def dpe_excel_full(
         selected = payload.get("selected_period")
         if not selected:
             raise HTTPException(404, "Cadastre uma competência antes de exportar o Excel da DPE.")
-        output = build_dpe_operational_workbook(payload)
+        engine = selected_dpe_excel_engine()
+        output = export_dpe_excel(payload, generated_by=scope.user.email)
         period = str(selected.get("period") or "competencia").replace("/", "-")
+        filename = "Excel_Oficial_DPE.xlsx" if engine == "excel_official" else f"DPE_{period}_analitico.xlsx"
+        LOGGER.info(
+            "Excel DPE gerado",
+            extra={"directorate": "DPE", "excel_engine": engine, "generated_by": scope.user.email},
+        )
         return StreamingResponse(
             output,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f'attachment; filename="DPE_{period}_analitico.xlsx"',
+                "Content-Disposition": f'attachment; filename="{filename}"',
                 "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+                "X-Data-UNIVC-Excel-Engine": engine,
             },
+        )
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.get("/api/admin/excel-official/dpe/parity")
+def dpe_excel_production_parity(
+    period_id: int | None = Query(None),
+    referencia: str | None = Query(None),
+    db: Session = Depends(get_db),
+    ctx: UserContext = Depends(require_fresh_reitoria),
+):
+    scope = resolve_directorate_scope(db, ctx, "DPE")
+    try:
+        payload = DPEExcelExportRepository(db, _require_dpe(scope)).payload(period_id=period_id, reference=referencia)
+        if not payload.get("selected_period"):
+            raise HTTPException(404, "Cadastre uma competência antes de auditar o Excel Oficial da DPE.")
+        report = audit_dpe_cutover_readiness(
+            payload,
+            source_kind="production",
+            generated_by=ctx.email,
+            build_workbooks=True,
+        )
+        LOGGER.info(
+            "Auditoria de paridade DPE concluída",
+            extra={
+                "directorate": "DPE",
+                "cases": len(report.semantic_report.cases),
+                "failures": len(report.failures),
+                "cutover_status": report.cutover_status,
+            },
+        )
+        return JSONResponse(
+            content=report.to_dict(),
+            headers={"Cache-Control": "no-store", "X-Data-UNIVC-Parity-Status": report.cutover_status},
         )
     except Exception as exc:
         _translate(exc)

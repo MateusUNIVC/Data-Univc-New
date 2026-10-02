@@ -303,6 +303,28 @@ def _preflight_dashboard(
                 "dashboard.unknown_comparison_parameter",
                 f"Parametro de comparacao inexistente: {kpi.comparison!r}.",
             )
+        comparison_metric = None
+        comparison_binding = None
+        comparison_dataset_ref = None
+        if kpi.comparison_metric_code:
+            comparison_metric = metrics.get(kpi.comparison_metric_code)
+            if comparison_metric is None:
+                raise DashboardWriteError(
+                    "dashboard.unknown_comparison_metric",
+                    f"Metrica de comparacao inexistente: {kpi.comparison_metric_code!r}.",
+                )
+            comparison_binding = bindings.get(kpi.comparison_metric_code)
+            if comparison_binding is None:
+                raise DashboardWriteError(
+                    "dashboard.comparison_metric_binding_required",
+                    f"Metrica de comparacao {kpi.comparison_metric_code!r} precisa de MetricBinding.",
+                )
+            comparison_dataset_ref = dataset_refs.get(comparison_binding.dataset_code)
+            if comparison_dataset_ref is None:
+                raise DashboardWriteError(
+                    "dashboard.comparison_metric_dataset_ref_required",
+                    f"Dataset {comparison_binding.dataset_code!r} da metrica de comparacao nao foi materializado.",
+                )
         # Build both expressions during preflight. This catches missing columns/components
         # before the PAINEL sheet is created.
         _metric_expression(spec, metric, binding, dataset_ref, parameter_system)
@@ -314,6 +336,14 @@ def _preflight_dashboard(
                 dataset_ref,
                 parameter_system,
                 comparison_parameter=kpi.comparison,
+            )
+        if comparison_metric is not None and comparison_binding is not None and comparison_dataset_ref is not None:
+            _metric_expression(
+                spec,
+                comparison_metric,
+                comparison_binding,
+                comparison_dataset_ref,
+                parameter_system,
             )
 
 
@@ -415,16 +445,23 @@ def _write_kpi_card(
 
     comparison_cell_ref: str | None = None
     delta_cell_ref: str | None = None
-    if kpi.comparison:
+    if kpi.comparison or kpi.comparison_metric_code:
+        compare_metric = metric
+        compare_binding = binding
+        compare_dataset_ref = dataset_ref
+        if kpi.comparison_metric_code:
+            compare_metric = next(item for item in spec.metrics if item.code == kpi.comparison_metric_code)
+            compare_binding = next(item for item in spec.metric_bindings if item.metric_code == kpi.comparison_metric_code)
+            compare_dataset_ref = dataset_refs[compare_binding.dataset_code]
         compare_formula = _metric_expression(
             spec,
-            metric,
-            binding,
-            dataset_ref,
+            compare_metric,
+            compare_binding,
+            compare_dataset_ref,
             parameter_system,
-            comparison_parameter=kpi.comparison,
+            comparison_parameter=kpi.comparison if not kpi.comparison_metric_code else None,
         )
-        compare_label = ws.cell(row + 3, col, "Comparação")
+        compare_label = ws.cell(row + 3, col, "Período anterior" if kpi.comparison_metric_code else "Comparação")
         apply_cell_role(compare_label, CellRole.NOTE, theme=theme)
         compare_cell = ws.cell(row + 3, col + 1, compare_formula)
         apply_cell_role(

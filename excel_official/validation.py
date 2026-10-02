@@ -338,6 +338,8 @@ def validate_workbook_spec(spec: WorkbookSpec) -> tuple[SpecValidationIssue, ...
         if kpi.source_dataset and binding is not None and kpi.source_dataset != binding.dataset_code:
             _issue(issues, "kpi.dataset_binding_mismatch", f"{path}.source_dataset", f"KPI usa {kpi.source_dataset}, mas MetricBinding usa {binding.dataset_code}.")
         if kpi.comparison:
+            if kpi.comparison_metric_code:
+                _issue(issues, "kpi.multiple_comparison_modes", path, "KPI nao pode combinar comparison e comparison_metric_code.")
             comparison_parameter = parameter_by_code.get(kpi.comparison)
             if comparison_parameter is None:
                 _issue(issues, "kpi.unknown_comparison_parameter", f"{path}.comparison", f"Parametro de comparacao inexistente: {kpi.comparison}.")
@@ -347,6 +349,11 @@ def validate_workbook_spec(spec: WorkbookSpec) -> tuple[SpecValidationIssue, ...
                 dimension_code = comparison_parameter.values_source
                 if not dimension_code or dimension_code not in binding.filter_parameters:
                     _issue(issues, "kpi.comparison_dimension_not_bound", f"{path}.comparison", f"Parametro de comparacao usa dimensao {dimension_code!r}, que nao participa do binding principal.")
+        if kpi.comparison_metric_code:
+            if kpi.comparison_metric_code not in metric_codes:
+                _issue(issues, "kpi.unknown_comparison_metric", f"{path}.comparison_metric_code", f"Metrica de comparacao inexistente: {kpi.comparison_metric_code}.")
+            elif kpi.comparison_metric_code not in binding_by_metric:
+                _issue(issues, "kpi.comparison_metric_without_binding", f"{path}.comparison_metric_code", "Metrica de comparacao precisa de MetricBinding.")
 
     for chart in spec.dashboard.charts:
         path = f"dashboard.charts.{chart.code}"

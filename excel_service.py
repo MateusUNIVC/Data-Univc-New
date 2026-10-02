@@ -824,13 +824,25 @@ def export_formatted_excel(
     discipline: str | None = None,
     window_periods: int | str | None = None,
 ) -> BytesIO:
-    """Generate the selected directorate snapshot entirely in memory.
+    """Generate the selected directorate workbook entirely in memory.
 
-    For DTNH/DCS, the optional arguments preserve the same academic context
-    selected in the web dashboard when exporting the institutional workbook.
+    DTNH/DCS no longer expose the legacy consolidated snapshot from the generic
+    export route. Any Academic Excel export now resolves to the Excel Official
+    Core while preserving the dashboard context selected by the user.
     """
     if repo.directorate_code == 'DADM':
         return _export_dadm(repo)
+    if repo.directorate_code in {'DTNH', 'DCS'}:
+        from academic_excel_official import build_academic_excel_official_workbook_bytes
+
+        return build_academic_excel_official_workbook_bytes(
+            repo,
+            reference=reference,
+            comparison=comparison,
+            course=course,
+            discipline=discipline,
+            window_periods=window_periods,
+        )
     return _export_academic(
         repo,
         granularity=granularity,

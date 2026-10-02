@@ -432,3 +432,36 @@ def delete_action(db: Session, scope: DirectorateScope, row_id: int) -> None:
         raise PermissionError("Este plano pertence a um departamento fora do seu escopo.")
     db.delete(row)
     db.commit()
+
+
+def export_management_rows(
+    db: Session,
+    directorate_id: int,
+    *,
+    allowed_departments: tuple[str, ...] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Return DADM V2 targets/actions for an authorized Excel snapshot.
+
+    This mirrors the visibility rules used by the management API without
+    requiring a web ``DirectorateScope`` object.  Restricted exports can see
+    institutional targets plus department targets inside their scope; action
+    plans remain department-scoped only, matching the UI/API contract.
+    """
+    target_rows = _targets(db, directorate_id)
+    action_rows = _actions(db, directorate_id)
+    if allowed_departments is not None:
+        allowed = tuple(str(item).strip() for item in allowed_departments if str(item).strip())
+
+        def target_visible(row: ManagementTarget) -> bool:
+            kind, value = _decode_scope(str(row.dimension_key or ""), str(row.dimension_label or ""))
+            if kind == "TOTAL":
+                return True
+            return kind == "department" and department_allowed(value, allowed)
+
+        def action_visible(row: ManagementAction) -> bool:
+            kind, value = _decode_scope(str(row.dimension_key or ""), str(row.dimension_label or ""))
+            return kind == "department" and department_allowed(value, allowed)
+
+        target_rows = [row for row in target_rows if target_visible(row)]
+        action_rows = [row for row in action_rows if action_visible(row)]
+    return ([_target_dict(row) for row in target_rows], [_action_dict(row) for row in action_rows])

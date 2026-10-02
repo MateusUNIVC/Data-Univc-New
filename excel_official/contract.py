@@ -280,6 +280,7 @@ class KpiSpec:
     label_override: str | None = None
     source_dataset: str | None = None
     comparison: str | None = None
+    comparison_metric_code: str | None = None
     target: float | int | None = None
     priority: int = 0
 

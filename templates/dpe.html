@@ -84,7 +84,7 @@
             <label for="dpeDirectorateSelect">Diretoria</label>
             <div class="directorate-switcher-row"><select id="dpeDirectorateSelect" aria-label="Trocar diretoria"></select><span id="dpeDirectorateAccessBadge" class="access-badge"></span></div>
           </div>
-          <a class="button secondary dpe-excel-export" id="dpeExportExcel" href="/api/dpe/excel" download>Exportar Excel</a>
+          <a class="button secondary dpe-excel-export" id="dpeExportExcel" href="/api/dpe/excel" download>{{ 'Excel Oficial' if dpe_excel_official else 'Exportar Excel' }}</a>
           <span class="save-state" id="dpeSaveState"><span class="status-dot"></span> Sincronizado</span>
           <button class="button primary dpe-context-action" id="dpeQuickAdd" type="button">+ Nova despesa</button>
         </div>

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -18,7 +19,8 @@ from dadm_v2_analytics import (
     overview_payload,
     quality_payload,
 )
-from dadm_v2_report import build_dadm_v2_report
+from dadm_excel_parity import audit_dadm_parity
+from dadm_excel_service import dadm_excel_official_enabled, export_dadm_excel, selected_dadm_excel_engine
 from dadm_v2_management import (
     delete_action,
     delete_target,
@@ -27,9 +29,10 @@ from dadm_v2_management import (
     save_target,
 )
 from release_info import APP_VERSION
-from security import DirectorateScope, require_directorate_access, require_directorate_edit
+from security import DirectorateScope, UserContext, require_directorate_access, require_directorate_edit, require_fresh_reitoria, resolve_directorate_scope
 
 ROOT = Path(__file__).resolve().parent
+LOGGER = logging.getLogger("univc.dadm.v2")
 templates = Jinja2Templates(directory=ROOT / "templates")
 router = APIRouter()
 
@@ -68,7 +71,7 @@ def dadm_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="dadm_v2.html",
-        context={"app_version": APP_VERSION},
+        context={"app_version": APP_VERSION, "dadm_excel_official": dadm_excel_official_enabled()},
         headers={"Cache-Control": "no-store"},
     )
 
@@ -238,8 +241,8 @@ def dadm_v2_experience(
         _translate(exc)
 
 
-@router.get("/api/dadm/v2/report.xlsx")
-def dadm_v2_report(
+@router.get("/api/dadm/excel")
+def dadm_excel(
     from_month: str | None = Query(None),
     to_month: str | None = Query(None),
     department: str | None = Query(None),
@@ -250,15 +253,12 @@ def dadm_v2_report(
     db: Session = Depends(get_db),
     scope: DirectorateScope = Depends(require_directorate_access("DADM")),
 ):
-    """Export the current DADM V2 analytical context as an aggregated XLSX.
-
-    No individual attendance record is exported. The workbook is built from the
-    same normalized TALLOS facts and filter contract used by the dashboard.
-    """
+    """Canonical DADM export. Excel Official is selected by feature flag."""
     try:
         _require_dadm(scope)
         _require_department(scope, department)
-        workbook, payload = build_dadm_v2_report(
+        engine = selected_dadm_excel_engine()
+        workbook = export_dadm_excel(
             db,
             scope.directorate_id,
             from_month,
@@ -269,18 +269,84 @@ def dadm_v2_report(
             status=status,
             tabulation=tabulation,
             allowed_departments=_allowed_departments(scope),
+            generated_by=scope.user.email,
         )
-        period = payload["period"]
-        filename = f"DADM_TALLOS_{period['from_month']}_a_{period['to_month']}.xlsx"
-        headers = {
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "Cache-Control": "no-store",
-            "X-Content-Type-Options": "nosniff",
-        }
+        filename = "Excel_Oficial_DADM.xlsx" if engine == "excel_official" else "Relatorio_DADM_TALLOS_V2.xlsx"
+        LOGGER.info(
+            "Excel DADM gerado",
+            extra={"directorate": "DADM", "excel_engine": engine, "generated_by": scope.user.email},
+        )
         return StreamingResponse(
             workbook,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers=headers,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+                "X-Data-UNIVC-Excel-Engine": engine,
+            },
+        )
+    except Exception as exc:
+        _translate(exc)
+
+
+@router.get("/api/dadm/v2/report.xlsx")
+def dadm_v2_report_alias(
+    from_month: str | None = Query(None),
+    to_month: str | None = Query(None),
+    department: str | None = Query(None),
+    employee: str | None = Query(None),
+    channel: str | None = Query(None),
+    status: str | None = Query(None),
+    tabulation: str | None = Query(None),
+    db: Session = Depends(get_db),
+    scope: DirectorateScope = Depends(require_directorate_access("DADM")),
+):
+    """Compatibility alias; DADM exposes one workbook engine to users."""
+    return dadm_excel(
+        from_month=from_month,
+        to_month=to_month,
+        department=department,
+        employee=employee,
+        channel=channel,
+        status=status,
+        tabulation=tabulation,
+        db=db,
+        scope=scope,
+    )
+
+
+@router.get("/api/admin/excel-official/dadm/parity")
+def dadm_excel_production_parity(
+    from_month: str | None = Query(None),
+    to_month: str | None = Query(None),
+    db: Session = Depends(get_db),
+    ctx: UserContext = Depends(require_fresh_reitoria),
+):
+    scope = resolve_directorate_scope(db, ctx, "DADM")
+    try:
+        report = audit_dadm_parity(
+            db,
+            scope.directorate_id,
+            from_month,
+            to_month,
+            allowed_departments=_allowed_departments(scope),
+            source_kind="production",
+            generated_by=ctx.email,
+            build_workbooks=True,
+        )
+        LOGGER.info(
+            "Auditoria de paridade DADM concluída",
+            extra={
+                "directorate": "DADM",
+                "cases": len(report.cases),
+                "failures": len(report.failures),
+                "cutover_status": report.cutover_status,
+            },
+        )
+        return JSONResponse(
+            content=report.to_dict(),
+            headers={"Cache-Control": "no-store", "X-Data-UNIVC-Parity-Status": report.cutover_status},
         )
     except Exception as exc:
         _translate(exc)

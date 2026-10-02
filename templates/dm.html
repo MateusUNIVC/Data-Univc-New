@@ -67,8 +67,7 @@
           </div>
           <span class="save-state" id="dmSaveState"><span class="status-dot"></span> Banco sincronizado</span>
           <button class="button secondary" data-go="sei" id="dmTopSei" title="Abrir integração com o SEI">SEI</button>
-          <a href="/api/dm/excel?diretoria=DM" class="button secondary download-link" data-dm-excel-export download>Exportar</a>
-          <a href="/api/dm/excel-interativo?diretoria=DM" class="button secondary download-link" data-dm-interactive-excel-export download>Excel Interativo</a>
+          <a href="/api/dm/excel?diretoria=DM" class="button secondary download-link" data-dm-excel-export download>{{ 'Excel Oficial' if dm_excel_official else 'Exportar Excel' }}</a>
           <button class="button primary" id="dmQuickAdd" data-write-action>+ Turma</button>
         </div>
       </header>
@@ -82,7 +81,7 @@
       <section id="section-dashboard" class="page-section active">
         <div class="page-lead compact-lead">
           <div><span class="eyebrow">DM · Diretoria de Mestrado</span><h2>Acompanhamento por turma</h2><p>Turmas, trajetória acadêmica, titulação e riscos em uma leitura única, mantendo as duas áreas independentes.</p></div>
-          <div class="indicator-actions"><button class="button secondary" data-go="sei">Integração SEI</button><a class="button secondary" href="/api/dm/excel-interativo?diretoria=DM" data-dm-interactive-excel-export download>Excel Interativo (beta)</a><a class="button primary" href="/api/dm/excel?diretoria=DM" data-dm-excel-export download>Exportar Excel</a></div>
+          <div class="indicator-actions"><button class="button secondary" data-go="sei">Integração SEI</button><a class="button primary" href="/api/dm/excel?diretoria=DM" data-dm-excel-export download>{{ 'Baixar Excel Oficial' if dm_excel_official else 'Exportar Excel' }}</a></div>
         </div>
 
         <div class="analysis-bar dm-dashboard-filter">
@@ -191,8 +190,7 @@
       <section id="section-arquivos" class="page-section">
         <div class="page-lead"><div><span class="eyebrow">Planilhas</span><h2>Importação e exportação</h2><p>Modelos simples com uma única aba de dados. Importe turmas antes de importar alunos.</p></div></div>
         <div class="file-card-grid">
-          <article class="dm-file-card featured"><span class="eyebrow">Painel completo</span><h3>Excel da Diretoria de Mestrado</h3><p>Resumo executivo, DM-01, DM-02, turmas, alunos e defesas, metas, integração SEI e parâmetros do recorte atual.</p><div class="dm-file-actions"><a class="button secondary" href="/api/dm/excel?diretoria=DM" data-dm-excel-export download>Baixar relatório</a></div></article>
-          <article class="dm-file-card featured"><span class="eyebrow">Nova interface &middot; beta</span><h3>Excel Interativo da DM</h3><p>Leva todo o hist&oacute;rico autorizado da DM e permite trocar &aacute;rea, turma, compara&ccedil;&atilde;o, data de corte, janela, status auxiliar e KPI da matriz sem voltar ao site.</p><div class="dm-file-actions"><a class="button primary" href="/api/dm/excel-interativo?diretoria=DM" data-dm-interactive-excel-export download>Gerar Excel Interativo</a></div></article>
+          <article class="dm-file-card featured"><span class="eyebrow">{{ 'Excel Oficial' if dm_excel_official else 'Painel completo' }}</span><h3>{{ 'Excel Oficial da Diretoria de Mestrado' if dm_excel_official else 'Excel da Diretoria de Mestrado' }}</h3><p>{{ 'Exporta o snapshot oficial da DM com parâmetros, KPIs, gráficos, matriz, qualidade e governança, bases autorizadas e plano de ação local.' if dm_excel_official else 'Resumo executivo, DM-01, DM-02, turmas, alunos e defesas, metas, integração SEI e parâmetros do recorte atual.' }}</p><div class="dm-file-actions"><a class="button primary" href="/api/dm/excel?diretoria=DM" data-dm-excel-export download>{{ 'Baixar Excel Oficial' if dm_excel_official else 'Baixar relatório' }}</a></div></article>
           <article class="dm-file-card"><span class="eyebrow">SEI integral</span><h3>Atualizar turmas e alunos</h3><p>Use o acesso direto ao SEI ou analise o Excel Sintético já gerado pelo sistema acadêmico.</p><div class="dm-file-actions"><button class="button secondary" data-go="sei">Abrir integração</button></div></article>
           <article class="dm-file-card"><span class="eyebrow">Turmas</span><h3>Modelo de importação</h3><p>Área, turma, abertura opcional, vagas e status.</p><div class="dm-file-actions"><a class="button secondary" href="/api/dm/modelo/turmas?diretoria=DM" download>Baixar modelo</a><button class="button primary" data-import-kind="turmas" data-write-action>Importar</button></div></article>
           <article class="dm-file-card"><span class="eyebrow">Alunos</span><h3>Modelo de importação</h3><p>Turma, matrícula, ingresso opcional, qualificação, defesa e situação. Ingresso vazio permanece pendente até confirmação.</p><div class="dm-file-actions"><a class="button secondary" href="/api/dm/modelo/alunos?diretoria=DM" download>Baixar modelo</a><button class="button primary" data-import-kind="alunos" data-write-action>Importar</button></div></article>

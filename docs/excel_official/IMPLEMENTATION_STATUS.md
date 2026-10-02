@@ -476,3 +476,173 @@ Status de desenvolvimento: **COMPLETE**.
 - Academic V3 permanece para rollback/observação.
 
 Status de produção: **PENDING LIVE CUTOVER** até que o comando `finalize` gere `COMPLETE` no VPS.
+
+## 02F — Academic export unification
+
+- DTNH/DCS `/api/excel` now builds the Excel Official Core workbook.
+- Academic UI exposes one analytical Excel only: **Excel Oficial**.
+- Removed user-facing Snapshot/Base consolidada card and duplicate Excel Interativo action.
+- Existing Academic dashboard context is preserved in the canonical export.
+- `/api/excel-interativo` remains temporarily for compatibility only; it is not a second UI option.
+
+## Phase EXCEL-OFFICIAL-03A — DM Adapter + Golden Master + Parity
+
+Status: **implemented in parallel; DM production routes intentionally unchanged**.
+
+Implemented:
+
+- declarative `DMAdapter` over the shared `ExcelOfficialCore`;
+- transition provider `dm_excel_official.py` reusing current authorized DM payload/dashboard semantics;
+- stable metric specs for DM-01, DM-02, active/graduated, occupancy, dropout, on-time defense, risk >30m and entry-date completeness;
+- protected official cutoff date and effective target semester;
+- interactive Area, Cohort, comparison and Matrix KPI controls;
+- dynamic DM-01 / DM-02 target bindings from `BASE METAS DM`;
+- standard institutional dashboard, quality/governance, matrix and action-plan layers;
+- restricted protected `ALUNOS E DEFESAS` evidence sheet;
+- semantic parity tests against `build_dm_dashboard()`;
+- same-snapshot structural comparison against DM Excel V3.
+
+Representative QA parity on cutoff 2026-08-28: 6 compared measures, 0 failures; Excel Official release audit: 0 findings.
+
+03A deliberately does not change `/api/dm/excel` or `/api/dm/excel-interativo`. Production route unification belongs to condensed phase 03B.
+
+## Phase EXCEL-OFFICIAL-03B — DM Production Cutover
+
+Status de desenvolvimento: **COMPLETE**. Status de produção: **PENDING LIVE CUTOVER** até o gate retornar `READY` no VPS.
+
+Implementado:
+
+- `/api/dm/excel` como única rota canônica de exportação apresentada na interface;
+- `DM_EXCEL_OFFICIAL_ENABLED` com default `false` e rollback imediato para DM V2;
+- `dm_excel_service.py` para seleção observável de engine;
+- `X-Data-UNIVC-Excel-Engine` no download;
+- filename oficial `Excel_Oficial_DM.xlsx` após ativação;
+- `/api/dm/excel-interativo` mantido somente como alias de compatibilidade;
+- remoção da duplicidade “Excel Interativo beta” da UI;
+- `dm_excel_parity.py` comparando backend × Core na DM total, por área e por turma;
+- rota Reitoria-only `/api/admin/excel-official/dm/parity`;
+- smoke CLI `scripts/smoke_dm_excel_cutover.py`;
+- release checks e env examples protegendo a flag desligada por padrão.
+
+Nenhuma migration é necessária. O schema permanece 53.
+
+## Phase EXCEL-OFFICIAL-04A — DADM Adapter + Golden Master + First Parity
+
+Status: **implemented in parallel; DADM production routes intentionally unchanged**.
+
+Implemented:
+
+- declarative `DADMAdapter` over the shared `ExcelOfficialCore`;
+- transition provider `dadm_excel_official.py` reusing current DADM V2/TALLOS normalized semantics;
+- privacy-preserving offline aggregate cube at month × department × employee × channel × status × tabulation;
+- exact sufficient statistics for attendance counts, finalization/open, TME, TMA, rating, rating coverage and transfers;
+- explicit preservation of TALLOS 1–10 evaluation semantics without inferring an unapproved satisfaction threshold;
+- backend-summary evidence for non-additive distinct counts such as protocols, people and active operators;
+- dependent Department → Employee dimension plus Month, Channel, Status and Tabulation filters;
+- five executive KPI cards, four evolution charts and Department × Month matrix with selectable metric;
+- one-month snapshot compatibility with matrix delta disabled;
+- Quality & Governance declarations for privacy, non-additive counts and evaluation semantics;
+- official/local action-plan support through the shared Core;
+- `dadm_excel_parity.py` comparing current DADM V2 backend vs Core candidate for full-period, department and month scopes;
+- same-fixture DADM V2 Golden Master vs Excel Official structural audit.
+
+Representative QA: **48 semantic parity cases, 0 failures, CANDIDATE_PASS; Excel Official release audit 0 findings**.
+
+Explicit 04B closure items before production cutover:
+
+- dynamic management targets with current TOTAL → department → channel inheritance;
+- previous-period comparison/delta behavior;
+- final treatment/documentation of median/P90 timing statistics that are not recomposable from the privacy-preserving aggregate cube.
+
+No DADM route/frontend behavior is changed by 04A.
+
+## Phase EXCEL-OFFICIAL-04B — DADM Parity Closure
+
+Status: **semantic closure complete; production routes intentionally unchanged**.
+
+Implemented:
+
+- DADMAdapter v2;
+- dynamic target bindings using protected `METAS EFETIVAS DADM`;
+- exact DADM V2 target inheritance: Department > Channel > TOTAL, including vigency;
+- automatic export of current V2 management targets/actions from schema 53;
+- target unit conversion for seconds→minutes and 0–100→Excel percent;
+- backend `previous_period` comparison for the exact export context;
+- generic KPI `comparison_metric_code` support in the shared Core;
+- protected `RESUMO ANTERIOR` evidence sheet;
+- protected `PERCENTIS BACKEND` sheet for TME/TMA median and P90;
+- explicit governance limitation that previous-period comparison is snapshot-context evidence and does not recut with offline filters;
+- explicit governance limitation that percentiles are non-additive and therefore backend-only;
+- parity report v2 including previous-period evidence.
+
+No customer-level PII was added. DADM production route/frontend cutover remains 04C.
+
+## Phase EXCEL-OFFICIAL-04C — DADM Complete
+
+Status de desenvolvimento: **COMPLETE**. Status de produção: **PENDING LIVE CUTOVER** até a paridade real retornar `READY` no VPS.
+
+Implementado:
+
+- `/api/dadm/excel` como única rota canônica do download DADM;
+- `DADM_EXCEL_OFFICIAL_ENABLED=false` por padrão e rollback para DADM V2;
+- `dadm_excel_service.py` para seleção observável de engine;
+- `X-Data-UNIVC-Excel-Engine` e filename `Excel_Oficial_DADM.xlsx` após ativação;
+- `/api/dadm/v2/report.xlsx` mantido somente como alias de compatibilidade;
+- workbook legado de gestão movido para `/api/dadm/legacy/excel`;
+- UI DADM V2 usando somente `/api/dadm/excel`, com rótulo Excel Oficial após ativação;
+- rota Reitoria-only `/api/admin/excel-official/dadm/parity`;
+- smoke CLI `scripts/smoke_dadm_excel_cutover.py`;
+- release checks protegendo flag, rota, UI e smoke;
+- nenhum dado individual de cliente adicionado ao Excel Oficial;
+- nenhuma migration; schema permanece 53.
+
+QA 04C: 53 casos de paridade, 0 divergências, `CANDIDATE_PASS`; workbook final com 24 abas, 75 fórmulas, 4 gráficos, 17 tabelas, 0 links externos, 0 VBA e 0 campos brutos sensíveis auditados.
+
+## Phase EXCEL-OFFICIAL-05A — DPE Adapter + Golden Master + First Parity
+
+Status: **implemented in parallel; DPE production route intentionally unchanged**.
+
+Implemented:
+
+- declarative `DPEAdapter` over the shared `ExcelOfficialCore`;
+- transition provider `dpe_excel_official.py` reusing `DPEExcelExportRepository` and the current consolidated Cost Engine payload;
+- fixed official competence with interactive Course, Course/Context and Cost Center dimensions;
+- strict separation between institutional result, course/context economics and cost-center expense views;
+- financial metrics for revenue, expense, institutional result/margin, course result/margin, revenue/cost per student, selected expenses and allocation coverage;
+- five executive charts and Course × Financial Component matrix;
+- protected evidence datasets for revenue ledger, official expense ledger, official allocation memory, teaching reconciliation, management targets and closure checklist;
+- governance limitations for institutional-vs-course scope, official allocation dependency and no inferred overhead;
+- `dpe_excel_parity.py` recomposing ledger totals, context/course economics, cost-center expense totals and official allocated totals;
+- same-fixture structural comparison against the current modern DPE workbook.
+
+Representative QA: **25 semantic parity cases, 0 failures, CANDIDATE_PASS; Excel Official release audit 0 findings**.
+
+Explicit 05B closure items before production cutover:
+
+- dynamic management targets in final KPI/matrix surfaces;
+- final previous-period behavior;
+- teaching/productivity and allocation-quality metric closure;
+- production-data parity.
+
+No DPE route/frontend behavior is changed by 05A. Schema remains 53.
+
+## Phase EXCEL-OFFICIAL-05B — DPE Parity Closure
+
+Status: **semantic closure complete; production route intentionally unchanged**.
+
+Implemented:
+
+- DPEAdapter v2;
+- effective management targets in protected `METAS EFETIVAS DPE`;
+- KPI target bindings for institutional and course-level metrics;
+- explicit preservation of range targets without flattening min/max;
+- collision-safe target resolution with governance warning instead of arbitrary selection;
+- teaching/productivity metrics from the existing DPE Cost Engine sources;
+- allocation reconciliation, closure blockers, payroll pending and target-collision quality checks;
+- official DPE management actions mapped to the institutional action-plan sheet;
+- expanded DPE parity gate covering previous competence, management facts, target current values and closure/official-run reconciliation;
+- no migration; schema remains 53.
+
+Representative QA: **61 semantic parity cases, 0 failures, CANDIDATE_PASS; release audit allowed**.
+
+Next: **05C — DPE Complete**, limited to canonical route/UI, production parity gate, feature flag, smoke test and rollback.

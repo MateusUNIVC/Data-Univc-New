@@ -113,7 +113,7 @@ async function loadAllDashboards({preserveSelection=false}={}){
 }
 
 function populateFilters(){const refs=state.periods.length?state.periods.map(v=>option(v,v,v===state.reference)).join(''):option('','Sem dados');const comps=option('','Sem comparação',!state.comparison)+[...new Set([state.comparison,...state.periods].filter(Boolean))].map(v=>option(v,v,v===state.comparison)).join('');$('#dashboardReference').innerHTML=refs;$('#dashboardComparison').innerHTML=comps;$('#dashboardWindow').value=String(state.window);['DADM-01','DADM-02'].forEach(code=>{const r=$(`[data-reference="${code}"]`),c=$(`[data-comparison="${code}"]`),w=$(`[data-window="${code}"]`);if(r)r.innerHTML=refs;if(c)c.innerHTML=comps;if(w)w.value=String(state.window)})}
-function updateDownloadLinks(){const full=$('#dadmFullExcel');full.href=url('/api/dadm/excel',{referencia:state.reference,comparacao:state.comparison});$$('[data-export]').forEach(a=>{const code=a.dataset.export;a.href=url(`/api/dadm/excel/${code}`,{referencia:state.reference,comparacao:state.comparison})})}
+function updateDownloadLinks(){const full=$('#dadmFullExcel');full.href=url('/api/dadm/legacy/excel',{referencia:state.reference,comparacao:state.comparison});$$('[data-export]').forEach(a=>{const code=a.dataset.export;a.href=url(`/api/dadm/excel/${code}`,{referencia:state.reference,comparacao:state.comparison})})}
 function renderEverything(){renderDashboard();renderIndicator('DADM-01');renderIndicator('DADM-02')}
 function cardFor(code){return(dashboardFor(code)?.cards||[]).find(item=>item.indicator_code===code)||{}}
 function renderDashboard(){

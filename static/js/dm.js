@@ -300,9 +300,7 @@ function updateDmExcelExportLinks() {
     data_corte: $('#dashboardAsOf')?.value || '',
   };
   const href = queryUrl('/api/dm/excel', params);
-  const interactiveHref = queryUrl('/api/dm/excel-interativo', params);
   $$('[data-dm-excel-export]').forEach(link => { link.href = href; });
-  $$('[data-dm-interactive-excel-export]').forEach(link => { link.href = interactiveHref; });
 }
 
 async function loadDashboard() {

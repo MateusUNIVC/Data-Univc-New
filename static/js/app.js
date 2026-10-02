@@ -322,12 +322,9 @@ function bindDownloadLinks() {
     event.preventDefault();
     const baseUrl = link.getAttribute('href');
     const url = ['/api/excel','/api/excel-interativo'].includes(baseUrl) ? academicExcelUrl(baseUrl) : baseUrl;
-    const officialAcademic = Boolean(state.bootstrap?.excel?.academic_official_active);
-    const fallback = baseUrl === '/api/excel'
-      ? `Relatorio_${state.activeDirectorate || 'UNIVC'}_Academico.xlsx`
-      : baseUrl === '/api/excel-interativo'
-        ? (officialAcademic ? `Excel_Oficial_${state.activeDirectorate || 'DTNH'}.xlsx` : `Painel_${state.activeDirectorate || 'DTNH'}_Interativo.xlsx`)
-        : `Modelo_${baseUrl.split('/').pop()}.xlsx`;
+    const fallback = ['/api/excel','/api/excel-interativo'].includes(baseUrl)
+      ? `Excel_Oficial_${state.activeDirectorate || 'DTNH'}.xlsx`
+      : `Modelo_${baseUrl.split('/').pop()}.xlsx`;
     downloadFile(url, fallback);
   });
 }
@@ -614,15 +611,12 @@ function applyDirectorateUi() {
   $$('[data-directorate-nav]').forEach(item => { const scope=item.dataset.directorateNav; const visible=scope===state.activeDirectorate || (scope==='ACADEMIC' && ['DTNH','DCS'].includes(state.activeDirectorate)); item.classList.toggle('hidden', !visible); });
   $$('[data-file-directorate]').forEach(item => { const scope=item.dataset.fileDirectorate; const visible=scope===state.activeDirectorate || (scope==='ACADEMIC' && ['DTNH','DCS'].includes(state.activeDirectorate)); item.classList.toggle('hidden', !visible); });
   $$('[data-academic-interactive-excel]').forEach(item => item.classList.toggle('hidden', !['DTNH','DCS'].includes(state.activeDirectorate)));
-  const academicExcelOfficial = Boolean(state.bootstrap?.excel?.academic_official_active);
-  const academicExcelName = academicExcelOfficial ? 'Excel Oficial' : 'Excel Interativo';
+  const academicExcelName = 'Excel Oficial';
   $$('[data-academic-interactive-label]').forEach(item => { if (['DTNH','DCS'].includes(state.activeDirectorate)) item.textContent = `${academicExcelName} · ${state.activeDirectorate}`; });
   $$('[data-academic-excel-title]').forEach(item => { item.textContent = academicExcelName; });
-  $$('[data-academic-excel-button]').forEach(item => { item.textContent = academicExcelOfficial ? 'Baixar Excel Oficial' : 'Gerar Excel Interativo'; });
-  $$('[data-academic-excel-icon]').forEach(item => { item.textContent = academicExcelOfficial ? 'OFICIAL' : 'V3'; });
-  $$('[data-academic-excel-description]').forEach(item => { item.textContent = academicExcelOfficial
-    ? 'Baixa o snapshot oficial autorizado com parâmetros, gráficos, matriz, qualidade e governança para análise offline.'
-    : 'Exporta o histórico autorizado com parâmetros, gráficos, matriz e governança para análise dentro do Excel.'; });
+  $$('[data-academic-excel-button]').forEach(item => { item.textContent = 'Baixar Excel Oficial'; });
+  $$('[data-academic-excel-icon]').forEach(item => { item.textContent = 'OFICIAL'; });
+  $$('[data-academic-excel-description]').forEach(item => { item.textContent = 'Exporta o histórico autorizado com parâmetros, gráficos, matriz, qualidade e governança para análise offline.'; });
   renderDirectorateSelector();
   const academic = ['DTNH','DCS'].includes(state.activeDirectorate);
   $$('[data-academic-code]').forEach(el => { if (academic) el.textContent = `${state.activeDirectorate}-${el.dataset.academicCode}`; });

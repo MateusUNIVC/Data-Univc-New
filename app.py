@@ -1132,26 +1132,30 @@ def excel(
             window_periods=window_periods,
         )
         size = buffer.getbuffer().nbytes if hasattr(buffer, "getbuffer") else None
+        academic_official = scope.directorate_code in {"DTNH", "DCS"}
         LOGGER.info(
             "Excel gerado",
             extra={
                 "directorate": scope.directorate_code,
+                "excel_engine": "excel_official" if academic_official else "directorate_default",
                 "duration_ms": round((time.perf_counter() - started) * 1000, 2),
                 "bytes": size,
             },
         )
-        if scope.directorate_code in {"DTNH", "DCS"}:
-            reference_label = str(referencia or "atual").replace("/", "-").replace(" ", "_")
-            filename = f"Relatorio_{scope.directorate_code}_Academico_{reference_label}.xlsx"
+        if academic_official:
+            filename = f"Excel_Oficial_{scope.directorate_code}.xlsx"
         else:
             filename = f"Painel_{scope.directorate_code}_atualizado.xlsx"
+        headers = {
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        }
+        if academic_official:
+            headers["X-Data-UNIVC-Excel-Engine"] = "excel_official"
         return StreamingResponse(
             buffer,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
-                "Cache-Control": "no-store",
-            },
+            headers=headers,
         )
     except Exception as exc:
         return api_error(exc)

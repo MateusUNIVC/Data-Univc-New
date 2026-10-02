@@ -1619,3 +1619,39 @@ Full VPS procedure: `docs/excel_official/ACADEMIC_CUTOVER_RUNBOOK.md`. The produ
 ## Excel Oficial acadêmico — finalização 02E
 
 DTNH/DCS agora possuem fechamento operacional completo: paridade de produção pode ser capturada diretamente por uma sessão fresca da Reitoria, o cutover continua protegido por manifesto/hash/freshness, os smokes DTNH/DCS geram evidência JSON e `manage_academic_excel_cutover.py finalize` só emite `COMPLETE` quando ambos estão servindo `excel_official`. A interface muda automaticamente de `Excel Interativo` para `Excel Oficial` após a flag entrar em vigor. Consulte `docs/excel_official/ACADEMIC_FINALIZATION.md`.
+
+## Excel Official 02F — Academic export unification
+
+DTNH/DCS now expose a single analytical workbook in the UI: **Excel Oficial**. The canonical `/api/excel` Academic route builds the Excel Official Core workbook, while the former Snapshot/Base consolidada option is no longer presented to users. Import templates remain available as separate operational files. The compatibility `/api/excel-interativo` route is retained temporarily until the global legacy-removal phase.
+
+### EXCEL-OFFICIAL-03A — DM Golden Master candidate
+
+The shared Excel Official Core now includes a declarative DM adapter and parallel candidate builder (`dm_excel_official.py`). DM-01/DM-02 and supporting operational measures are recomposed from the same authorized DM semantic source used by the web dashboard. The official cutoff is fixed in the exported snapshot; Area, Cohort, comparison and Matrix KPI remain interactive. 03A is parallel only and does not replace the current DM download routes yet. See `docs/excel_official/DM_GOLDEN_MASTER.md`.
+
+## EXCEL-OFFICIAL-03B — DM production cutover
+
+A Diretoria de Mestrado agora possui um único caminho de exportação na interface. `/api/dm/excel` é o endpoint canônico; quando `DM_EXCEL_OFFICIAL_ENABLED=true`, ele entrega `Excel_Oficial_DM.xlsx` pelo `DMAdapter` + `ExcelOfficialCore`. O antigo `/api/dm/excel-interativo` fica apenas como alias de compatibilidade e não aparece mais como segunda opção visual. A ativação permanece fail-closed (`false` por padrão) e deve ocorrer somente após `/api/admin/excel-official/dm/parity` retornar `READY`. Rollback é a mesma flag voltando para `false`. Consulte `docs/excel_official/DM_CUTOVER.md`.
+
+## EXCEL-OFFICIAL-04A — DADM Golden Master candidate
+
+The shared Excel Official Core now includes a declarative DADM adapter over the current normalized TALLOS analytics. The offline candidate exports a privacy-preserving aggregate cube (no protocol/customer identifiers), recomposes only additive or mathematically exact metrics, preserves DADM-01 TME/TMA and DADM-02 1–10 rating/coverage semantics, and keeps non-additive distinct counts in protected backend-summary evidence. Representative QA reached 48 parity cases with 0 failures and 0 Excel Official release findings. Production export routes remain unchanged in 04A; target inheritance and previous-period comparisons are explicit 04B closure items. See `docs/excel_official/DADM_ADAPTER_04A.md`.
+
+## Excel Official 04B — DADM parity closure
+
+DADM Excel Official now includes dynamic V2 management targets, exact backend previous-period comparison for the export context, and explicit backend-only median/P90 evidence. Production route cutover is still deferred to 04C.
+
+## Excel Official 04C — DADM complete
+
+DADM now exposes one canonical analytical export at `/api/dadm/excel`. The engine is selected by `DADM_EXCEL_OFFICIAL_ENABLED` (default `false`): `dadm_v2` remains the immediate rollback engine, while `excel_official` generates the shared Core workbook and returns `Excel_Oficial_DADM.xlsx`. The previous `/api/dadm/v2/report.xlsx` route is a compatibility alias only, the old management workbook moved to `/api/dadm/legacy/excel`, and the current DADM UI calls only the canonical endpoint. Production parity is available through the Reitoria-only `/api/admin/excel-official/dadm/parity` endpoint and post-cutover validation through `scripts/smoke_dadm_excel_cutover.py`. No migration is required; schema remains 53.
+
+## Excel Official — DPE 05A
+
+The DPE now has a parallel Excel Official candidate built by `DPEAdapter` + `ExcelOfficialCore` over the same `DPEExcelExportRepository` payload used by the current modern DPE workbook. The production `/api/dpe/excel` route is intentionally unchanged in 05A. See `docs/excel_official/DPE_GOLDEN_MASTER_05A.md`.
+
+## Excel Official — DPE 05B parity closure
+
+The DPE Excel Official candidate now closes management targets/actions, previous-competence evidence, teaching/productivity metrics, allocation reconciliation and month-close quality controls. Active scalar targets are linked through `METAS EFETIVAS DPE`; range targets remain explicit min/max and are not flattened. The expanded parity gate independently checks operational ledgers, management facts, target current values and closure/official-run evidence. Production `/api/dpe/excel` remains unchanged until 05C; schema remains 53. See `docs/excel_official/DPE_PARITY_CLOSURE_05B.md`.
+
+### Excel Official · DPE 05C
+
+A DPE possui um único endpoint público de exportação: `/api/dpe/excel`. O engine é controlado por `DPE_EXCEL_OFFICIAL_ENABLED` (default `false`): `dpe_modern` permanece como rollback imediato e `excel_official` usa o `DPEAdapter` + `ExcelOfficialCore`, entregando `Excel_Oficial_DPE.xlsx`. O gate real de produção é exclusivo da Reitoria em `/api/admin/excel-official/dpe/parity`; o smoke pós-corte está em `scripts/smoke_dpe_excel_cutover.py`. O schema permanece 53 e não existe migration nesta fase.

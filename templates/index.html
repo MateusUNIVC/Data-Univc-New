@@ -462,23 +462,17 @@
           <div>
             <span class="eyebrow">Interoperabilidade</span>
             <h2>Central de arquivos</h2>
-            <p>Exporte um snapshot consolidado ou baixe os modelos que ainda possuem importação própria. O NPS é alimentado exclusivamente pela integração de questionários do SEI.</p>
+            <p>Baixe o Excel Oficial da diretoria ou os modelos que ainda possuem importação própria. O NPS é alimentado exclusivamente pela integração de questionários do SEI.</p>
           </div>
           <div class="section-actions">
-            <a class="button secondary download-link hidden" data-academic-interactive-excel data-academic-excel-button href="/api/excel-interativo" download>Excel Interativo</a>
-            <a class="button primary download-link" href="/api/excel" download>Exportar Excel</a>
+            <a class="button primary download-link" data-academic-excel-button href="/api/excel" download>Baixar Excel Oficial</a>
           </div>
         </div>
         <div class="file-hub-grid">
-          <article class="file-card featured">
-            <div class="file-icon">XLSX</div>
-            <div><span class="eyebrow">Snapshot</span><h3>Base consolidada</h3><p>Gera o painel Excel com os dados mais recentes do banco.</p></div>
-            <a class="button secondary download-link" href="/api/excel" download>Exportar</a>
-          </article>
-          <article class="file-card hidden" data-academic-interactive-excel>
-            <div class="file-icon" data-academic-excel-icon>V3</div>
-            <div><span class="eyebrow" data-academic-interactive-label>Excel Interativo · DTNH</span><h3 data-academic-excel-title>Excel Interativo</h3><p data-academic-excel-description>Exporta o histórico autorizado com parâmetros, gráficos, matriz e governança para análise dentro do Excel.</p></div>
-            <a class="button secondary download-link" data-academic-excel-button href="/api/excel-interativo" download>Gerar Excel Interativo</a>
+          <article class="file-card featured" data-file-directorate="ACADEMIC">
+            <div class="file-icon" data-academic-excel-icon>OFICIAL</div>
+            <div><span class="eyebrow" data-academic-interactive-label>Excel Oficial · DTNH</span><h3 data-academic-excel-title>Excel Oficial</h3><p data-academic-excel-description>Exporta o histórico autorizado com parâmetros, gráficos, matriz, qualidade e governança para análise offline.</p></div>
+            <a class="button primary download-link" data-academic-excel-button href="/api/excel" download>Baixar Excel Oficial</a>
           </article>
           <article class="file-card" data-file-directorate="ACADEMIC"><div class="file-icon">02</div><div><span class="eyebrow" data-academic-code="02">DTNH-02</span><h3>Modelo · Avaliação docente</h3><p>Importação semestral por curso, disciplina e professor.</p></div><a class="button secondary download-link" href="/api/modelos/avaliacao_docente" download>Baixar</a></article>
           <article class="file-card" data-file-directorate="ACADEMIC"><div class="file-icon">03</div><div><span class="eyebrow" data-academic-code="03">DTNH-03</span><h3>Modelo · Resultados acadêmicos</h3><p>Notas, situação oficial e motivo de reprovação. Também aceita o mapa bruto do SEI.</p></div><a class="button secondary download-link" href="/api/modelos/resultados" download>Baixar</a></article>

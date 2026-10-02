@@ -316,7 +316,7 @@ def dadm_demo(
         _translate(exc)
 
 
-@router.get("/api/dadm/excel")
+@router.get("/api/dadm/legacy/excel")
 def dadm_excel_full(
     referencia: str | None = Query(None),
     comparacao: str | None = Query(None),

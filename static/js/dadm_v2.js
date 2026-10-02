@@ -302,7 +302,7 @@ window.DADMV2 = window.DADMV2 || {};
     if (label) label.textContent = 'Gerando Excel\u2026';
     setLoading(true);
     try {
-      const response = await fetch(NS.buildUrl('/api/dadm/v2/report.xlsx', NS.filterParams(state.filters)), {
+      const response = await fetch(NS.buildUrl('/api/dadm/excel', NS.filterParams(state.filters)), {
         credentials: 'same-origin',
         headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
       });
@@ -332,13 +332,13 @@ window.DADMV2 = window.DADMV2 || {};
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       closeReportModal();
-      alertUser('Relat\u00f3rio Excel gerado com os filtros atuais.', 'success');
+      alertUser('Excel gerado com os filtros atuais.', 'success');
     } catch (error) {
       alertUser(`N\u00e3o foi poss\u00edvel gerar o relat\u00f3rio: ${error.message}`, 'error', 0);
     } finally {
       setLoading(false);
       button.disabled = false;
-      if (label) label.textContent = 'Gerar Excel';
+      if (label) label.textContent = label.dataset.idleLabel || 'Gerar Excel';
     }
   }
 

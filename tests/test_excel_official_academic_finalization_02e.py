@@ -107,7 +107,7 @@ def test_02e_frontend_and_bootstrap_switch_to_excel_official_without_second_depl
     assert '"academic_official_active"' in app
     assert 'Excel_Oficial_{scope.directorate_code}.xlsx' in app
     assert 'data-academic-excel-button' in html
-    assert "academic_official_active" in js
+    assert "const academicExcelName = 'Excel Oficial';" in js
     assert "Baixar Excel Oficial" in js
     assert "Excel_Oficial_" in js
 
