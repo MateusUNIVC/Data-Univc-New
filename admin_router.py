@@ -360,7 +360,7 @@ def reitoria_academic_page(request: Request, _ctx: AuthorizationContext = Depend
     return templates.TemplateResponse(
         request=request,
         name="reitoria_academico.html",
-        context={"app_version": APP_VERSION},
+        context={"app_version": f"{APP_VERSION}-npsmobile01"},
         headers={"Cache-Control": "no-store"},
     )
 
