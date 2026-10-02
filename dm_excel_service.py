@@ -11,10 +11,10 @@ from dm_excel_v2_builder import build_dm_v2_workbook
 def dm_excel_official_enabled() -> bool:
     """Return whether the canonical DM export uses Excel Official.
 
-    Default stays false so a deploy can land before the production parity gate.
-    Rollback is a single environment-variable change back to false.
+    Excel Official is the normal DM export. Setting the environment flag to
+    false is reserved for an explicit emergency rollback to DM V2.
     """
-    return os.getenv("DM_EXCEL_OFFICIAL_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    return os.getenv("DM_EXCEL_OFFICIAL_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def selected_dm_excel_engine() -> str:

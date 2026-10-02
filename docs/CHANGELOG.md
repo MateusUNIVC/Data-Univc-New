@@ -1349,3 +1349,12 @@ Detalhes: `docs/PART19_DM_SEI_BUTTON_RUNTIME_HOTFIX_2026-10-01.md`.
 - Unifica `/api/dpe/excel` como rota canônica com `DPE_EXCEL_OFFICIAL_ENABLED=false` por padrão.
 - Adiciona rollback para `dpe_modern`, header `X-Data-UNIVC-Excel-Engine` e nome `Excel_Oficial_DPE.xlsx` no engine novo.
 - Adiciona gate de produção exclusivo da Reitoria e smoke pós-cutover da DPE.
+
+
+## 2026-10-02 — Excel Oficial como exportação principal
+
+- Excel Oficial passa a ser o default de DTNH/DCS, DM, DADM e DPE;
+- as quatro flags `*_EXCEL_OFFICIAL_ENABLED` passam a assumir `true` quando ausentes;
+- `false` permanece exclusivamente como rollback explícito;
+- exemplos `.env` e release checks passam a validar o estado oficial por padrão;
+- sem migration; schema permanece 53.

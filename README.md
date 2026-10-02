@@ -1655,3 +1655,8 @@ The DPE Excel Official candidate now closes management targets/actions, previous
 ### Excel Official · DPE 05C
 
 A DPE possui um único endpoint público de exportação: `/api/dpe/excel`. O engine é controlado por `DPE_EXCEL_OFFICIAL_ENABLED` (default `false`): `dpe_modern` permanece como rollback imediato e `excel_official` usa o `DPEAdapter` + `ExcelOfficialCore`, entregando `Excel_Oficial_DPE.xlsx`. O gate real de produção é exclusivo da Reitoria em `/api/admin/excel-official/dpe/parity`; o smoke pós-corte está em `scripts/smoke_dpe_excel_cutover.py`. O schema permanece 53 e não existe migration nesta fase.
+
+
+## Excel Oficial — exportação principal (2026-10-02)
+
+Após a conclusão dos workbooks de DTNH/DCS, DM, DADM e DPE, o Excel Oficial é agora o comportamento padrão de todas as rotas canônicas de exportação. `ACADEMIC_EXCEL_OFFICIAL_ENABLED`, `DM_EXCEL_OFFICIAL_ENABLED`, `DADM_EXCEL_OFFICIAL_ENABLED` e `DPE_EXCEL_OFFICIAL_ENABLED` assumem `true` quando não definidos. Definir qualquer um deles como `false` passa a representar rollback explícito para o engine anterior. Nenhuma migration é necessária; schema 53.

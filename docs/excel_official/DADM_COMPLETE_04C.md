@@ -1,5 +1,8 @@
 # EXCEL-OFFICIAL-04C — DADM Complete
 
+> **Atualização 2026-10-02:** o Excel Oficial DADM agora é o padrão. `DADM_EXCEL_OFFICIAL_ENABLED=false` deve ser usado somente como rollback explícito.
+
+
 Status de desenvolvimento: **COMPLETE**. Status de produção: **PENDING LIVE CUTOVER** até o gate de paridade retornar `READY` no VPS.
 
 ## Contrato de exportação

@@ -387,10 +387,10 @@ def verify_academic_excel_controlled_cutover() -> None:
     missing = [token for token in required_cutover if token not in cutover]
     if missing:
         raise SystemExit("Academic Excel controlled-cutover markers missing: " + ", ".join(missing))
-    if 'ACADEMIC_EXCEL_OFFICIAL_ENABLED=false' not in env_prod:
-        raise SystemExit("Academic Excel production example must keep the cutover flag false by default")
-    if 'os.getenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", "false")' not in service:
-        raise SystemExit("Academic Excel service no longer defaults to the legacy engine")
+    if 'ACADEMIC_EXCEL_OFFICIAL_ENABLED=true' not in env_prod:
+        raise SystemExit("Academic Excel production example must enable Excel Official by default")
+    if 'os.getenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", "true")' not in service:
+        raise SystemExit("Academic Excel service must default to Excel Official")
     if 'def selected_academic_excel_engine()' not in service:
         raise SystemExit("Academic Excel engine observability helper missing")
     if 'X-Data-UNIVC-Excel-Engine' not in app:
@@ -425,10 +425,10 @@ def verify_dm_excel_official_cutover() -> None:
     frontend = (ROOT / "static" / "js" / "dm.js").read_text(encoding="utf-8")
     env_prod = (ROOT / ".env.production.example").read_text(encoding="utf-8")
 
-    if 'os.getenv("DM_EXCEL_OFFICIAL_ENABLED", "false")' not in service:
-        raise SystemExit("DM Excel Official cutover flag must default to false")
-    if 'DM_EXCEL_OFFICIAL_ENABLED=false' not in env_prod:
-        raise SystemExit("DM Excel production example must keep the cutover flag false by default")
+    if 'os.getenv("DM_EXCEL_OFFICIAL_ENABLED", "true")' not in service:
+        raise SystemExit("DM Excel Official must be the default engine")
+    if 'DM_EXCEL_OFFICIAL_ENABLED=true' not in env_prod:
+        raise SystemExit("DM Excel production example must enable Excel Official by default")
     for token in ('def selected_dm_excel_engine()', 'def export_dm_excel(', 'excel_official', 'dm_v2'):
         if token not in service:
             raise SystemExit(f"DM Excel service marker missing: {token}")
@@ -453,10 +453,10 @@ def verify_dadm_excel_official_cutover() -> None:
     env_prod = (ROOT / ".env.production.example").read_text(encoding="utf-8")
     smoke = (ROOT / "scripts" / "smoke_dadm_excel_cutover.py").read_text(encoding="utf-8")
 
-    if 'os.getenv("DADM_EXCEL_OFFICIAL_ENABLED", "false")' not in service:
-        raise SystemExit("DADM Excel Official cutover flag must default to false")
-    if 'DADM_EXCEL_OFFICIAL_ENABLED=false' not in env_prod:
-        raise SystemExit("DADM Excel production example must keep the cutover flag false by default")
+    if 'os.getenv("DADM_EXCEL_OFFICIAL_ENABLED", "true")' not in service:
+        raise SystemExit("DADM Excel Official must be the default engine")
+    if 'DADM_EXCEL_OFFICIAL_ENABLED=true' not in env_prod:
+        raise SystemExit("DADM Excel production example must enable Excel Official by default")
     for token in ('def selected_dadm_excel_engine()', 'def export_dadm_excel(', 'excel_official', 'dadm_v2'):
         if token not in service:
             raise SystemExit(f"DADM Excel service marker missing: {token}")
@@ -485,10 +485,10 @@ def verify_dpe_excel_official_cutover() -> None:
     env_prod = (ROOT / ".env.production.example").read_text(encoding="utf-8")
     smoke = (ROOT / "scripts" / "smoke_dpe_excel_cutover.py").read_text(encoding="utf-8")
 
-    if 'os.getenv("DPE_EXCEL_OFFICIAL_ENABLED", "false")' not in service:
-        raise SystemExit("DPE Excel Official cutover flag must default to false")
-    if 'DPE_EXCEL_OFFICIAL_ENABLED=false' not in env_prod:
-        raise SystemExit("DPE Excel production example must keep the cutover flag false by default")
+    if 'os.getenv("DPE_EXCEL_OFFICIAL_ENABLED", "true")' not in service:
+        raise SystemExit("DPE Excel Official must be the default engine")
+    if 'DPE_EXCEL_OFFICIAL_ENABLED=true' not in env_prod:
+        raise SystemExit("DPE Excel production example must enable Excel Official by default")
     for token in ('def selected_dpe_excel_engine()', 'def export_dpe_excel(', 'excel_official', 'dpe_modern'):
         if token not in service:
             raise SystemExit(f"DPE Excel service marker missing: {token}")

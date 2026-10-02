@@ -10,10 +10,10 @@ from dpe_excel_official import build_dpe_excel_official_artifact_from_payload
 def dpe_excel_official_enabled() -> bool:
     """Return whether the canonical DPE export uses Excel Official.
 
-    Default stays false so the release can be deployed before the production
-    parity gate. Rollback is a single environment-variable change back to false.
+    Excel Official is the normal DPE export. Setting the environment flag to
+    false is reserved for an explicit emergency rollback to DPE Modern.
     """
-    return os.getenv("DPE_EXCEL_OFFICIAL_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    return os.getenv("DPE_EXCEL_OFFICIAL_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def selected_dpe_excel_engine() -> str:

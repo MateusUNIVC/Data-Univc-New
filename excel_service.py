@@ -773,10 +773,10 @@ def _export_dadm(repo: DatabaseRepository) -> BytesIO:
 def _academic_excel_official_cutover_enabled() -> bool:
     """Feature flag for the DTNH/DCS Excel Official cutover.
 
-    Default is deliberately false. Production remains on Academic V3 until
-    fresh DTNH + DCS production parity evidence is accepted by the 02D gate.
+    Excel Official is the normal Academic export. Setting the flag to false
+    is reserved for an explicit emergency rollback to Academic V3.
     """
-    return os.getenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    return os.getenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def selected_academic_excel_engine() -> str:
@@ -795,8 +795,8 @@ def export_academic_interactive_excel(
 ) -> BytesIO:
     """Generate the academic interactive workbook from the selected engine.
 
-    Academic V3 remains the default production engine. The Excel Official Core
-    can only be selected by the explicit 02C cutover flag after parity approval.
+    Excel Official is the default production engine. Academic V3 remains
+    available only when an explicit rollback sets the flag to false.
     """
     kwargs = {
         "reference": reference,

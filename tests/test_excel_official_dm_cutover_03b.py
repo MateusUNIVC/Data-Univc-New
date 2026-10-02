@@ -18,9 +18,9 @@ TARGETS = [
 CUTOFF = date(2026, 8, 28)
 
 
-def test_03b_dm_flag_defaults_to_legacy_v2(monkeypatch):
+def test_03b_dm_flag_defaults_to_excel_official(monkeypatch):
     monkeypatch.delenv("DM_EXCEL_OFFICIAL_ENABLED", raising=False)
-    assert selected_dm_excel_engine() == "dm_v2"
+    assert selected_dm_excel_engine() == "excel_official"
 
 
 def test_03b_dm_flag_selects_excel_official(monkeypatch):
@@ -100,8 +100,8 @@ def test_03b_dm_route_has_engine_header_alias_and_reitoria_parity_gate():
     assert 'source_kind="production"' in router
 
 
-def test_03b_dm_cutover_flag_is_fail_closed_in_env_examples():
+def test_03b_dm_excel_official_is_enabled_by_default_in_env_examples():
     root = Path(__file__).resolve().parents[1]
     for name in (".env.example", ".env.production.example"):
         text = (root / name).read_text(encoding="utf-8")
-        assert "DM_EXCEL_OFFICIAL_ENABLED=false" in text
+        assert "DM_EXCEL_OFFICIAL_ENABLED=true" in text

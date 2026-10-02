@@ -12,10 +12,10 @@ from dadm_v2_report import build_dadm_v2_report
 def dadm_excel_official_enabled() -> bool:
     """Return whether the canonical DADM export uses Excel Official.
 
-    Default remains false so the release can land before production parity is
-    approved. Rollback is one environment-variable change back to false.
+    Excel Official is the normal DADM export. Setting the environment flag to
+    false is reserved for an explicit emergency rollback to DADM V2.
     """
-    return os.getenv("DADM_EXCEL_OFFICIAL_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    return os.getenv("DADM_EXCEL_OFFICIAL_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def selected_dadm_excel_engine() -> str:

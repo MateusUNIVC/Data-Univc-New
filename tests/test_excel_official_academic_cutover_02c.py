@@ -66,7 +66,7 @@ def test_02c_cross_directorate_ready_requires_both_production_reports_same_versi
     assert AcademicCutoverReadiness((dtnh,)).status == "BLOCKED"
 
 
-def test_02c_default_feature_flag_keeps_current_v3_engine(monkeypatch):
+def test_02c_default_feature_flag_selects_excel_official(monkeypatch):
     legacy = BytesIO(b"legacy")
     new = BytesIO(b"new")
     monkeypatch.delenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", raising=False)
@@ -74,7 +74,7 @@ def test_02c_default_feature_flag_keeps_current_v3_engine(monkeypatch):
     monkeypatch.setattr(academic_excel_official, "build_academic_excel_official_workbook_bytes", lambda repo, **kwargs: new)
 
     result = excel_service.export_academic_interactive_excel(object(), reference="2026-SEM2")
-    assert result is legacy
+    assert result is new
 
 
 def test_02c_cutover_feature_flag_selects_excel_official(monkeypatch):

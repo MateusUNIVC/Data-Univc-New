@@ -1,5 +1,8 @@
 # Academic Excel Official — Controlled Production Cutover (02D)
 
+> **Atualização 2026-10-02:** o Excel Oficial acadêmico agora é o padrão. `ACADEMIC_EXCEL_OFFICIAL_ENABLED=false` deve ser usado somente como rollback explícito. Este runbook permanece como referência histórica de cutover.
+
+
 ## Purpose
 
 This runbook activates the Excel Official engine for the existing authenticated `GET /api/excel-interativo` route only after fresh DTNH and DCS production parity evidence is accepted.

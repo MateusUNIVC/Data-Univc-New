@@ -123,7 +123,7 @@ def test_02d_rollback_is_always_available_and_atomic(tmp_path):
 
 def test_02d_engine_name_is_observable_from_flag(monkeypatch):
     monkeypatch.delenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", raising=False)
-    assert excel_service.selected_academic_excel_engine() == "academic_v3"
+    assert excel_service.selected_academic_excel_engine() == "excel_official"
     monkeypatch.setenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", "true")
     assert excel_service.selected_academic_excel_engine() == "excel_official"
 

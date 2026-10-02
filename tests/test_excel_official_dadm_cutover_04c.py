@@ -9,9 +9,9 @@ import dadm_excel_service
 from dadm_excel_service import export_dadm_excel, selected_dadm_excel_engine
 
 
-def test_04c_dadm_flag_defaults_to_v2(monkeypatch):
+def test_04c_dadm_flag_defaults_to_excel_official(monkeypatch):
     monkeypatch.delenv("DADM_EXCEL_OFFICIAL_ENABLED", raising=False)
-    assert selected_dadm_excel_engine() == "dadm_v2"
+    assert selected_dadm_excel_engine() == "excel_official"
 
 
 def test_04c_dadm_flag_selects_excel_official(monkeypatch):
@@ -83,11 +83,11 @@ def test_04c_routes_have_engine_header_alias_and_reitoria_parity_gate():
     assert '@router.get("/api/dadm/legacy/excel")' in legacy_router
 
 
-def test_04c_cutover_flag_is_fail_closed_in_env_examples():
+def test_04c_excel_official_is_enabled_by_default_in_env_examples():
     root = Path(__file__).resolve().parents[1]
     for name in (".env.example", ".env.production.example"):
         text = (root / name).read_text(encoding="utf-8")
-        assert "DADM_EXCEL_OFFICIAL_ENABLED=false" in text
+        assert "DADM_EXCEL_OFFICIAL_ENABLED=true" in text
 
 
 def test_04c_smoke_cli_is_directly_executable():

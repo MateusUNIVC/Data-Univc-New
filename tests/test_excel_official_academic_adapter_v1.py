@@ -198,9 +198,10 @@ def test_academic_adapter_exports_grade_components_required_for_offline_average(
     assert sum(row["grade_sum"] for row in results.rows if row["period"] == "2026-SEM2") == pytest.approx(1516.0)
 
 
-def test_academic_production_route_remains_legacy_by_default_after_02c():
+def test_academic_production_route_defaults_to_excel_official():
     root = Path(__file__).resolve().parents[1]
     service = (root / "excel_service.py").read_text(encoding="utf-8")
-    assert "build_academic_interactive_workbook_bytes" in service
+    assert "build_academic_interactive_workbook_bytes" in service  # explicit rollback remains available
     assert "ACADEMIC_EXCEL_OFFICIAL_ENABLED" in service
-    assert 'os.getenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", "false")' in service
+    assert 'os.getenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", "true")' in service
+    assert "build_academic_excel_official_workbook_bytes" in service

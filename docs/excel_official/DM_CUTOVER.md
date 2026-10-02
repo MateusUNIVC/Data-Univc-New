@@ -1,5 +1,8 @@
 # EXCEL-OFFICIAL-03B — DM Production Cutover
 
+> **Atualização 2026-10-02:** o Excel Oficial DM agora é o padrão. `DM_EXCEL_OFFICIAL_ENABLED=false` deve ser usado somente como rollback explícito.
+
+
 Status de desenvolvimento: **COMPLETE**.
 
 ## Objetivo

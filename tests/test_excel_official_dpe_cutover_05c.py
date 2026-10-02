@@ -11,9 +11,9 @@ from dpe_excel_service import export_dpe_excel, selected_dpe_excel_engine
 from tests.test_excel_official_dpe_adapter import _payload
 
 
-def test_05c_dpe_flag_defaults_to_modern(monkeypatch):
+def test_05c_dpe_flag_defaults_to_excel_official(monkeypatch):
     monkeypatch.delenv("DPE_EXCEL_OFFICIAL_ENABLED", raising=False)
-    assert selected_dpe_excel_engine() == "dpe_modern"
+    assert selected_dpe_excel_engine() == "excel_official"
 
 
 def test_05c_dpe_flag_selects_excel_official(monkeypatch):
@@ -88,10 +88,10 @@ def test_05c_route_ui_and_reitoria_gate_are_canonical():
     assert "Excel Oficial" in template
 
 
-def test_05c_flag_is_fail_closed_in_env_examples():
+def test_05c_excel_official_is_enabled_by_default_in_env_examples():
     root = Path(__file__).resolve().parents[1]
     for name in (".env.example", ".env.production.example"):
-        assert "DPE_EXCEL_OFFICIAL_ENABLED=false" in (root / name).read_text(encoding="utf-8")
+        assert "DPE_EXCEL_OFFICIAL_ENABLED=true" in (root / name).read_text(encoding="utf-8")
 
 
 def test_05c_smoke_cli_is_directly_executable():

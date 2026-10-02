@@ -1,5 +1,8 @@
 # DPE Excel Official · 05C Complete
 
+> **Atualização 2026-10-02:** o Excel Oficial DPE agora é o padrão. `DPE_EXCEL_OFFICIAL_ENABLED=false` deve ser usado somente como rollback explícito.
+
+
 ## Estado final
 
 - `/api/dpe/excel` é a rota canônica da DPE.
