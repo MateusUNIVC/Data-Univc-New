@@ -18,8 +18,9 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from academic_analytics import build_academic_dashboard
+from academic_excel_parity import audit_academic_repository_parity
 from database import Base, SessionLocal, engine, get_db
-from excel_service import export_academic_interactive_excel, export_formatted_excel
+from excel_service import export_academic_interactive_excel, export_formatted_excel, selected_academic_excel_engine
 from excel_errors import ExcelExportLimitError
 from models import Directorate, IndicatorDefinition, IndicatorSchedule
 from observability import configure_logging, get_request_id, reset_request_id, set_request_id
@@ -53,8 +54,10 @@ from security import (
     logout_session,
     refresh_session,
     request_has_v2_session,
+    require_fresh_reitoria,
     require_scope_write,
     require_write,
+    resolve_directorate_scope,
     visible_operating_directorate_codes,
 )
 from auth.audit import log_auth_event
@@ -500,6 +503,12 @@ def bootstrap(db: Session = Depends(get_db), scope: DirectorateScope = Depends(c
                 "pode_editar": scope.can_write,
             },
             "cloud": True,
+            "excel": {
+                "academic_engine": selected_academic_excel_engine() if scope.directorate_code in {"DTNH", "DCS"} else None,
+                "academic_official_active": (
+                    selected_academic_excel_engine() == "excel_official" if scope.directorate_code in {"DTNH", "DCS"} else False
+                ),
+            },
             **extra,
         }
     except Exception as exc:
@@ -1000,6 +1009,42 @@ def model(
     )
 
 
+@app.get("/api/admin/excel-official/academic/parity")
+def academic_excel_production_parity(
+    diretoria: str = Query(...),
+    db: Session = Depends(get_db),
+    ctx: UserContext = Depends(require_fresh_reitoria),
+):
+    code = str(diretoria or "").strip().upper()
+    if code not in {"DTNH", "DCS"}:
+        raise HTTPException(422, "A auditoria acadêmica de cutover aceita apenas DTNH ou DCS.")
+    acquired = False
+    try:
+        acquired = _EXCEL_EXPORT_SLOTS.acquire(timeout=EXCEL_EXPORT_WAIT_SECONDS)
+        if not acquired:
+            raise HTTPException(503, "O serviço de exportação está ocupado. Tente novamente em instantes.")
+        scope = resolve_directorate_scope(db, ctx, code)
+        started = time.perf_counter()
+        report = audit_academic_repository_parity(repo_for(db, scope), window_periods="all", build_workbooks=True)
+        LOGGER.info(
+            "Auditoria de paridade acadêmica concluída",
+            extra={
+                "directorate": code,
+                "cases": len(report.cases),
+                "failures": len(report.failures),
+                "cutover_status": report.cutover_status,
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            },
+        )
+        return JSONResponse(
+            content=report.to_dict(),
+            headers={"Cache-Control": "no-store", "X-Data-UNIVC-Parity-Status": report.cutover_status},
+        )
+    finally:
+        if acquired:
+            _EXCEL_EXPORT_SLOTS.release()
+
+
 @app.get("/api/excel-interativo")
 def excel_interativo(
     referencia: str | None = Query(None),
@@ -1011,7 +1056,7 @@ def excel_interativo(
     scope: DirectorateScope = Depends(current_scope),
 ):
     if scope.directorate_code not in {"DTNH", "DCS"}:
-        raise HTTPException(400, "O Excel Interativo acadêmico está disponível apenas para DTNH/DCS.")
+        raise HTTPException(400, "O Excel acadêmico está disponível apenas para DTNH/DCS.")
     acquired = False
     try:
         if scope.directorate_code == "DPE":
@@ -1021,6 +1066,7 @@ def excel_interativo(
         if not acquired:
             raise HTTPException(503, "O serviço de exportação está ocupado. Tente novamente em instantes.")
         started = time.perf_counter()
+        engine_name = selected_academic_excel_engine()
         buffer = export_academic_interactive_excel(
             repo_for(db, scope),
             reference=referencia,
@@ -1034,6 +1080,7 @@ def excel_interativo(
             "Excel interativo gerado",
             extra={
                 "directorate": scope.directorate_code,
+                "excel_engine": engine_name,
                 "duration_ms": round((time.perf_counter() - started) * 1000, 2),
                 "bytes": size,
             },
@@ -1042,8 +1089,13 @@ def excel_interativo(
             buffer,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f'attachment; filename="Painel_{scope.directorate_code}_Interativo.xlsx"',
+                "Content-Disposition": (
+                    f'attachment; filename="Excel_Oficial_{scope.directorate_code}.xlsx"'
+                    if engine_name == "excel_official"
+                    else f'attachment; filename="Painel_{scope.directorate_code}_Interativo.xlsx"'
+                ),
                 "Cache-Control": "no-store",
+                "X-Data-UNIVC-Excel-Engine": engine_name,
             },
         )
     except ValueError as exc:

@@ -360,6 +360,59 @@ def verify_dm_queue_ux_and_button_hardening() -> None:
         raise SystemExit("DM frontend still references the removed seiCheckDatesWrap control")
 
 
+
+def verify_academic_excel_controlled_cutover() -> None:
+    cutover = (ROOT / "academic_excel_cutover.py").read_text(encoding="utf-8")
+    service = (ROOT / "excel_service.py").read_text(encoding="utf-8")
+    app = (ROOT / "app.py").read_text(encoding="utf-8")
+    env_prod = (ROOT / ".env.production.example").read_text(encoding="utf-8")
+    cli = (ROOT / "scripts" / "manage_academic_excel_cutover.py").read_text(encoding="utf-8")
+    smoke = (ROOT / "scripts" / "smoke_academic_excel_cutover.py").read_text(encoding="utf-8")
+    prepare = (ROOT / "scripts" / "prepare_academic_excel_cutover.py").read_text(encoding="utf-8")
+    finalization = (ROOT / "academic_excel_finalization.py").read_text(encoding="utf-8")
+    frontend = (ROOT / "static" / "js" / "app.js").read_text(encoding="utf-8")
+
+    required_cutover = [
+        'ENABLE_CONFIRMATION = "ENABLE_EXCEL_OFFICIAL"',
+        'CUTOVER_FLAG = "ACADEMIC_EXCEL_OFFICIAL_ENABLED"',
+        'def build_cutover_manifest(',
+        'def verify_cutover_manifest(',
+        'def activate_cutover(',
+        'def rollback_cutover(',
+        'report.stale',
+        'report.app_version',
+        'report.schema_version',
+    ]
+    missing = [token for token in required_cutover if token not in cutover]
+    if missing:
+        raise SystemExit("Academic Excel controlled-cutover markers missing: " + ", ".join(missing))
+    if 'ACADEMIC_EXCEL_OFFICIAL_ENABLED=false' not in env_prod:
+        raise SystemExit("Academic Excel production example must keep the cutover flag false by default")
+    if 'os.getenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", "false")' not in service:
+        raise SystemExit("Academic Excel service no longer defaults to the legacy engine")
+    if 'def selected_academic_excel_engine()' not in service:
+        raise SystemExit("Academic Excel engine observability helper missing")
+    if 'X-Data-UNIVC-Excel-Engine' not in app:
+        raise SystemExit("Academic Excel route engine header missing")
+    for token in ('gate', 'activate', 'rollback', 'status', 'finalize'):
+        if f'add_parser("{token}"' not in cli:
+            raise SystemExit(f"Academic Excel cutover CLI subcommand missing: {token}")
+    for token in ('X-Data-UNIVC-Excel-Engine', 'DataUNIVC.DirectorateCode', 'DATA_UNIVC_SMOKE_COOKIE', '--report'):
+        if token not in smoke:
+            raise SystemExit(f"Academic Excel smoke-check marker missing: {token}")
+    for token in ('DATA_UNIVC_REITORIA_COOKIE', '/api/admin/excel-official/academic/parity', 'build_cutover_manifest'):
+        if token not in prepare:
+            raise SystemExit(f"Academic Excel production-prepare marker missing: {token}")
+    for token in ('status="COMPLETE" if not issues else "BLOCKED"', 'def build_academic_finalization_report(', 'DTNH', 'DCS'):
+        if token not in finalization:
+            raise SystemExit(f"Academic Excel finalization marker missing: {token}")
+    for token in ('academic_official_active', 'Baixar Excel Oficial', 'Excel_Oficial_'):
+        if token not in frontend:
+            raise SystemExit(f"Academic Excel frontend finalization marker missing: {token}")
+    if '/api/admin/excel-official/academic/parity' not in app or 'Depends(require_fresh_reitoria)' not in app:
+        raise SystemExit("Academic Excel production parity endpoint is missing or not Reitoria-protected")
+
+
 def main() -> int:
     verify_critical_release_files()
     verify_academic_bootstrap_helpers()
@@ -371,6 +424,7 @@ def main() -> int:
     verify_dm_queue_foundation()
     verify_dm_persistent_batch_queue()
     verify_dm_queue_ux_and_button_hardening()
+    verify_academic_excel_controlled_cutover()
 
     py_files = [
         str(path.relative_to(ROOT))

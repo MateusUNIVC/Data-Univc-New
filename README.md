@@ -1582,3 +1582,40 @@ Na Reitoria, os indicadores acadêmicos deixam de ficar empilhados na área admi
 ## Parte 16 — Reitoria combobox + fundação da fila SEI da DM (2026-10-01)
 
 A Reitoria acadêmica passa a usar comboboxes pesquisáveis nos filtros de Curso e Disciplina, reutilizando o mesmo componente compartilhado de DTNH/DCS. Na Diretoria de Mestrado, a sincronização de turmas/alunos deixa de consultar individualmente início/conclusão/titulação no mesmo request: a etapa longa foi separada para preparar o processamento persistente em lotes e evitar 504 durante o commit das turmas. Schema permanece 49.
+
+## Excel Oficial Core V1 - fase 01J
+
+O novo `excel_official/` conclui sua fundacao compartilhada com `ExcelOfficialCore.build(WorkbookSpec)`. O Core agora orquestra datasets, parametros, painel/KPIs, graficos, matriz, qualidade/governanca, plano de acao, `LEIA-ME`, camadas tecnicas, metadados e auditoria final em um unico fluxo. Esta arquitetura permanece paralela aos builders/rotas atuais ate a migracao por diretoria.
+
+Um workbook somente e liberado quando a auditoria final nao possui achados `BLOCKING`. A gravacao do arquivo executa a auditoria novamente, verifica protecao, metadados, formulas, links externos/macros e checks criticos do snapshot. O proximo passo e a fase 02: migracao Academic DTNH/DCS contra o Golden Master, sem remover o legado antes de paridade comprovada.
+
+## Excel Official Academic — 02C cutover readiness
+
+The Academic Excel Official Core is prepared behind a disabled-by-default production gate:
+
+```env
+ACADEMIC_EXCEL_OFFICIAL_ENABLED=false
+```
+
+Keep this flag `false` until both DTNH and DCS production parity reports are `READY`. The existing `/api/excel-interativo` route remains unchanged; the flag only selects which internal builder serves it.
+
+Production parity can be run from an already-authorized `DatabaseRepository` through `audit_academic_repository_parity()` in `academic_excel_parity.py`. Authorized retained payloads can be audited offline with:
+
+```bash
+python scripts/audit_academic_excel_parity.py dtnh_snapshot.json dcs_snapshot.json --source-kind production --output-dir parity_output
+```
+
+Do not label fixture/demo payloads as production evidence. Fixture/local reports can reach `CANDIDATE_PASS`, but never satisfy the production cutover gate.
+
+## Excel Official Academic — 02D controlled production cutover
+
+02D adds an operational gate on top of the 02C parity reports. Production activation is no longer only a manual env edit: `scripts/manage_academic_excel_cutover.py gate` requires fresh DTNH + DCS `READY` production reports for the running app/schema release and records their SHA-256 hashes in a cutover manifest. `activate` revalidates the exact evidence before atomically writing the flag; `rollback` can always disable it without a manifest.
+
+The authenticated `/api/excel-interativo` response now exposes `X-Data-UNIVC-Excel-Engine` for cutover smoke verification. Use `scripts/smoke_academic_excel_cutover.py` with an authorized DTNH/DCS session after the container restart.
+
+Full VPS procedure: `docs/excel_official/ACADEMIC_CUTOVER_RUNBOOK.md`. The production example flag remains `ACADEMIC_EXCEL_OFFICIAL_ENABLED=false`.
+
+
+## Excel Oficial acadêmico — finalização 02E
+
+DTNH/DCS agora possuem fechamento operacional completo: paridade de produção pode ser capturada diretamente por uma sessão fresca da Reitoria, o cutover continua protegido por manifesto/hash/freshness, os smokes DTNH/DCS geram evidência JSON e `manage_academic_excel_cutover.py finalize` só emite `COMPLETE` quando ambos estão servindo `excel_official`. A interface muda automaticamente de `Excel Interativo` para `Excel Oficial` após a flag entrar em vigor. Consulte `docs/excel_official/ACADEMIC_FINALIZATION.md`.

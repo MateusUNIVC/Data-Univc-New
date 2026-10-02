@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+import os
 from copy import copy, deepcopy
 from pathlib import Path
 
@@ -769,6 +770,20 @@ def _export_dadm(repo: DatabaseRepository) -> BytesIO:
     buffer=BytesIO(); wb.save(buffer); wb.close(); buffer.seek(0); return buffer
 
 
+def _academic_excel_official_cutover_enabled() -> bool:
+    """Feature flag for the DTNH/DCS Excel Official cutover.
+
+    Default is deliberately false. Production remains on Academic V3 until
+    fresh DTNH + DCS production parity evidence is accepted by the 02D gate.
+    """
+    return os.getenv("ACADEMIC_EXCEL_OFFICIAL_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def selected_academic_excel_engine() -> str:
+    """Return the engine selected for the authenticated Academic Excel route."""
+    return "excel_official" if _academic_excel_official_cutover_enabled() else "academic_v3"
+
+
 def export_academic_interactive_excel(
     repo: DatabaseRepository,
     *,
@@ -778,17 +793,26 @@ def export_academic_interactive_excel(
     discipline: str | None = None,
     window_periods: int | str | None = None,
 ) -> BytesIO:
-    """Generate the official academic Excel Interativo with full authorized history."""
+    """Generate the academic interactive workbook from the selected engine.
+
+    Academic V3 remains the default production engine. The Excel Official Core
+    can only be selected by the explicit 02C cutover flag after parity approval.
+    """
+    kwargs = {
+        "reference": reference,
+        "comparison": comparison,
+        "course": course,
+        "discipline": discipline,
+        "window_periods": window_periods,
+    }
+    if selected_academic_excel_engine() == "excel_official":
+        from academic_excel_official import build_academic_excel_official_workbook_bytes
+
+        return build_academic_excel_official_workbook_bytes(repo, **kwargs)
+
     from academic_excel_v3_builder import build_academic_interactive_workbook_bytes
 
-    return build_academic_interactive_workbook_bytes(
-        repo,
-        reference=reference,
-        comparison=comparison,
-        course=course,
-        discipline=discipline,
-        window_periods=window_periods,
-    )
+    return build_academic_interactive_workbook_bytes(repo, **kwargs)
 
 def export_formatted_excel(
     repo: DatabaseRepository,
